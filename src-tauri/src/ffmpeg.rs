@@ -22,6 +22,11 @@ use crate::settings::settings_path;
 /// The hash is of this exact asset, so the host is not trusted. Encoders used by the runner:
 /// libopenh264, libvpx-vp9, libopus, libvorbis, libmp3lame, aac, mpeg4, gif, flac, pcm_s16le.
 pub const URL: &str = "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-20-13-08/ffmpeg-n8.1.3-18-g46d899d7a0-win64-lgpl-8.1.zip";
+/// Same file on the project's own release, tried first; a 404 there (not published yet, or
+/// removed) falls through to BtbN without a word. The SHA-256 is the same for both.
+pub const MIRROR_URL: &str = "https://github.com/kaan0d/new-app/releases/download/ffmpeg-8.1.3/ffmpeg-n8.1.3-18-g46d899d7a0-win64-lgpl-8.1.zip";
+/// Download sources in the order they are tried.
+pub const SOURCES: [&str; 2] = [MIRROR_URL, URL];
 pub const SHA256: &str = "26634a5e06429c4f51ed08ba518923f928c5e4a49ed0ee62f701e035227b91a7";
 /// Used for the percent when the server sends no length.
 const EXPECTED_SIZE: u64 = 170_543_601;
@@ -233,6 +238,9 @@ pub fn extract_exe(zip_path: &Path, dir: &Path) -> Result<(), FfError> {
     result
 }
 
+/// Streams a URL into a file, reporting 0.0..=1.0 (`download` in production, a fake in tests).
+pub type Fetch<'a> = &'a dyn Fn(&str, &Path, &mut dyn FnMut(f32)) -> Result<(), FfError>;
+
 /// One full attempt: download, verify the hash, extract, check the result runs.
 pub fn install_once(
     url: &str,
@@ -240,10 +248,40 @@ pub fn install_once(
     dir: &Path,
     progress: &mut dyn FnMut(f32),
 ) -> Result<(), FfError> {
+    install_with(url, sha256, dir, progress, &download)
+}
+
+/// Tries each source in order; any failure (404, network, bad hash) moves on to the next.
+/// The last source's error is the one reported.
+pub fn install_from(
+    sources: &[&str],
+    sha256: &str,
+    dir: &Path,
+    progress: &mut dyn FnMut(f32),
+    fetch: Fetch,
+) -> Result<(), FfError> {
+    let mut last = FfError::new("ff.run");
+    for url in sources {
+        progress(0.0);
+        match install_with(url, sha256, dir, progress, fetch) {
+            Ok(()) => return Ok(()),
+            Err(e) => last = e,
+        }
+    }
+    Err(last)
+}
+
+fn install_with(
+    url: &str,
+    sha256: &str,
+    dir: &Path,
+    progress: &mut dyn FnMut(f32),
+    fetch: Fetch,
+) -> Result<(), FfError> {
     fs::create_dir_all(dir).map_err(|e| FfError::with("ff.mkdir", e))?;
     let tmp = dir.join("ffmpeg.zip.part");
     let result = (|| {
-        download(url, &tmp, &mut |f| progress(f * 97.0))?;
+        fetch(url, &tmp, &mut |f| progress(f * 97.0))?;
         progress(98.0);
         verify_sha256(&tmp, sha256)?;
         extract_exe(&tmp, dir)?;
@@ -257,13 +295,19 @@ pub fn install_once(
     result
 }
 
-/// The pinned build, up to three attempts with a growing pause. Updates `dl` as it goes.
+/// The pinned build (mirror, then BtbN), up to three attempts with a growing pause. Updates `dl` as it goes.
 pub fn install_with_retries(dl: &Download) -> Result<(), FfError> {
     let mut last = FfError::new("ff.run");
     for pause in [0u64, 3, 10] {
         std::thread::sleep(Duration::from_secs(pause));
         dl.set_percent(0.0);
-        match install_once(URL, SHA256, &ffmpeg_dir(), &mut |p| dl.set_percent(p)) {
+        match install_from(
+            &SOURCES,
+            SHA256,
+            &ffmpeg_dir(),
+            &mut |p| dl.set_percent(p),
+            &download,
+        ) {
             Ok(()) => return Ok(()),
             Err(e) => last = e,
         }
@@ -295,6 +339,53 @@ mod tests {
         assert!(URL.contains("/ffmpeg-n8.1.3-18-g46d899d7a0-"));
         assert!(SHA256.len() == 64 && SHA256.bytes().all(|b| b.is_ascii_hexdigit()));
         assert_eq!(SHA256, SHA256.to_ascii_lowercase());
+    }
+
+    #[test]
+    fn mirror_comes_first_with_the_same_asset() {
+        assert_eq!(SOURCES[0], MIRROR_URL);
+        assert_eq!(SOURCES[1], URL);
+        let asset = |u: &str| u.rsplit('/').next().unwrap().to_string();
+        assert_eq!(asset(MIRROR_URL), asset(URL));
+        assert!(MIRROR_URL.starts_with("https://github.com/kaan0d/new-app/releases/download/"));
+    }
+
+    /// A zip holding a "working" ffmpeg is impossible offline, so the fake fetcher serves a
+    /// zip and the final run check fails with ff.run; what matters is which URLs were asked.
+    fn served(urls: &[&str], failing: &[&str]) -> (Result<(), FfError>, Vec<String>) {
+        let d = tempfile::tempdir().unwrap();
+        let asked = std::cell::RefCell::new(vec![]);
+        let fetch = |url: &str, dest: &Path, p: &mut dyn FnMut(f32)| -> Result<(), FfError> {
+            asked.borrow_mut().push(url.to_string());
+            if failing.contains(&url) {
+                return Err(FfError::with("ff.start", "404"));
+            }
+            fake_zip(dest, &[("x/bin/ffmpeg.exe", b"MZfake")]);
+            p(1.0);
+            Ok(())
+        };
+        let sha = sha256_of_zip();
+        let r = install_from(urls, &sha, d.path(), &mut |_| {}, &fetch);
+        (r, asked.into_inner())
+    }
+
+    fn sha256_of_zip() -> String {
+        let d = tempfile::tempdir().unwrap();
+        let z = d.path().join("z.zip");
+        fake_zip(&z, &[("x/bin/ffmpeg.exe", b"MZfake")]);
+        sha256_file(&z).unwrap()
+    }
+
+    #[test]
+    fn falls_through_sources_in_order() {
+        // both 404: both asked, in order, the last error wins
+        let (r, asked) = served(&["m", "b"], &["m", "b"]);
+        assert_eq!(asked, ["m", "b"]);
+        assert_eq!(r.unwrap_err().key(), "ff.start");
+        // mirror 404 -> BtbN is used (it then fails only at the "does it run" check)
+        let (r, asked) = served(&["m", "b"], &["m"]);
+        assert_eq!(asked, ["m", "b"]);
+        assert_eq!(r.unwrap_err().key(), "ff.run");
     }
 
     #[test]
