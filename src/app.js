@@ -63,7 +63,6 @@ function select(i, focus) {
   $('tabs').style.setProperty('--i', i);
   cur = i;
   scrollTo(0, 0);
-  if (tabs[i].id !== 't-panel') demoStop();
 }
 
 function tabKeys(e) {
@@ -320,63 +319,20 @@ function tplInput() {
 }
 
 /* ---------- panel preview ---------- */
-let demoTimers = [];
+let demoTimer = null;
 
-function demoStop() {
-  demoTimers.forEach(clearTimeout);
-  demoTimers = [];
-  $('demo').hidden = true;
-}
-
-function demoRow(li, p) {
-  const sheet = li.querySelector('.sheet');
-  sheet.style.setProperty('--p', p / 100);
-  li.querySelector('.msg').textContent = p >= 100 ? 'Tamamlandı' : `%${Math.round(p)}`;
-  if (p >= 100 && !li.classList.contains('is-ok')) {
-    li.classList.add('is-ok');
-    sheet.classList.replace('working', 'ok');
+// the real mini panel plays a fake job on the desktop; the button rests while it runs
+async function demoPlay() {
+  const b = $('demo-play');
+  if (b.disabled) return;
+  b.disabled = true;
+  clearTimeout(demoTimer);
+  demoTimer = setTimeout(() => (b.disabled = false), 3600);
+  try {
+    await invoke('panel_preview', { corner: s.panel.corner, seconds: s.panel.seconds });
+  } catch (e) {
+    showError('Önizleme açılamadı: ' + e);
   }
-}
-
-function demoPlay() {
-  demoStop();
-  const d = $('demo'), rows = $$('#demo .job'), timer = $('demo-timer');
-  rows.forEach((li) => {
-    li.classList.remove('is-ok');
-    li.querySelector('.sheet').classList.replace('ok', 'working');
-    demoRow(li, 0);
-  });
-  $('demo-head').classList.remove('done');
-  $('demo-title').textContent = 'Dönüştürülüyor';
-  $('demo-sub').textContent = '2 dosya';
-  timer.classList.remove('run');
-  timer.style.transitionDuration = '';
-  d.classList.remove('out');
-  d.hidden = false;
-  d.classList.remove('in');
-  void d.offsetWidth;
-  d.classList.add('in');
-  let t = 0;
-  const step = () => {
-    t++;
-    const a = Math.min(100, t * 8), b = Math.min(100, t * 5);
-    demoRow(rows[0], a);
-    demoRow(rows[1], b);
-    $('demo-pct').textContent = Math.round((a + b) / 2);
-    $('demo-bar').style.setProperty('--p', (a + b) / 200);
-    $('demo-sub').textContent = b >= 100 ? '2 dosya hazır' : a >= 100 ? '1/2 dosya bitti' : '2 dosya';
-    if (b < 100) return demoTimers.push(setTimeout(step, 130));
-    $('demo-head').classList.add('done');
-    $('demo-title').textContent = 'Tamamlandı';
-    // the card waits for panel.seconds, drawn as a draining line
-    const secs = s.panel.seconds;
-    timer.style.transitionDuration = secs + 's';
-    void timer.offsetWidth;
-    timer.classList.add('run');
-    demoTimers.push(setTimeout(() => d.classList.add('out'), secs * 1000));
-    demoTimers.push(setTimeout(() => (d.hidden = true), secs * 1000 + 360));
-  };
-  demoTimers.push(setTimeout(step, 450));
 }
 
 /* ---------- render ---------- */
@@ -552,7 +508,6 @@ function bind() {
   $$('input[name=corner]').forEach((r) => {
     r.onchange = () => {
       setIn('panel', 'corner', r.value);
-      if (!$('demo').hidden) demoPlay();
     };
   });
   $('demo-play').onclick = demoPlay;
@@ -574,7 +529,7 @@ function bind() {
 
 // sections settle in each time the window comes back from the tray
 function intro() {
-  if (document.visibilityState !== 'visible') return demoStop();
+  if (document.visibilityState !== 'visible') return;
   document.body.classList.remove('enter');
   void document.body.offsetWidth;
   document.body.classList.add('enter');

@@ -229,6 +229,11 @@ function done({ id, name, ok, message, output }) {
 
 if (T && T.core) loadPanel();
 if (T && T.event) {
+  // a preview carries the not-yet-saved corner and time
+  T.event.listen('panel-config', (e) => {
+    document.body.dataset.corner = e.payload.corner;
+    seconds = e.payload.seconds;
+  });
   T.event.listen('job-progress', (e) => progress(e.payload));
   T.event.listen('job-done', (e) => done(e.payload));
 }

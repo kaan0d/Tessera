@@ -180,6 +180,28 @@ fn retry_ffmpeg_download(app: AppHandle) {
     start_ffmpeg_download(&app);
 }
 
+/// Plays a fake job on the real mini panel; the UI's current (unsaved) values win over the saved ones.
+#[tauri::command]
+fn panel_preview(
+    corner: Option<String>,
+    seconds: Option<u8>,
+    app: AppHandle,
+    state: State<AppState>,
+) -> Result<(), String> {
+    let mut p = *state.queue.panel.lock().unwrap();
+    if let Some(c) = corner {
+        p.corner = serde_json::from_value(c.into()).map_err(|_| "Geçersiz köşe".to_string())?;
+    }
+    if let Some(s) = seconds {
+        if !(2..=30).contains(&s) {
+            return Err("Geçersiz süre".into());
+        }
+        p.seconds = s;
+    }
+    state.queue.preview(&app, p);
+    Ok(())
+}
+
 /// Reveals a file in Explorer (or opens a folder).
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
@@ -274,7 +296,8 @@ pub fn run() {
             cancel_job,
             ffmpeg_status,
             retry_ffmpeg_download,
-            open_folder
+            open_folder,
+            panel_preview
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {
