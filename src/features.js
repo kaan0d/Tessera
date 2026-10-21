@@ -378,8 +378,12 @@ function relTime(ms) {
   return new Date(ms).toLocaleDateString(LANG, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// cancelled jobs are stored as failures with the backend's "Cancelled" text
+const histCancelled = (e) => !e.ok && Object.values(I18N).some((d) => d['p.cancelled'] === e.error);
+
 function histRow(e) {
-  const li = el('li', 'hrow' + (e.ok ? '' : ' is-err') + (e.undone ? ' is-undone' : ''));
+  const cancelled = histCancelled(e);
+  const li = el('li', 'hrow' + (e.ok || cancelled ? '' : ' is-err') + (e.undone ? ' is-undone' : ''));
   const ext = extOf(e.input), out = extOf(e.output);
   const tile = el('span', 'tile sm');
   tile.append(icon(KIND_ICON[kindOfExt(ext)]));
@@ -400,11 +404,12 @@ function histRow(e) {
     meta.append(k);
   }
   main.append(name, meta);
-  if (!e.ok) main.append(el('p', 'h-msg err', e.error || t('p.fail_default')));
+  if (!e.ok && !cancelled) main.append(el('p', 'h-msg err', e.error || t('p.fail_default')));
   const um = undoMsg.get(e.id);
   if (um) main.append(el('p', 'h-msg ' + (um[0] ? 'ok' : 'err'), um[1]));
   const acts = el('div', 'h-acts');
   if (e.undone) acts.append(el('span', 'pill', t('hi.undone')));
+  else if (cancelled) acts.append(el('span', 'pill', t('hi.cancelled')));
   else if (!e.ok) acts.append(el('span', 'pill err', t('hi.failed')));
   else {
     const u = textBtn('i-undo', t('hi.undo'), 'ghost undo');

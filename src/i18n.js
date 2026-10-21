@@ -354,6 +354,11 @@ const I18N = {
     "cli.copy_fail": "Could not copy",
     "p.undo": "Undo {name}",
     "p.undone": "Undone",
+    "p.cancelled": "Cancelled",
+    "p.ann_cancel": "{name} was cancelled.",
+    "p.sub_cancel": "{ok} ready, {n} cancelled",
+    "p.sub_cancel_only": "{n} cancelled",
+    "hi.cancelled": "Cancelled",
   },
 
   tr: {
@@ -704,6 +709,11 @@ const I18N = {
     "cli.copy_fail": "Kopyalanamadı",
     "p.undo": "Geri al: {name}",
     "p.undone": "Geri alındı",
+    "p.cancelled": "İptal edildi",
+    "p.ann_cancel": "{name} iptal edildi.",
+    "p.sub_cancel": "{ok} hazır, {n} iptal edildi",
+    "p.sub_cancel_only": "{n} iptal edildi",
+    "hi.cancelled": "İptal edildi",
   },
 };
 

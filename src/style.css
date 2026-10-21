@@ -350,6 +350,10 @@ input[type=radio]:checked::after{scale:1}
 .sheet.err .level{translate:0 0}
 .sheet.err .mark-err{stroke:var(--danger);opacity:1;stroke-dashoffset:0;transition:stroke-dashoffset var(--d3) var(--ease) 120ms,opacity 0s 120ms}
 .sheet.err{animation:nudge 420ms var(--ease)}
+/* cancelled: the sheet simply stops, no alarm */
+.sheet.cancel .ink{fill:var(--track);animation:none}
+.sheet.cancel .pict{opacity:.35}
+.sheet.cancel .outline,.sheet.cancel .fold{stroke:var(--muted)}
 @keyframes nudge{20%{translate:-2px 0}45%{translate:2px 0}70%{translate:-1px 0}}
 
 /* toast under the menu buttons */
@@ -587,7 +591,7 @@ html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 .job .msg{font-size:var(--t-xs);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:1.3}
 .job.is-ok .msg{color:var(--accent)}
 .job.is-err .msg{color:var(--danger)}
-.job.is-undone .msg{color:var(--muted)}
+.job.is-undone .msg,.job.is-cancel .msg{color:var(--muted)}
 .job.is-undone .name{color:var(--muted)}
 .job.is-undone .sheet.ok .ink{fill:var(--accent-ink)}
 .job.entering{animation:settle var(--d3) var(--ease) both}

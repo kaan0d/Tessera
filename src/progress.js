@@ -186,13 +186,14 @@ function paintSummary() {
   const run = all.filter((j) => j.state === 'run').length;
   const ok = all.filter((j) => j.state === 'ok').length;
   const err = all.filter((j) => j.state === 'err').length;
+  const cancelled = all.filter((j) => j.state === 'cancel').length;
   const pct = all.length ? all.reduce((a, j) => a + (j.state === 'run' ? j.percent : 100), 0) / all.length : 0;
   const head = document.getElementById('head');
   head.classList.toggle('done', !run && all.length > 0);
   document.getElementById('p-title').textContent = run ? t('p.running') : err ? t('p.some_failed') : t('p.done');
   document.getElementById('p-sub').textContent = run
     ? all.length === 1 ? t('p.sub_one') : t('p.sub_run', { done: all.length - run, total: all.length })
-    : err ? t('p.sub_fail', { ok, err }) : t('p.sub_ok', { n: ok });
+    : err ? t('p.sub_fail', { ok, err }) : cancelled ? t(ok ? 'p.sub_cancel' : 'p.sub_cancel_only', { ok, n: cancelled }) : t('p.sub_ok', { n: ok });
   document.getElementById('p-pct').textContent = Math.round(pct);
   document.getElementById('p-bar').style.setProperty('--p', pct / 100);
   return { run, any: all.length > 0 };
@@ -213,15 +214,19 @@ function progress({ id, name, percent }) {
   summary();
 }
 
+// the backend reports a stopped job as a failure whose message is exactly "Cancelled" in either language
+const isCancel = (msg) => Object.values(I18N).some((d) => d['p.cancelled'] === msg);
+
 function done({ id, name, ok, message, output, history_id: hid }) {
   const j = getJob(id, name);
-  j.state = ok ? 'ok' : 'err';
-  j.li.classList.add(ok ? 'is-ok' : 'is-err');
+  const cancel = !ok && isCancel(message);
+  j.state = ok ? 'ok' : cancel ? 'cancel' : 'err';
+  j.li.classList.add(ok ? 'is-ok' : cancel ? 'is-cancel' : 'is-err');
   j.sheet.classList.remove('working');
-  j.sheet.classList.add(ok ? 'ok' : 'err');
+  j.sheet.classList.add(ok ? 'ok' : cancel ? 'cancel' : 'err');
   if (ok) setLevel(j, 100);
   // a backend message was composed in the language of the moment and stays as it is
-  j.mk = ok ? ['p.done'] : message ? null : ['p.fail_default'];
+  j.mk = ok ? ['p.done'] : cancel ? ['p.cancelled'] : message ? null : ['p.fail_default'];
   j.msg.textContent = j.mk ? t(...j.mk) : message;
   j.msg.title = j.msg.textContent;
   j.actions.replaceChildren();
@@ -267,9 +272,9 @@ function done({ id, name, ok, message, output, history_id: hid }) {
   delete j.btns.cancel;
   close.onclick = () => removeJob(id, true);
   j.actions.append(close);
-  // successes fold away on their own; failures wait to be read
-  if (ok) j.timer = setTimeout(() => removeJob(id, true), 6000);
-  document.getElementById('announce').textContent = t(ok ? 'p.ann_ok' : 'p.ann_err', { name });
+  // successes and cancels fold away on their own; failures wait to be read
+  if (ok || cancel) j.timer = setTimeout(() => removeJob(id, true), 6000);
+  document.getElementById('announce').textContent = t(ok ? 'p.ann_ok' : cancel ? 'p.ann_cancel' : 'p.ann_err', { name });
   summary();
 }
 
