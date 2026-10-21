@@ -142,22 +142,40 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
 
 /// Menu icon files, one per source kind (transparent .ico, brand colours).
 /// Bump when the .ico artwork changes.
-const ICON_REV: u32 = 2;
+const ICON_REV: u32 = 3;
 
-const KIND_ICONS: [(&str, &[u8]); 4] = [
+const KIND_ICONS: [(&str, &[u8]); 11] = [
     ("image", include_bytes!("../../menu-icons/image.ico")),
     ("audio", include_bytes!("../../menu-icons/audio.ico")),
     ("video", include_bytes!("../../menu-icons/video.ico")),
     ("document", include_bytes!("../../menu-icons/document.ico")),
+    ("web", include_bytes!("../../menu-icons/web.ico")),
+    ("chat", include_bytes!("../../menu-icons/chat.ico")),
+    ("mail", include_bytes!("../../menu-icons/mail.ico")),
+    ("game", include_bytes!("../../menu-icons/game.ico")),
+    ("pin", include_bytes!("../../menu-icons/pin.ico")),
+    ("sliders", include_bytes!("../../menu-icons/sliders.ico")),
+    ("layers", include_bytes!("../../menu-icons/layers.ico")),
 ];
 
 /// Writes the kind icons next to the settings; Explorer reads them by path. A failed write only
 /// costs the icon, never the menu.
 fn write_kind_icons(dir: &Path) {
     let _ = fs::create_dir_all(dir);
+    // Explorer caches icons by path, so a new revision gets a new name; drop every other file
+    let keep: Vec<String> = KIND_ICONS
+        .iter()
+        .map(|(k, _)| format!("{k}-{ICON_REV}.ico"))
+        .collect();
+    for old in fs::read_dir(dir).into_iter().flatten().flatten() {
+        if !keep
+            .iter()
+            .any(|k| old.file_name().to_string_lossy() == k.as_str())
+        {
+            let _ = fs::remove_file(old.path());
+        }
+    }
     for (kind, bytes) in KIND_ICONS {
-        // Explorer caches icons by path, so a new revision gets a new name; drop the old one
-        let _ = fs::remove_file(dir.join(format!("{kind}.ico")));
         let file = dir.join(format!("{kind}-{ICON_REV}.ico"));
         if fs::read(&file).ok().as_deref() != Some(bytes) {
             let _ = fs::write(file, bytes);
@@ -165,19 +183,22 @@ fn write_kind_icons(dir: &Path) {
     }
 }
 
-/// Icon path for a verb: the kind it produces or works on. `name` is the verb key without its
-/// position prefix (`jpg`, `preset_web`, `merge_pdf`).
-fn verb_icon(dir: &Path, name: &str, s: &Settings) -> String {
-    let kind = if let Some(id) = name.strip_prefix("preset_") {
-        preset::find(s, id)
-            .and_then(|p| p.kinds.first().cloned())
-            .unwrap_or_else(|| "image".into())
-    } else if let Some(k) = name.strip_prefix("merge_") {
-        if k == "pdf" { "document" } else { "audio" }.into()
-    } else {
-        Format::from_ext(name).map_or("image", Format::kind).into()
+/// Icon path for a verb: what it does. Built-in presets and merge have their own glyphs,
+/// custom presets share the sliders, everything else shows the kind it produces.
+/// `name` is the verb key without its position prefix (`jpg`, `preset_web`, `merge_pdf`).
+fn verb_icon(dir: &Path, name: &str) -> String {
+    let icon = match name {
+        "preset_web" => "web",
+        "preset_whatsapp" => "chat",
+        "preset_email" => "mail",
+        "preset_discord" => "game",
+        "preset_strip" => "pin",
+        "preset_pdf" => "document",
+        n if n.starts_with("preset_") => "sliders",
+        n if n.starts_with("merge_") => "layers",
+        n => Format::from_ext(n).map_or("image", Format::kind),
     };
-    dir.join(format!("{kind}-{ICON_REV}.ico"))
+    dir.join(format!("{icon}-{ICON_REV}.ico"))
         .to_string_lossy()
         .into_owned()
 }
@@ -251,7 +272,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                     verb.set_value("CommandFlags", &0x20u32)?;
                 }
                 if s.menu.icons {
-                    verb.set_value("Icon", &verb_icon(&icons, &name, s))?;
+                    verb.set_value("Icon", &verb_icon(&icons, &name))?;
                 }
                 let (cmd, _) = verb.create_subkey("command")?;
                 cmd.set_value("", &format!(r#""{exe}" {args} "%1""#))?;
@@ -280,7 +301,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                     verb.set_value("CommandFlags", &0x20u32)?;
                 }
                 if s.menu.icons {
-                    verb.set_value("Icon", &verb_icon(&icons, &name, s))?;
+                    verb.set_value("Icon", &verb_icon(&icons, &name))?;
                 }
                 let (cmd, _) = verb.create_subkey("command")?;
                 cmd.set_value("", &format!(r#""{exe}" --folder {} "%1""#, action.arg()))?;
@@ -471,7 +492,7 @@ mod tests {
         assert!(verb
             .get_value::<String, _>("Icon")
             .unwrap()
-            .ends_with(r"menu-icons\image-2.ico"));
+            .ends_with(r"menu-icons\image-3.ico"));
         assert_eq!(
             verb.open_subkey("command")
                 .unwrap()
