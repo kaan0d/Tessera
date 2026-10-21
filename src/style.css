@@ -771,7 +771,7 @@ html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 .cu-line .slider{margin:0;flex:1}
 .cu-val{min-width:7ch;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--t-sm);font-weight:600;color:var(--ink)}
 .cu-numline{margin-top:2px}
-.cu-num.field{width:110px;margin:0;height:34px}
+.cu-num.field{width:140px;margin:0;height:34px}
 .cu-unit{font-size:var(--t-sm);color:var(--muted)}
 .cu-hint{font-size:var(--t-xs);color:var(--muted)}
 .cu-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--t-sm);font-weight:500;cursor:pointer}

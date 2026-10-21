@@ -190,6 +190,7 @@ fn write_kind_icons(dir: &Path) {
 fn verb_icon(dir: &Path, name: &str) -> String {
     let icon = match name {
         "gif" => "gif",
+        "custom" => "sliders",
         "preset_web" => "web",
         "preset_whatsapp" => "chat",
         "preset_email" => "mail",
@@ -265,6 +266,14 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                 })
                 .collect(),
         );
+        // one-off settings: opens the chooser on its custom page (not for documents)
+        if Format::from_ext(ext).is_some_and(|f| f.kind() != "document") {
+            groups.push(vec![(
+                "custom".to_string(),
+                i18n::t(s.language, "menu.custom").to_string(),
+                "--custom".to_string(),
+            )]);
+        }
         let mut i = 0;
         for group in groups.into_iter().filter(|g| !g.is_empty()) {
             for (n, (name, text, args)) in group.into_iter().enumerate() {
@@ -504,18 +513,21 @@ mod tests {
         );
         // ffmpeg-only targets hidden until ffmpeg is ready
         let mp3 = hkcu.open_subkey(menu_key(&root, "mp3")).unwrap();
-        assert_eq!(verb_names(&mp3), ["00_wav", "01_flac", "02_merge_audio"]);
+        assert_eq!(
+            verb_names(&mp3),
+            ["00_wav", "01_flac", "02_merge_audio", "03_custom"]
+        );
 
         install_at(&root, exe, &ready(true)).unwrap();
         let mp3 = hkcu.open_subkey(menu_key(&root, "mp3")).unwrap();
         assert_eq!(
             verb_names(&mp3),
-            ["00_wav", "01_flac", "02_ogg", "03_merge_audio"]
+            ["00_wav", "01_flac", "02_ogg", "03_merge_audio", "04_custom"]
         );
         let mp4 = hkcu.open_subkey(menu_key(&root, "mp4")).unwrap();
         let names = verb_names(&mp4);
         // 10 formats, then email/discord/strip presets
-        assert_eq!((names[0].as_str(), names.len()), ("00_mkv", 13));
+        assert_eq!((names[0].as_str(), names.len()), ("00_mkv", 14));
         assert_eq!(names[10], "10_preset_email");
 
         remove_at(&root).unwrap();
@@ -604,10 +616,11 @@ mod tests {
         install_at(&root, exe, &ready(false)).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         let names = verb_names(&png);
-        // 8 formats, 6 presets, merge
-        assert_eq!(names.len(), 15);
+        // 8 formats, 6 presets, merge, custom
+        assert_eq!(names.len(), 16);
         assert_eq!(names[8], "08_preset_web");
         assert_eq!(names[14], "14_merge_pdf");
+        assert_eq!(names[15], "15_custom");
         let flags = |n: &str| {
             png.open_subkey(format!(r"shell\{n}"))
                 .unwrap()
@@ -626,6 +639,7 @@ mod tests {
         };
         assert_eq!(cmd("10_preset_email"), r#""C:\x.exe" --preset email "%1""#);
         assert_eq!(cmd("14_merge_pdf"), r#""C:\x.exe" --merge pdf "%1""#);
+        assert_eq!(cmd("15_custom"), r#""C:\x.exe" --custom "%1""#);
         // ffmpeg-less menu hides video presets; mp4 has no verbs at all
         assert!(hkcu.open_subkey(menu_key(&root, "mp4")).is_err());
 
@@ -635,7 +649,7 @@ mod tests {
         st.menu.merge = false;
         install_at(&root, exe, &st).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
-        assert_eq!(verb_names(&png).len(), 8);
+        assert_eq!(verb_names(&png).len(), 9); // 8 formats + custom
         st.menu.presets_enabled = true;
         st.hidden_presets = vec!["web".into(), "pdf".into()];
         st.menu_sources = vec!["png".into(), "heic".into()];
@@ -643,7 +657,7 @@ mod tests {
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         let names = verb_names(&png);
         assert_eq!(names[8], "08_preset_whatsapp");
-        assert_eq!(names.len(), 8 + 4);
+        assert_eq!(names.len(), 8 + 4 + 1);
         // heic: no format verbs ... presets and no merge verb
         let heic = hkcu.open_subkey(menu_key(&root, "heic")).unwrap();
         assert!(verb_names(&heic).iter().all(|n| !n.contains("merge")));

@@ -229,9 +229,10 @@ async function load(payload) {
   }
   paintStack(opts.kinds.length ? opts.kinds : payload.kinds || [], opts.count || files.length);
   const first = render();
+  if (payload.custom && customAvailable()) showCustom(true);
   intro();
   $('dr-body').scrollTop = 0;
-  if (first) first.focus({ preventScroll: true });
+  if (first && !customOpen) first.focus({ preventScroll: true });
 }
 
 /* ---------- choosing ---------- */

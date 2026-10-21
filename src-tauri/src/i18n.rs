@@ -314,6 +314,7 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Bu seçim seçilen dosyalara uymuyor",
     ),
     ("drop.custom_name", "Custom settings", "Özel ayar"),
+    ("menu.custom", "Custom settings...", "Özel ayar..."),
     // commands
     (
         "cmd.autostart",

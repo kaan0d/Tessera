@@ -93,11 +93,11 @@ function buildCustom() {
   gAudio.append(switchLine('cu-noaudio', t('dr.c_noaudio'), 'noAudio'));
   // largest size
   const size = el('input', 'field cu-num');
-  Object.assign(size, { type: 'number', id: 'cu-size', min: 0, step: 'any', inputMode: 'decimal', value: cs.sizeMb });
+  Object.assign(size, { type: 'number', id: 'cu-size', min: 0, step: 'any', inputMode: 'decimal', value: cs.sizeMb, placeholder: t('dr.c_size_ph') });
   size.setAttribute('aria-label', t('dr.c_size'));
   size.oninput = () => ((cs.sizeMb = size.value), syncCustom());
   const sizeLine = el('div', 'cu-line cu-numline');
-  sizeLine.append(size, el('span', 'cu-unit', 'MB'), el('span', 'cu-hint', t('dr.c_size_hint')));
+  sizeLine.append(size, el('span', 'cu-unit', 'MB'));
   const need = el('p', 'dr-note cu-need', t('dr.c_need'));
   need.id = 'cu-need';
   need.setAttribute('role', 'status');

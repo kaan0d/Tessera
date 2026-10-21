@@ -80,6 +80,10 @@ struct AppState {
     watcher: Mutex<Option<watch::Running>>,
     /// Files the chooser window currently shows (it reads them on load; the event can be early).
     dropped: Mutex<Vec<PathBuf>>,
+    /// The chooser was opened by the "Custom settings" verb: it starts on its custom page.
+    drop_custom: std::sync::atomic::AtomicBool,
+    /// Files of the "Custom settings" verb (one process per file) and when the last arrived.
+    customs: Arc<Mutex<(Vec<PathBuf>, u64)>>,
 }
 
 /// Milliseconds on a monotonic clock, for the merge collector.
@@ -667,9 +671,11 @@ fn run_preset(app: &AppHandle, p: preset::Preset, files: Vec<PathBuf>) {
 struct DropPayload {
     files: Vec<String>,
     kinds: Vec<&'static str>,
+    /// Open the custom settings page right away.
+    custom: bool,
 }
 
-fn drop_payload(files: &[PathBuf]) -> DropPayload {
+fn drop_payload(files: &[PathBuf], custom: bool) -> DropPayload {
     let (known, _) = dropped::split(files);
     let mut kinds: Vec<&'static str> = vec![];
     for (_, f) in known {
@@ -680,12 +686,13 @@ fn drop_payload(files: &[PathBuf]) -> DropPayload {
     DropPayload {
         files: files.iter().map(|f| f.display().to_string()).collect(),
         kinds,
+        custom,
     }
 }
 
 /// Dropped/opened/sent files: opens the chooser window (centered, on top) with them.
 /// Nothing convertible among them: a notification instead.
-fn handle_drop(app: &AppHandle, paths: Vec<PathBuf>) {
+fn handle_drop(app: &AppHandle, paths: Vec<PathBuf>, custom: bool) {
     let files = dropped::collect(&paths);
     let lang = i18n::lang();
     if dropped::split(&files).0.is_empty() {
@@ -696,8 +703,12 @@ fn handle_drop(app: &AppHandle, paths: Vec<PathBuf>) {
         );
         return;
     }
-    let payload = drop_payload(&files);
-    *app.state::<AppState>().dropped.lock().unwrap() = files;
+    let payload = drop_payload(&files, custom);
+    let state = app.state::<AppState>();
+    state
+        .drop_custom
+        .store(custom, std::sync::atomic::Ordering::Relaxed);
+    *state.dropped.lock().unwrap() = files;
     if let Some(w) = app.get_webview_window("drop") {
         let _ = w.set_always_on_top(true);
         let _ = w.center();
@@ -706,6 +717,34 @@ fn handle_drop(app: &AppHandle, paths: Vec<PathBuf>) {
         let _ = w.set_focus();
         let _ = app.emit_to("drop", "drop-files", payload);
     }
+}
+
+/// Explorer starts one process per selected file; gather them (same quiet window as merge) and
+/// open the chooser once, on its custom page.
+fn start_custom(app: &AppHandle, files: Vec<PathBuf>) {
+    let customs = app.state::<AppState>().customs.clone();
+    let first = {
+        let mut c = customs.lock().unwrap();
+        let first = c.0.is_empty();
+        c.0.extend(files);
+        c.1 = mono_ms();
+        first
+    };
+    if !first {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let ready = {
+            let mut c = customs.lock().unwrap();
+            (mono_ms().saturating_sub(c.1) >= batch::QUIET_MS).then(|| std::mem::take(&mut c.0))
+        };
+        if let Some(files) = ready {
+            handle_drop(&app, files, true);
+            break;
+        }
+    });
 }
 
 fn close_drop(app: &AppHandle) {
@@ -722,13 +761,16 @@ fn to_paths(files: Vec<String>) -> Vec<PathBuf> {
 /// For the settings window's drag-drop event: opens the same chooser as a dropped exe launch.
 #[tauri::command]
 fn drop_files(paths: Vec<String>, app: AppHandle) {
-    handle_drop(&app, to_paths(paths));
+    handle_drop(&app, to_paths(paths), false);
 }
 
 /// The files the chooser currently shows (call on load; `drop-files` covers later drops).
 #[tauri::command]
 fn get_drop_files(state: State<AppState>) -> DropPayload {
-    drop_payload(&state.dropped.lock().unwrap())
+    drop_payload(
+        &state.dropped.lock().unwrap(),
+        state.drop_custom.load(std::sync::atomic::Ordering::Relaxed),
+    )
 }
 
 #[derive(Serialize)]
@@ -1026,7 +1068,8 @@ pub fn run() {
                 Cli::Preset { id, files } => start_preset(app, &id, files),
                 Cli::Merge { kind, files } => start_merge(app, kind, files),
                 Cli::Folder { action, dir } => start_folder(app, action, dir),
-                Cli::Drop { files } => handle_drop(app, files),
+                Cli::Drop { files } => handle_drop(app, files, false),
+                Cli::Custom { files } => start_custom(app, files),
                 Cli::Normal => show_window(app),
                 _ => {}
             }
@@ -1085,6 +1128,8 @@ pub fn run() {
                 merges: Arc::new(Mutex::new(Collector::new(batch::QUIET_MS))),
                 watcher: Mutex::new(None),
                 dropped: Mutex::new(vec![]),
+                drop_custom: std::sync::atomic::AtomicBool::new(false),
+                customs: Arc::default(),
             });
             // windows are built only now so their pages never invoke a command before the state exists
             for cfg in &app.config().app.windows {
@@ -1143,7 +1188,8 @@ pub fn run() {
                 Cli::Folder { action, dir } => {
                     start_folder(app.handle(), action.clone(), dir.clone())
                 }
-                Cli::Drop { files } => handle_drop(app.handle(), files.clone()),
+                Cli::Drop { files } => handle_drop(app.handle(), files.clone(), false),
+                Cli::Custom { files } => start_custom(app.handle(), files.clone()),
                 Cli::Normal => show_window(app.handle()),
                 _ => {}
             }

@@ -22,6 +22,10 @@ pub enum Cli {
         kind: MergeKind,
         files: Vec<PathBuf>,
     },
+    /// "Custom settings" verb: the chooser opens straight on its custom page.
+    Custom {
+        files: Vec<PathBuf>,
+    },
     /// Folder verb: convert the matching files of a folder.
     Folder {
         action: Action,
@@ -125,6 +129,10 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
                 None => Cli::Normal,
             }
         }
+        Some("--custom") => match files(&args[1..], cwd) {
+            Some(files) => Cli::Custom { files },
+            None => Cli::Normal,
+        },
         Some("--folder") => {
             let Some(action) = args.get(1).and_then(|a| Action::parse(a)) else {
                 return Cli::Normal;
@@ -374,6 +382,13 @@ mod tests {
                 files: vec![PathBuf::from("a.mp3"), PathBuf::from("b.mp3")]
             }
         );
+        assert_eq!(
+            parse(&a(&["--custom", "a.png"]), Some(Path::new(r"C:\w"))),
+            Cli::Custom {
+                files: vec![PathBuf::from(r"C:\w\a.png")]
+            }
+        );
+        assert_eq!(parse(&a(&["--custom"]), None), Cli::Normal);
         assert_eq!(parse(&a(&["--merge", "zip", "a"]), None), Cli::Normal);
         assert_eq!(parse(&a(&["--merge", "pdf"]), None), Cli::Normal);
     }
