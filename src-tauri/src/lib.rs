@@ -1,8 +1,217 @@
 pub mod app_info;
+pub mod cli;
 pub mod convert;
+pub mod queue;
+pub mod settings;
+pub mod shell;
+
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+
+use serde::Serialize;
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Manager, State, WindowEvent};
+
+use cli::Cli;
+use queue::Queue;
+use settings::Settings;
+
+struct AppState {
+    settings: Mutex<Settings>,
+    queue: Queue,
+}
+
+#[derive(Serialize)]
+struct FfmpegStatus {
+    ready: bool,
+    downloading: bool,
+    percent: f32,
+}
+
+#[tauri::command]
+fn get_settings(state: State<AppState>) -> Settings {
+    state.settings.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn set_settings(settings: Settings, state: State<AppState>) -> Result<Settings, String> {
+    let mut cur = state.settings.lock().unwrap();
+    let mut new = settings.normalized();
+    new.ffmpeg_ready = cur.ffmpeg_ready;
+    shell::set_autostart(new.autostart)
+        .map_err(|e| format!("Otomatik başlatma ayarlanamadı: {e}"))?;
+    shell::install(new.ffmpeg_ready).map_err(|e| format!("Sağ tık menüsü kaydedilemedi: {e}"))?;
+    settings::save_to(&settings::settings_path(), &new)
+        .map_err(|e| format!("Ayarlar kaydedilemedi: {e}"))?;
+    *cur = new.clone();
+    Ok(new)
+}
+
+#[tauri::command]
+fn install_context_menu(state: State<AppState>) -> Result<(), String> {
+    let ready = state.settings.lock().unwrap().ffmpeg_ready;
+    shell::install(ready).map_err(|e| format!("Sağ tık menüsü kaydedilemedi: {e}"))
+}
+
+#[tauri::command]
+fn remove_context_menu() -> Result<(), String> {
+    shell::remove().map_err(|e| format!("Sağ tık menüsü kaldırılamadı: {e}"))
+}
+
+#[tauri::command]
+fn cancel_job(id: u64, state: State<AppState>) {
+    state.queue.cancel(id);
+}
+
+// STAGE 4: report the real download state here.
+#[tauri::command]
+fn ffmpeg_status(state: State<AppState>) -> FfmpegStatus {
+    FfmpegStatus {
+        ready: state.settings.lock().unwrap().ffmpeg_ready,
+        downloading: false,
+        percent: 0.0,
+    }
+}
+
+/// Reveals a file in Explorer (or opens a folder).
+#[tauri::command]
+fn open_folder(path: String) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    if path.contains('"') || path.starts_with(r"\\") || path.starts_with("//") {
+        return Err("Geçersiz yol".into());
+    }
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err("Yol bulunamadı".into());
+    }
+    let arg = if p.is_dir() {
+        format!("\"{path}\"")
+    } else {
+        format!("/select,\"{path}\"")
+    };
+    std::process::Command::new("explorer")
+        .raw_arg(arg)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+fn show_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+fn start_convert(app: &AppHandle, target: convert::Format, files: Vec<PathBuf>) {
+    let state = app.state::<AppState>();
+    let s = state.settings.lock().unwrap().clone();
+    state
+        .queue
+        .enqueue(app, target, files, &s.to_options(), s.ffmpeg_ready);
+}
+
+/// Headless flags used by the installer; returns the exit code.
+fn run_headless(cmd: &Cli) -> Option<i32> {
+    let code = |r: std::io::Result<()>| i32::from(r.is_err());
+    match cmd {
+        Cli::InstallMenu => {
+            let ready = settings::load_from(&settings::settings_path()).ffmpeg_ready;
+            Some(code(shell::install(ready)))
+        }
+        Cli::RemoveMenu => {
+            // autostart goes too: this is the uninstall path
+            let a = shell::set_autostart(false);
+            Some(code(shell::remove().and(a)))
+        }
+        _ => None,
+    }
+}
 
 pub fn run() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let cmd = cli::parse(&args, None);
+    if let Some(code) = run_headless(&cmd) {
+        std::process::exit(code);
+    }
+
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            let args = argv.get(1..).unwrap_or_default();
+            match cli::parse(args, Some(Path::new(&cwd))) {
+                Cli::Convert { target, files } => start_convert(app, target, files),
+                Cli::Normal => show_window(app),
+                _ => {}
+            }
+        }))
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            get_settings,
+            set_settings,
+            install_context_menu,
+            remove_context_menu,
+            cancel_job,
+            ffmpeg_status,
+            open_folder
+        ])
+        .on_window_event(|w, e| {
+            if let WindowEvent::CloseRequested { api, .. } = e {
+                api.prevent_close();
+                let _ = w.hide();
+            }
+        })
+        .setup(move |app| {
+            let path = settings::settings_path();
+            let first_run = !path.exists();
+            let s = settings::load_from(&path);
+            if first_run {
+                // best effort: the UI can retry through install_context_menu
+                let _ = shell::install(s.ffmpeg_ready);
+                let _ = settings::save_to(&path, &s);
+            }
+            app.manage(AppState {
+                settings: Mutex::new(s),
+                queue: Queue::new(app.handle().clone()),
+            });
+
+            let open = MenuItem::with_id(app, "open", "Ayarlar", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Çıkış", true, None::<&str>)?;
+            let mut tray = TrayIconBuilder::new()
+                .tooltip(app_info::APP_NAME)
+                .menu(&Menu::with_items(app, &[&open, &quit])?)
+                .on_menu_event(|app, e| match e.id.as_ref() {
+                    "open" => show_window(app),
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, e| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = e
+                    {
+                        show_window(tray.app_handle());
+                    }
+                });
+            if let Some(icon) = app.default_window_icon() {
+                tray = tray.icon(icon.clone());
+            }
+            tray.build(app)?;
+
+            // --background and --convert stay hidden; a plain launch shows the settings window
+            match &cmd {
+                Cli::Convert { target, files } => {
+                    start_convert(app.handle(), *target, files.clone())
+                }
+                Cli::Normal => show_window(app.handle()),
+                _ => {}
+            }
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("uygulama başlatılamadı");
 }
