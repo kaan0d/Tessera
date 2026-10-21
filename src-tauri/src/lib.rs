@@ -1,7 +1,9 @@
 pub mod app_info;
+pub mod batch;
 pub mod cli;
 pub mod convert;
 pub mod ffmpeg;
+pub mod history;
 pub mod i18n;
 pub mod panel;
 pub mod preset;

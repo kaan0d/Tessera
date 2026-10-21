@@ -1,12 +1,24 @@
 use std::path::{Path, PathBuf};
 
+use crate::convert::combine::MergeKind;
 use crate::convert::Format;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Cli {
     InstallMenu,
     RemoveMenu,
-    Convert { target: Format, files: Vec<PathBuf> },
+    Convert {
+        target: Format,
+        files: Vec<PathBuf>,
+    },
+    Preset {
+        id: String,
+        files: Vec<PathBuf>,
+    },
+    Merge {
+        kind: MergeKind,
+        files: Vec<PathBuf>,
+    },
     Background,
     Normal,
 }
@@ -22,21 +34,46 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
             let Some(target) = args.get(1).and_then(|t| Format::from_ext(t)) else {
                 return Cli::Normal;
             };
-            let files: Vec<PathBuf> = args[2..]
-                .iter()
-                .map(|f| match cwd {
-                    Some(c) => c.join(f),
-                    None => PathBuf::from(f),
-                })
-                .collect();
-            if files.is_empty() {
-                Cli::Normal
-            } else {
-                Cli::Convert { target, files }
+            match files(&args[2..], cwd) {
+                Some(files) => Cli::Convert { target, files },
+                None => Cli::Normal,
+            }
+        }
+        Some("--preset") => {
+            let Some(id) = args.get(1).filter(|i| !i.is_empty()) else {
+                return Cli::Normal;
+            };
+            match files(&args[2..], cwd) {
+                Some(files) => Cli::Preset {
+                    id: id.clone(),
+                    files,
+                },
+                None => Cli::Normal,
+            }
+        }
+        Some("--merge") => {
+            let Some(kind) = args.get(1).and_then(|k| MergeKind::from_arg(k)) else {
+                return Cli::Normal;
+            };
+            match files(&args[2..], cwd) {
+                Some(files) => Cli::Merge { kind, files },
+                None => Cli::Normal,
             }
         }
         _ => Cli::Normal,
     }
+}
+
+/// Paths from the command line; None when there are none.
+fn files(args: &[String], cwd: Option<&Path>) -> Option<Vec<PathBuf>> {
+    let files: Vec<PathBuf> = args
+        .iter()
+        .map(|f| match cwd {
+            Some(c) => c.join(f),
+            None => PathBuf::from(f),
+        })
+        .collect();
+    (!files.is_empty()).then_some(files)
 }
 
 #[cfg(test)]
@@ -73,5 +110,34 @@ mod tests {
             panic!()
         };
         assert_eq!(files, vec![PathBuf::from(r"C:\w\x.jpg")]);
+    }
+
+    #[test]
+    fn parses_preset_and_merge() {
+        assert_eq!(
+            parse(&a(&["--preset", "whatsapp", r"C:\a.png"]), None),
+            Cli::Preset {
+                id: "whatsapp".into(),
+                files: vec![PathBuf::from(r"C:\a.png")]
+            }
+        );
+        assert_eq!(parse(&a(&["--preset", "web"]), None), Cli::Normal);
+        assert_eq!(parse(&a(&["--preset"]), None), Cli::Normal);
+        assert_eq!(
+            parse(&a(&["--merge", "pdf", "a.png"]), Some(Path::new(r"C:\w"))),
+            Cli::Merge {
+                kind: MergeKind::Pdf,
+                files: vec![PathBuf::from(r"C:\w\a.png")]
+            }
+        );
+        assert_eq!(
+            parse(&a(&["--merge", "audio", "a.mp3", "b.mp3"]), None),
+            Cli::Merge {
+                kind: MergeKind::Audio,
+                files: vec![PathBuf::from("a.mp3"), PathBuf::from("b.mp3")]
+            }
+        );
+        assert_eq!(parse(&a(&["--merge", "zip", "a"]), None), Cli::Normal);
+        assert_eq!(parse(&a(&["--merge", "pdf"]), None), Cli::Normal);
     }
 }

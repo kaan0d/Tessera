@@ -7,8 +7,10 @@ use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
 use winreg::RegKey;
 
 use crate::app_info::APP_NAME;
+use crate::convert::combine::MergeKind;
 use crate::convert::{supported_targets, uses_ffmpeg, Format};
 use crate::i18n::{self, Lang};
+use crate::preset;
 use crate::settings::{MenuSort, Settings};
 
 /// Real registry root for file associations.
@@ -47,6 +49,34 @@ fn verbs(ext: &str, s: &Settings) -> Vec<Format> {
     t
 }
 
+/// Preset verbs for `ext`: (id, label), visible ones only.
+fn preset_verbs(ext: &str, s: &Settings) -> Vec<(String, String)> {
+    if !s.menu.presets_enabled || !s.menu_sources.iter().any(|e| e == ext) {
+        return vec![];
+    }
+    preset::all(s)
+        .into_iter()
+        .filter(|p| !s.hidden_presets.contains(&p.id) && p.menu_target(ext, s).is_some())
+        .map(|p| {
+            let name = p.name(s.language);
+            (p.id, name)
+        })
+        .collect()
+}
+
+/// Merge verb for `ext`: (kind, label).
+fn merge_verb(ext: &str, s: &Settings) -> Option<(MergeKind, String)> {
+    if !s.menu.merge || !s.menu_sources.iter().any(|e| e == ext) {
+        return None;
+    }
+    let kind = MergeKind::for_ext(ext)?;
+    let key = match kind {
+        MergeKind::Pdf => "menu.merge_pdf",
+        MergeKind::Audio => "menu.merge_audio",
+    };
+    Some((kind, i18n::t(s.language, key).to_string()))
+}
+
 /// Registers the cascading menu under `root` (idempotent: starts from a clean slate).
 /// Explorer lists verbs by subkey name, so each key carries a two-digit position prefix.
 pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
@@ -59,7 +89,9 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     for ext in EXTS {
         let targets = verbs(ext, s);
-        if targets.is_empty() {
+        let presets = preset_verbs(ext, s);
+        let merge = merge_verb(ext, s);
+        if targets.is_empty() && presets.is_empty() && merge.is_none() {
             continue;
         }
         let (menu, _) = hkcu.create_subkey(menu_key(root, ext))?;
@@ -68,14 +100,54 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
         if s.menu.icons {
             menu.set_value("Icon", &icon)?;
         }
-        for (i, t) in targets.into_iter().enumerate() {
-            let (verb, _) = menu.create_subkey(format!(r"shell\{i:02}_{}", t.ext()))?;
-            verb.set_value("MUIVerb", &label(t, s.language))?;
-            if s.menu.icons {
-                verb.set_value("Icon", &icon)?;
+        // (verb name, label, command arguments); a group's first verb gets a separator above
+        // it (CommandFlags 0x20) unless the menu starts with that group
+        let mut groups: Vec<Vec<(String, String, String)>> = vec![];
+        groups.push(
+            targets
+                .into_iter()
+                .map(|t| {
+                    (
+                        t.ext().to_string(),
+                        label(t, s.language),
+                        format!("--convert {}", t.ext()),
+                    )
+                })
+                .collect(),
+        );
+        groups.push(
+            presets
+                .into_iter()
+                .map(|(id, name)| (format!("preset_{id}"), name, format!("--preset {id}")))
+                .collect(),
+        );
+        groups.push(
+            merge
+                .into_iter()
+                .map(|(k, name)| {
+                    (
+                        format!("merge_{}", k.arg()),
+                        name,
+                        format!("--merge {}", k.arg()),
+                    )
+                })
+                .collect(),
+        );
+        let mut i = 0;
+        for group in groups.into_iter().filter(|g| !g.is_empty()) {
+            for (n, (name, text, args)) in group.into_iter().enumerate() {
+                let (verb, _) = menu.create_subkey(format!(r"shell\{i:02}_{name}"))?;
+                verb.set_value("MUIVerb", &text)?;
+                if i > 0 && n == 0 {
+                    verb.set_value("CommandFlags", &0x20u32)?;
+                }
+                if s.menu.icons {
+                    verb.set_value("Icon", &icon)?;
+                }
+                let (cmd, _) = verb.create_subkey("command")?;
+                cmd.set_value("", &format!(r#""{exe}" {args} "%1""#))?;
+                i += 1;
             }
-            let (cmd, _) = verb.create_subkey("command")?;
-            cmd.set_value("", &format!(r#""{exe}" --convert {} "%1""#, t.ext()))?;
         }
     }
     Ok(())
@@ -194,14 +266,19 @@ mod tests {
         );
         // ffmpeg-only targets hidden until ffmpeg is ready
         let mp3 = hkcu.open_subkey(menu_key(&root, "mp3")).unwrap();
-        assert_eq!(verb_names(&mp3), ["00_wav", "01_flac"]);
+        assert_eq!(verb_names(&mp3), ["00_wav", "01_flac", "02_merge_audio"]);
 
         install_at(&root, exe, &ready(true)).unwrap();
         let mp3 = hkcu.open_subkey(menu_key(&root, "mp3")).unwrap();
-        assert_eq!(verb_names(&mp3), ["00_wav", "01_flac", "02_ogg"]);
+        assert_eq!(
+            verb_names(&mp3),
+            ["00_wav", "01_flac", "02_ogg", "03_merge_audio"]
+        );
         let mp4 = hkcu.open_subkey(menu_key(&root, "mp4")).unwrap();
         let names = verb_names(&mp4);
-        assert_eq!((names[0].as_str(), names.len()), ("00_mkv", 10));
+        // 10 formats, then email/discord/strip presets
+        assert_eq!((names[0].as_str(), names.len()), ("00_mkv", 13));
+        assert_eq!(names[10], "10_preset_email");
 
         remove_at(&root).unwrap();
         remove_at(&root).unwrap();
@@ -279,5 +356,84 @@ mod tests {
     #[test]
     fn rejects_quote_in_exe() {
         assert!(install_at(&test_root("c"), Path::new(r#"C:\a"b.exe"#), &ready(false)).is_err());
+    }
+
+    #[test]
+    fn preset_and_merge_verbs_reach_registry() {
+        let root = test_root("e");
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let exe = Path::new(r"C:\x.exe");
+        install_at(&root, exe, &ready(false)).unwrap();
+        let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
+        let names = verb_names(&png);
+        // 8 formats, 6 presets, merge
+        assert_eq!(names.len(), 15);
+        assert_eq!(names[8], "08_preset_web");
+        assert_eq!(names[14], "14_merge_pdf");
+        let flags = |n: &str| {
+            png.open_subkey(format!(r"shell\{n}"))
+                .unwrap()
+                .get_value::<u32, _>("CommandFlags")
+                .ok()
+        };
+        assert_eq!(flags("08_preset_web"), Some(0x20));
+        assert_eq!(flags("14_merge_pdf"), Some(0x20));
+        assert_eq!(flags("09_preset_whatsapp"), None);
+        assert_eq!(flags("00_jpg"), None);
+        let cmd = |n: &str| {
+            png.open_subkey(format!(r"shell\{n}\command"))
+                .unwrap()
+                .get_value::<String, _>("")
+                .unwrap()
+        };
+        assert_eq!(cmd("10_preset_email"), r#""C:\x.exe" --preset email "%1""#);
+        assert_eq!(cmd("14_merge_pdf"), r#""C:\x.exe" --merge pdf "%1""#);
+        // ffmpeg-less menu hides video presets; mp4 has no verbs at all
+        assert!(hkcu.open_subkey(menu_key(&root, "mp4")).is_err());
+
+        // switches: no presets, no merge, hidden preset, source off
+        let mut st = ready(true);
+        st.menu.presets_enabled = false;
+        st.menu.merge = false;
+        install_at(&root, exe, &st).unwrap();
+        let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
+        assert_eq!(verb_names(&png).len(), 8);
+        st.menu.presets_enabled = true;
+        st.hidden_presets = vec!["web".into(), "pdf".into()];
+        st.menu_sources = vec!["png".into(), "heic".into()];
+        install_at(&root, exe, &st).unwrap();
+        let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
+        let names = verb_names(&png);
+        assert_eq!(names[8], "08_preset_whatsapp");
+        assert_eq!(names.len(), 8 + 4);
+        // heic: no format verbs ... presets and no merge verb
+        let heic = hkcu.open_subkey(menu_key(&root, "heic")).unwrap();
+        assert!(verb_names(&heic).iter().all(|n| !n.contains("merge")));
+        assert!(hkcu.open_subkey(menu_key(&root, "jpg")).is_err());
+        // only presets: no separator flag on the first verb of the menu
+        let mut only = ready(false);
+        only.enabled_targets.clear();
+        only.menu.merge = false;
+        install_at(&root, exe, &only).unwrap();
+        let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
+        let first = png.open_subkey(r"shell\00_preset_web").unwrap();
+        assert!(first.get_value::<u32, _>("CommandFlags").is_err());
+        remove_at(&root).unwrap();
+        cleanup(&root);
+    }
+
+    #[test]
+    fn preset_verb_labels_follow_the_language() {
+        let tr = Settings {
+            language: Lang::Tr,
+            ..ready(false)
+        };
+        let v = preset_verbs("png", &tr);
+        assert_eq!(v[0], ("web".to_string(), "Web için küçült".to_string()));
+        assert_eq!(
+            merge_verb("wav", &tr).unwrap().1,
+            "Sesleri tek dosyada birleştir"
+        );
+        assert!(merge_verb("mp4", &tr).is_none());
     }
 }
