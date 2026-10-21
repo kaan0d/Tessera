@@ -8,7 +8,8 @@ use winreg::RegKey;
 
 use crate::app_info::APP_NAME;
 use crate::convert::combine::MergeKind;
-use crate::convert::{supported_targets, uses_ffmpeg, Format};
+use crate::convert::{needs_ffmpeg, supported_targets, uses_ffmpeg, Format};
+use crate::folder::Action;
 use crate::i18n::{self, Lang};
 use crate::preset;
 use crate::settings::{MenuSort, Settings};
@@ -75,6 +76,66 @@ fn merge_verb(ext: &str, s: &Settings) -> Option<(MergeKind, String)> {
         MergeKind::Audio => "menu.merge_audio",
     };
     Some((kind, i18n::t(s.language, key).to_string()))
+}
+
+fn folder_key(root: &str) -> String {
+    format!(r"{root}\Directory\shell\{APP_NAME}")
+}
+
+/// Verbs of the folder menu as (label, action), in menu order: image formats, image presets,
+/// audio formats. Empty when the folder menu is off or nothing is allowed.
+fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
+    if !s.menu.folder {
+        return vec![];
+    }
+    let lang = s.language;
+    let ok = |f: &Format| s.target_enabled(*f) && (s.ffmpeg_ready || !needs_ffmpeg(*f));
+    let list = |audio: bool| -> Vec<Format> {
+        let mut v: Vec<Format> = Format::ALL
+            .iter()
+            .copied()
+            .filter(|f| {
+                if audio {
+                    f.kind() == "audio"
+                } else {
+                    f.is_image()
+                }
+            })
+            .filter(&ok)
+            .collect();
+        if s.menu.sort == MenuSort::Alphabetical {
+            v.sort_by_key(|t| t.ext());
+        }
+        v
+    };
+    let targets = |audio: bool| {
+        let key = if audio {
+            "menu.folder_audio_to"
+        } else {
+            "menu.folder_images_to"
+        };
+        list(audio)
+            .into_iter()
+            .map(|t| {
+                let text = i18n::fmt(lang, key, &[("fmt", &t.ext().to_uppercase())]);
+                (text, Action::Target(t))
+            })
+            .collect::<Vec<_>>()
+    };
+    let presets = if s.menu.presets_enabled {
+        preset::all(s)
+            .into_iter()
+            .filter(|p| !s.hidden_presets.contains(&p.id))
+            .filter(|p| p.menu_target("png", s).is_some() && p.applies_to_kind(Format::Png))
+            .map(|p| {
+                let text = i18n::fmt(lang, "menu.folder_preset", &[("name", &p.name(lang))]);
+                (text, Action::Preset(p.id))
+            })
+            .collect()
+    } else {
+        vec![]
+    };
+    vec![targets(false), presets, targets(true)]
 }
 
 /// Registers the cascading menu under `root` (idempotent: starts from a clean slate).
@@ -150,12 +211,50 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
             }
         }
     }
+    let groups: Vec<_> = folder_verbs(s)
+        .into_iter()
+        .filter(|g| !g.is_empty())
+        .collect();
+    if !groups.is_empty() {
+        let (menu, _) = hkcu.create_subkey(folder_key(root))?;
+        menu.set_value("MUIVerb", &APP_NAME)?;
+        menu.set_value("SubCommands", &"")?;
+        if s.menu.icons {
+            menu.set_value("Icon", &icon)?;
+        }
+        let mut i = 0;
+        for group in groups {
+            for (n, (text, action)) in group.into_iter().enumerate() {
+                let name = action.arg().replace(':', "_");
+                let (verb, _) = menu.create_subkey(format!(r"shell\{i:02}_{name}"))?;
+                verb.set_value("MUIVerb", &text)?;
+                if i > 0 && n == 0 {
+                    verb.set_value("CommandFlags", &0x20u32)?;
+                }
+                if s.menu.icons {
+                    verb.set_value("Icon", &icon)?;
+                }
+                let (cmd, _) = verb.create_subkey("command")?;
+                cmd.set_value("", &format!(r#""{exe}" --folder {} "%1""#, action.arg()))?;
+                i += 1;
+            }
+        }
+    }
     Ok(())
 }
 
 /// Removes every key `install_at` made; missing keys are fine. Needs no running app.
 pub fn remove_at(root: &str) -> io::Result<()> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    match hkcu.delete_subkey_all(folder_key(root)) {
+        Ok(()) => {
+            // other tools' verbs keep these alive, which is fine
+            let _ = hkcu.delete_subkey(format!(r"{root}\Directory\shell"));
+            let _ = hkcu.delete_subkey(format!(r"{root}\Directory"));
+        }
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e),
+    }
     for ext in EXTS {
         match hkcu.delete_subkey_all(menu_key(root, ext)) {
             Ok(()) => {}
@@ -419,6 +518,61 @@ mod tests {
         let first = png.open_subkey(r"shell\00_preset_web").unwrap();
         assert!(first.get_value::<u32, _>("CommandFlags").is_err());
         remove_at(&root).unwrap();
+        cleanup(&root);
+    }
+
+    #[test]
+    fn folder_menu_installs_and_removes() {
+        let root = test_root("f");
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let exe = Path::new(r"C:\x.exe");
+        install_at(&root, exe, &ready(false)).unwrap();
+        let menu = hkcu.open_subkey(folder_key(&root)).unwrap();
+        assert_eq!(menu.get_value::<String, _>("MUIVerb").unwrap(), APP_NAME);
+        let names = verb_names(&menu);
+        // 8 image formats, 6 presets, wav + flac
+        assert_eq!((names[0].as_str(), names.len()), ("00_png", 8 + 6 + 2));
+        assert!(names.contains(&"08_preset_web".to_string()));
+        assert!(names.iter().any(|n| n.ends_with("_wav")));
+        // no ffmpeg: no mp3/ogg
+        assert!(!names
+            .iter()
+            .any(|n| n.ends_with("_mp3") || n.ends_with("_ogg")));
+        let cmd = |n: &str| {
+            menu.open_subkey(format!(r"shell\{n}\command"))
+                .unwrap()
+                .get_value::<String, _>("")
+                .unwrap()
+        };
+        assert_eq!(cmd("00_png"), r#""C:\x.exe" --folder png "%1""#);
+        assert_eq!(
+            cmd("08_preset_web"),
+            r#""C:\x.exe" --folder preset:web "%1""#
+        );
+        let verb = menu.open_subkey(r"shell\08_preset_web").unwrap();
+        assert_eq!(
+            verb.get_value::<String, _>("MUIVerb").unwrap(),
+            "Shrink for web (all images)"
+        );
+        assert_eq!(verb.get_value::<u32, _>("CommandFlags").unwrap(), 0x20);
+
+        // ffmpeg ready adds mp3 and ogg
+        install_at(&root, exe, &ready(true)).unwrap();
+        let menu = hkcu.open_subkey(folder_key(&root)).unwrap();
+        assert!(verb_names(&menu).iter().any(|n| n.ends_with("_mp3")));
+
+        // switched off: the key is gone, the file menus stay
+        let mut off = ready(true);
+        off.menu.folder = false;
+        install_at(&root, exe, &off).unwrap();
+        assert!(hkcu.open_subkey(folder_key(&root)).is_err());
+        assert!(hkcu.open_subkey(menu_key(&root, "png")).is_ok());
+
+        install_at(&root, exe, &ready(true)).unwrap();
+        remove_at(&root).unwrap();
+        remove_at(&root).unwrap();
+        assert!(hkcu.open_subkey(folder_key(&root)).is_err());
+        assert!(hkcu.open_subkey(format!(r"{root}\Directory")).is_err());
         cleanup(&root);
     }
 

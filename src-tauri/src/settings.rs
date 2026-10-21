@@ -63,6 +63,12 @@ pub struct MenuOpts {
     pub presets_enabled: bool,
     /// "Merge into PDF" / "Merge audio" verbs.
     pub merge: bool,
+    /// Folder verbs ("Convert all images in this folder").
+    pub folder: bool,
+    /// Folder verbs also read sub-folders.
+    pub folder_recursive: bool,
+    /// A "Send To" shortcut that opens the format chooser for the selected files.
+    pub sendto: bool,
 }
 
 impl Default for MenuOpts {
@@ -72,6 +78,9 @@ impl Default for MenuOpts {
             sort: MenuSort::Default,
             presets_enabled: true,
             merge: true,
+            folder: true,
+            folder_recursive: false,
+            sendto: false,
         }
     }
 }

@@ -271,6 +271,37 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "{fmt} is turned off in settings",
         "{fmt} biçimi ayarlardan kapatılmış",
     ),
+    // folder verbs
+    (
+        "menu.folder_images_to",
+        "Convert all images to {fmt}",
+        "Tüm resimleri {fmt} olarak dönüştür",
+    ),
+    (
+        "menu.folder_audio_to",
+        "Convert all audio to {fmt}",
+        "Tüm sesleri {fmt} olarak dönüştür",
+    ),
+    (
+        "menu.folder_preset",
+        "{name} (all images)",
+        "{name} (tüm resimler)",
+    ),
+    (
+        "notify.folder_empty",
+        "No files to convert in this folder",
+        "Bu klasörde dönüştürülecek dosya yok",
+    ),
+    (
+        "notify.folder_cap",
+        "Only the first {max} files of this folder are converted",
+        "Bu klasörde yalnızca ilk {max} dosya dönüştürülüyor",
+    ),
+    (
+        "notify.folder_bad",
+        "That folder cannot be used",
+        "Bu klasör kullanılamıyor",
+    ),
     // commands
     (
         "cmd.autostart",

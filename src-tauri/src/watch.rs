@@ -235,7 +235,7 @@ pub fn note_output(path: &Path) {
     recent().lock().unwrap().add(path, mono_ms());
 }
 
-fn is_recent(path: &Path) -> bool {
+pub fn is_recent(path: &Path) -> bool {
     recent().lock().unwrap().contains(path, mono_ms())
 }
 

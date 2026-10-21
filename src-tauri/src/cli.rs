@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::convert::combine::MergeKind;
 use crate::convert::{Conflict, Format, Resize};
+use crate::folder::Action;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Cli {
@@ -18,6 +19,11 @@ pub enum Cli {
     Merge {
         kind: MergeKind,
         files: Vec<PathBuf>,
+    },
+    /// Folder verb: convert the matching files of a folder.
+    Folder {
+        action: Action,
+        dir: PathBuf,
     },
     Background,
     /// A headless subcommand (`convert`, `preset`, ...); never starts the app.
@@ -111,6 +117,21 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
             match files(&args[2..], cwd) {
                 Some(files) => Cli::Merge { kind, files },
                 None => Cli::Normal,
+            }
+        }
+        Some("--folder") => {
+            let Some(action) = args.get(1).and_then(|a| Action::parse(a)) else {
+                return Cli::Normal;
+            };
+            match (args.get(2), args.len()) {
+                (Some(d), 3) => Cli::Folder {
+                    action,
+                    dir: match cwd {
+                        Some(c) => c.join(d),
+                        None => PathBuf::from(d),
+                    },
+                },
+                _ => Cli::Normal,
             }
         }
         Some("convert") => Cli::Cmd(parse_convert(&args[1..])),
@@ -260,6 +281,35 @@ mod tests {
             panic!()
         };
         assert_eq!(files, vec![PathBuf::from(r"C:\w\x.jpg")]);
+    }
+
+    #[test]
+    fn parses_folder() {
+        assert_eq!(
+            parse(&a(&["--folder", "jpg", r"C:\pics"]), None),
+            Cli::Folder {
+                action: Action::Target(Format::Jpg),
+                dir: PathBuf::from(r"C:\pics")
+            }
+        );
+        assert_eq!(
+            parse(
+                &a(&["--folder", "preset:web", "pics"]),
+                Some(Path::new(r"C:\w"))
+            ),
+            Cli::Folder {
+                action: Action::Preset("web".into()),
+                dir: PathBuf::from(r"C:\w\pics")
+            }
+        );
+        for bad in [
+            vec!["--folder"],
+            vec!["--folder", "jpg"],
+            vec!["--folder", "exe", "x"],
+            vec!["--folder", "jpg", "a", "b"],
+        ] {
+            assert_eq!(parse(&a(&bad), None), Cli::Normal, "{bad:?}");
+        }
     }
 
     #[test]

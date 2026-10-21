@@ -3,6 +3,7 @@ pub mod batch;
 pub mod cli;
 pub mod convert;
 pub mod ffmpeg;
+pub mod folder;
 pub mod headless;
 pub mod history;
 pub mod i18n;
@@ -26,6 +27,7 @@ use tauri_plugin_notification::NotificationExt;
 use batch::Collector;
 use cli::Cli;
 use convert::combine::MergeKind;
+use convert::Format;
 use ffmpeg::{Download, FfmpegStatus};
 use history::Kind;
 use i18n::{fmt, t, Lang};
@@ -601,6 +603,88 @@ fn start_preset(app: &AppHandle, id: &str, files: Vec<PathBuf>) {
         .enqueue_specs(app, specs, Kind::Preset, &name, s.ffmpeg_ready);
 }
 
+/// Folder verb: converts the matching files of `dir` through the normal queue. The scan runs
+/// on its own thread (a big folder takes a moment); results go through `start_convert` /
+/// `start_preset`, so naming, conflicts, history and the panel behave as for the file menu.
+fn start_folder(app: &AppHandle, action: folder::Action, dir: PathBuf) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let state = app.state::<AppState>();
+        let s = state.settings.lock().unwrap().clone();
+        let lang = s.language;
+        if !dir.is_dir() || dir.to_string_lossy().starts_with(r"\\") {
+            notify(
+                &app,
+                t(lang, "notify.failed_title"),
+                t(lang, "notify.folder_bad"),
+            );
+            return;
+        }
+        let wanted: Box<dyn Fn(&Path) -> bool> = match &action {
+            folder::Action::Target(target) => {
+                let (target, opts) = (*target, s.to_options());
+                let ready = s.ffmpeg_ready;
+                Box::new(move |p| {
+                    let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    Format::from_ext(ext).is_some_and(|f| {
+                        folder::same_family(f, target)
+                            && convert::allows(ext, f, target, &opts)
+                            && (ready || !convert::uses_ffmpeg(f, target))
+                    })
+                })
+            }
+            folder::Action::Preset(id) => {
+                let Some(p) = preset::find(&s, id) else {
+                    notify(
+                        &app,
+                        t(lang, "notify.failed_title"),
+                        t(lang, "preset.not_found"),
+                    );
+                    return;
+                };
+                let (opts, ready) = (p.options_for(&s), s.ffmpeg_ready);
+                Box::new(move |path| {
+                    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    Format::from_ext(ext).is_some_and(|f| {
+                        f.is_image()
+                            && p.resolve(ext, &opts)
+                                .is_some_and(|t| ready || !convert::uses_ffmpeg(f, t))
+                    })
+                })
+            }
+        };
+        let outputs = folder::history_outputs(&state.queue.history.lock().unwrap().list());
+        let own = |p: &Path| watch::is_recent(p) || folder::is_listed(&outputs, p);
+        let found = folder::scan(
+            &dir,
+            s.menu.folder_recursive,
+            folder::MAX_FILES,
+            wanted,
+            own,
+        );
+        if found.files.is_empty() {
+            notify(
+                &app,
+                t(lang, "notify.failed_title"),
+                t(lang, "notify.folder_empty"),
+            );
+            return;
+        }
+        if found.truncated {
+            let max = folder::MAX_FILES.to_string();
+            notify(
+                &app,
+                t(lang, "notify.failed_title"),
+                &fmt(lang, "notify.folder_cap", &[("max", &max)]),
+            );
+        }
+        match action {
+            folder::Action::Target(target) => start_convert(&app, target, found.files),
+            folder::Action::Preset(id) => start_preset(&app, &id, found.files),
+        }
+    });
+}
+
 /// Merge verbs arrive one process per file; they are gathered and run as one job.
 fn start_merge(app: &AppHandle, kind: MergeKind, files: Vec<PathBuf>) {
     let merges = app.state::<AppState>().merges.clone();
@@ -697,6 +781,7 @@ pub fn run() {
                 Cli::Convert { target, files } => start_convert(app, target, files),
                 Cli::Preset { id, files } => start_preset(app, &id, files),
                 Cli::Merge { kind, files } => start_merge(app, kind, files),
+                Cli::Folder { action, dir } => start_folder(app, action, dir),
                 Cli::Normal => show_window(app),
                 _ => {}
             }
@@ -797,6 +882,9 @@ pub fn run() {
                 }
                 Cli::Preset { id, files } => start_preset(app.handle(), id, files.clone()),
                 Cli::Merge { kind, files } => start_merge(app.handle(), *kind, files.clone()),
+                Cli::Folder { action, dir } => {
+                    start_folder(app.handle(), action.clone(), dir.clone())
+                }
                 Cli::Normal => show_window(app.handle()),
                 _ => {}
             }
