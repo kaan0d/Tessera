@@ -213,7 +213,7 @@ function progress({ id, name, percent }) {
   summary();
 }
 
-function done({ id, name, ok, message, output }) {
+function done({ id, name, ok, message, output, history_id: hid }) {
   const j = getJob(id, name);
   j.state = ok ? 'ok' : 'err';
   j.li.classList.add(ok ? 'is-ok' : 'is-err');
@@ -225,6 +225,32 @@ function done({ id, name, ok, message, output }) {
   j.msg.textContent = j.mk ? t(...j.mk) : message;
   j.msg.title = j.msg.textContent;
   j.actions.replaceChildren();
+  if (ok && hid != null) {
+    // undo recycles the new file (and brings back a replaced original); the row says how it went
+    const undo = iconBtn('undo', t('p.undo', { name }), 'undo');
+    j.btns.undo = undo;
+    undo.onclick = async () => {
+      undo.disabled = true;
+      clearTimeout(j.timer);
+      try {
+        await T.core.invoke('undo_job', { id: hid });
+        j.mk = ['p.undone'];
+        j.msg.textContent = t('p.undone');
+        j.li.classList.add('is-undone');
+        undo.remove();
+        delete j.btns.undo;
+        if (j.btns.open) j.btns.open.remove(), delete j.btns.open;
+        j.timer = setTimeout(() => removeJob(id, true), 4000);
+      } catch (e) {
+        j.mk = null;
+        j.msg.textContent = String(e);
+        j.li.classList.add('is-err');
+        undo.disabled = false;
+      }
+      j.msg.title = j.msg.textContent;
+    };
+    j.actions.append(undo);
+  }
   if (ok && output) {
     const open = iconBtn('folder', t('p.open'));
     j.btns.open = open;
@@ -254,6 +280,7 @@ function langChanged(code) {
     const b = j.btns;
     if (b.cancel) setLabel(b.cancel, t('p.cancel', { name: j.name }));
     if (b.open) setLabel(b.open, t('p.open'));
+    if (b.undo) setLabel(b.undo, t('p.undo', { name: j.name }));
     if (b.close) setLabel(b.close, t('p.close'));
     if (j.state === 'run') j.msg.textContent = j.cancelling ? t('p.cancelling') : t('pct', { n: Math.round(j.percent) });
     else if (j.mk) j.msg.textContent = t(...j.mk);
