@@ -16,7 +16,7 @@ $('app-title').textContent = document.title;
 // ponytail: fills only what an older settings.json may lack; the backend owns the real defaults
 function normalize(x) {
   x.quality = { jpeg: 85, mp3_q: 2, ogg_q: 6, video_mbps: 8, gif_fps: 15, gif_width: 480, ...x.quality };
-  x.panel = { corner: 'bottom_right', seconds: 7, windows_toast: false, ...x.panel };
+  x.panel = { corner: 'top_right', seconds: 7, windows_toast: false, ...x.panel };
   x.menu = { icons: true, sort: 'default', ...x.menu };
   x.enabled_targets ||= [];
   x.menu_sources ||= [];
@@ -288,7 +288,8 @@ function tplError(t) {
   const bad = (t.match(/\{[^{}]*\}/g) || []).find((x) => !TOKENS.includes(x));
   if (bad) return `Bilinmeyen etiket: ${bad}. Kullanılabilenler: {name}, {format}, {date}.`;
   if (/[{}]/.test(t.replace(/\{[^{}]*\}/g, ''))) return 'Süslü parantezler eşleşmiyor.';
-  return '';
+  if (/[. ]$/.test(t)) return 'Dosya adı nokta veya boşlukla bitemez.';
+  return ''; // reserved names (CON, NUL...) are left to the backend's message
 }
 
 function tplMsg(msg) {
