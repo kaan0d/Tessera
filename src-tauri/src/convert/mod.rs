@@ -1,5 +1,6 @@
 mod audio;
 mod error;
+pub mod ffmpeg;
 mod image;
 pub mod output;
 pub mod security;

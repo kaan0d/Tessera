@@ -54,10 +54,25 @@ pub fn plan(source: &Path, ext: &str, p: &OutputParams) -> Result<PathBuf, Conve
 
 /// Writes to a temp file next to `dest`, checks it is non-empty, then renames it
 /// into place. The temp file is removed on any failure.
-// ponytail: AutoRename has a check-then-rename race with other writers; fine for one app instance.
 pub fn write_atomic(
     dest: &Path,
     write: impl FnOnce(&mut BufWriter<File>) -> Result<(), ConvertError>,
+) -> Result<(), ConvertError> {
+    write_via_temp(dest, |tmp| {
+        let mut w = BufWriter::new(File::options().write(true).create_new(true).open(tmp)?);
+        write(&mut w)?;
+        w.flush()?;
+        w.into_inner().map_err(|e| e.into_error())?.sync_all()?;
+        Ok(())
+    })
+}
+
+/// Like `write_atomic`, but `produce` gets the temp path and creates the file itself
+/// (used when another process writes the output).
+// ponytail: AutoRename has a check-then-rename race with other writers; fine for one app instance.
+pub fn write_via_temp(
+    dest: &Path,
+    produce: impl FnOnce(&Path) -> Result<(), ConvertError>,
 ) -> Result<(), ConvertError> {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -66,15 +81,10 @@ pub fn write_atomic(
     let tmp = dest.with_file_name(format!(".{name}.{nanos}.tmp"));
 
     let result = (|| {
-        let mut w = BufWriter::new(File::options().write(true).create_new(true).open(&tmp)?);
-        write(&mut w)?;
-        w.flush()?;
-        let f = w.into_inner().map_err(|e| e.into_error())?;
-        f.sync_all()?;
-        if f.metadata()?.len() == 0 {
+        produce(&tmp)?;
+        if fs::metadata(&tmp)?.len() == 0 {
             return Err(ConvertError::Encode("boş çıktı".into()));
         }
-        drop(f);
         fs::rename(&tmp, dest)?;
         Ok(())
     })();

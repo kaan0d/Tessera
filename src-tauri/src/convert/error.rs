@@ -20,6 +20,8 @@ pub enum ConvertError {
     TooLarge,
     #[error("Bu dönüşüm için ffmpeg gerekiyor")]
     NeedsFfmpeg,
+    #[error("İptal edildi")]
+    Cancelled,
     #[error("Dönüştürme başarısız: {0}")]
     Encode(String),
     #[error("Dosya hatası: {0}")]

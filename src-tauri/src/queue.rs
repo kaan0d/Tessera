@@ -8,7 +8,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, LogicalSize, Manager};
 use tauri_plugin_notification::NotificationExt;
 
-use crate::convert::{convert, uses_ffmpeg, ConvertError, Format, Options};
+use crate::convert::{self, convert, uses_ffmpeg, ConvertError, Format, Options};
 
 #[derive(Clone, Serialize)]
 struct Progress {
@@ -200,7 +200,8 @@ fn run(app: &AppHandle, job: &Job) -> Done {
         convert(&job.path, job.target, &job.opts, on_progress)
     };
     match result {
-        // ponytail: the engine has no abort hook, so cancel only takes effect while the job is queued
+        // ponytail: the pure-Rust engine has no abort hook (its progress callback returns nothing), so cancel
+        // only stops it while queued; ffmpeg jobs are killed mid-run. Add a bool return to `convert` to fix.
         Ok(out) => Done {
             id: job.id,
             name: job.name.clone(),
@@ -215,8 +216,13 @@ fn run(app: &AppHandle, job: &Job) -> Done {
     }
 }
 
-// STAGE 4: replace this stub with the real ffmpeg runner (validate the input with
-// convert::security::validate_input, honor job.cancel, report progress 0.0..=1.0).
-fn ffmpeg_convert(_job: &Job, _progress: impl FnMut(f32)) -> Result<PathBuf, ConvertError> {
-    Err(ConvertError::NeedsFfmpeg)
+fn ffmpeg_convert(job: &Job, progress: impl FnMut(f32)) -> Result<PathBuf, ConvertError> {
+    convert::ffmpeg::convert_with_ffmpeg(
+        &crate::ffmpeg::exe_path(),
+        &job.path,
+        job.target,
+        &job.opts,
+        &job.cancel,
+        progress,
+    )
 }
