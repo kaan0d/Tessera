@@ -7,12 +7,17 @@ const invoke = (cmd, args) =>
 let s = null; // current settings object
 let saveTimer, savedTimer, toastTimer, ffTimer;
 
-document.title = document.title || '';
 $('app-title').textContent = document.title;
 
 function showError(msg) {
   $('error').hidden = !msg;
   $('error').textContent = msg ? String(msg) : '';
+}
+
+function setQuality(v) {
+  $('quality').value = v;
+  $('qval').textContent = v;
+  $('quality').style.setProperty('--fill', ((v - 1) / 99) * 100 + '%');
 }
 
 function render() {
@@ -23,8 +28,7 @@ function render() {
   $('path').textContent = fixed ? s.output_dir.path || '' : '';
   $('conflict').value = s.conflict;
   $('warn').hidden = s.conflict !== 'replace_original';
-  $('quality').value = s.jpeg_quality;
-  $('qval').textContent = s.jpeg_quality;
+  setQuality(s.jpeg_quality);
   $('ff-notice').hidden = !!s.ffmpeg_notice_seen;
 }
 
@@ -34,10 +38,10 @@ function save() {
     try {
       await invoke('set_settings', { settings: s });
       showError('');
-      $('saved').textContent = 'Kaydedildi';
+      $('saved-text').textContent = 'Kaydedildi';
       $('saved').classList.add('on');
       clearTimeout(savedTimer);
-      savedTimer = setTimeout(() => $('saved').classList.remove('on'), 1500);
+      savedTimer = setTimeout(() => $('saved').classList.remove('on'), 1600);
     } catch (e) {
       showError('Ayarlar kaydedilemedi: ' + e);
     }
@@ -69,6 +73,7 @@ function confirmModal() {
     const prev = document.activeElement;
     const done = (v) => {
       m.hidden = true;
+      m.classList.remove('open');
       document.removeEventListener('keydown', key);
       if (prev) prev.focus();
       resolve(v);
@@ -82,8 +87,10 @@ function confirmModal() {
     };
     yes.onclick = () => done(true);
     no.onclick = () => done(false);
+    m.onclick = (e) => e.target === m && done(false);
     document.addEventListener('keydown', key);
     m.hidden = false;
+    m.classList.add('open');
     no.focus();
   });
 }
@@ -92,12 +99,19 @@ function toast(msg, isErr) {
   const t = $('toast');
   t.textContent = msg;
   t.classList.toggle('err', !!isErr);
+  t.classList.remove('on');
+  void t.offsetWidth; // restart the enter transition
+  t.classList.add('on');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.textContent = ''), 5000);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('on');
+    toastTimer = setTimeout(() => (t.textContent = ''), 300);
+  }, 5000);
 }
 
 async function menuAction(cmd, okMsg, btn) {
   btn.disabled = true;
+  btn.classList.add('busy');
   try {
     await invoke(cmd);
     toast(okMsg);
@@ -105,29 +119,39 @@ async function menuAction(cmd, okMsg, btn) {
     toast('İşlem başarısız: ' + e, true);
   }
   btn.disabled = false;
+  btn.classList.remove('busy');
+}
+
+function ffView(state, text, pct) {
+  const sheet = $('ff-sheet'), bar = $('ff-bar');
+  $('ff').dataset.state = state;
+  $('ff-status').textContent = text;
+  sheet.classList.toggle('working', state === 'downloading');
+  sheet.classList.toggle('ok', state === 'ready');
+  sheet.classList.toggle('err', state === 'error');
+  const p = state === 'ready' ? 100 : state === 'downloading' ? pct : 0;
+  sheet.style.setProperty('--p', p / 100);
+  bar.hidden = state !== 'downloading';
+  bar.style.setProperty('--p', p / 100);
+  bar.setAttribute('aria-valuenow', Math.round(p));
+  $('ff-pct').hidden = state !== 'downloading';
+  $('ff-pct').textContent = `%${Math.round(p)}`;
+  $('ff-retry').hidden = state !== 'error';
 }
 
 async function refreshFfmpeg() {
   clearTimeout(ffTimer);
-  const st = $('ff-status'), bar = $('ff-bar');
   try {
     const f = await invoke('ffmpeg_status');
-    bar.hidden = !f.downloading;
-    bar.value = f.percent || 0;
-    const failed = !f.ready && !f.downloading && !!f.error;
-    $('ff-retry').hidden = !failed;
-    st.classList.toggle('err', failed);
-    st.textContent = f.ready
-      ? 'Hazır: video, MP3, OGG ve AAC dönüştürülebilir.'
-      : f.downloading
-        ? `İndiriliyor… %${Math.round(f.percent || 0)}`
-        : failed
-          ? `İndirilemedi: ${f.error}`
-          : 'ffmpeg denetleniyor, indirme birazdan başlar…';
+    const pct = f.percent || 0;
+    if (f.ready) ffView('ready', 'Hazır. Video ve ses dosyaları dönüştürülebilir.');
+    else if (f.downloading) ffView('downloading', 'İndiriliyor, arka planda sürüyor.', pct);
+    else if (f.error) ffView('error', `İndirilemedi: ${f.error}`);
+    else ffView('checking', 'Denetleniyor, indirme birazdan başlar.');
     if (!f.ready) ffTimer = setTimeout(refreshFfmpeg, f.downloading ? 1000 : 3000);
   } catch (e) {
-    st.classList.add('err');
-    st.textContent = 'ffmpeg durumu alınamadı: ' + e;
+    ffView('error', 'ffmpeg durumu alınamadı: ' + e);
+    $('ff-retry').hidden = true;
   }
 }
 
@@ -149,7 +173,7 @@ function bind() {
   };
   $('quality').oninput = (e) => {
     s.jpeg_quality = +e.target.value;
-    $('qval').textContent = s.jpeg_quality;
+    setQuality(s.jpeg_quality);
     save();
   };
   $('ff-notice-ok').onclick = () => change({ ffmpeg_notice_seen: true });
@@ -165,14 +189,24 @@ function bind() {
   $('menu-del').onclick = (e) => menuAction('remove_context_menu', 'Menü kaldırıldı.', e.currentTarget);
 }
 
+// sections settle in each time the window comes back from the tray
+function intro() {
+  if (document.visibilityState !== 'visible') return;
+  document.body.classList.remove('enter');
+  void document.body.offsetWidth;
+  document.body.classList.add('enter');
+}
+document.addEventListener('visibilitychange', intro);
+
 (async () => {
   bind();
+  intro();
   try {
     s = await invoke('get_settings');
     render();
   } catch (e) {
     showError('Ayarlar yüklenemedi: ' + e);
-    document.querySelectorAll('main .card input,main .card select,main .card button').forEach((x) => (x.disabled = true));
+    document.querySelectorAll('main input,main select,main button').forEach((x) => (x.disabled = true));
     return;
   }
   refreshFfmpeg();

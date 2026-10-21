@@ -8,82 +8,171 @@
 <link rel="stylesheet" href="style.css">
 <script src="app.js" defer></script>
 </head>
-<body>
+<body class="settings">
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3.5v7.5"/><path d="M7.2 6.6a7.5 7.5 0 1 0 9.6 0"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h3.6l2 2.2h7.4a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-files" viewBox="0 0 24 24"><rect x="8" y="3.5" width="12" height="13" rx="2"/><path d="M16 20.5H6a2 2 0 0 1-2-2V8"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17.5 5-4.5 4 3.5 2.5-2 4.5 3.5"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="m10.5 9.5 4 2.5-4 2.5z"/></symbol>
+  <symbol id="i-pointer" viewBox="0 0 24 24"><path d="M5 4.5 18.5 10l-5.8 1.9-2 5.9z"/><path d="m13 12.2 5 5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5.5 12.5 4.2 4.2 8.8-9.2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.6a2 2 0 0 1 3.4 0l7.2 12.6a2 2 0 0 1-1.7 3H4.8a2 2 0 0 1-1.7-3z"/><path d="M12 9.5v4"/><path d="M12 16.8v.2"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+</svg>
+
 <main>
   <header class="top">
-    <h1 id="app-title"></h1>
-    <span id="saved" class="saved" role="status" aria-live="polite"></span>
+    <!-- placeholder brand mark: swap this svg when the real logo exists -->
+    <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+      <defs>
+        <linearGradient id="mark-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="mark-a"/><stop offset="1" class="mark-b"/></linearGradient>
+        <clipPath id="mark-c"><path d="M14 8.5h9.5l5.5 5.5v16a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2v-19.5a2 2 0 0 1 2-2z"/></clipPath>
+      </defs>
+      <rect width="40" height="40" rx="11" fill="url(#mark-g)"/>
+      <path class="mark-sheet" d="M14 8.5h9.5l5.5 5.5v16a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2v-19.5a2 2 0 0 1 2-2z"/>
+      <rect class="mark-ink" x="10" y="20.5" width="22" height="13" clip-path="url(#mark-c)"/>
+      <path class="mark-fold" d="M23.5 8.5V12a2 2 0 0 0 2 2H29"/>
+    </svg>
+    <div class="brand">
+      <h1 id="app-title"></h1>
+      <p class="sub">Ayarlar</p>
+    </div>
+    <span id="saved" class="saved" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span id="saved-text"></span></span>
   </header>
-  <p id="error" class="error" role="alert" hidden></p>
 
-  <section id="ff-notice" class="card notice" aria-labelledby="h-notice" hidden>
-    <h2 id="h-notice">ffmpeg indiriliyor</h2>
-    <p>Video, MP3, OGG ve AAC dönüştürmek için ücretsiz ve açık kaynaklı ffmpeg aracı gerekir. Uygulama bunu yalnızca bir kez, yaklaşık 170 MB olarak otomatik indirir. İndirme arka planda sürer; resim, WAV ve FLAC dönüştürme beklemeden çalışır.</p>
-    <div class="actions end"><button type="button" id="ff-notice-ok" class="btn primary">Anladım</button></div>
-  </section>
+  <p id="error" class="banner err" role="alert" hidden></p>
 
-  <section class="card" aria-labelledby="h-genel">
-    <h2 id="h-genel">Genel</h2>
-    <div class="row">
-      <label for="autostart" class="grow">Windows ile başlat</label>
-      <input type="checkbox" id="autostart" class="switch" role="switch">
+  <section id="ff-notice" class="notice" aria-labelledby="h-notice" hidden>
+    <span class="tile accent"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg></span>
+    <div class="grow">
+      <h2 id="h-notice">Video ve ses desteği hazırlanıyor</h2>
+      <p>Video, MP3, OGG ve AAC için ücretsiz ve açık kaynaklı ffmpeg bir kez indirilir (yaklaşık 170 MB). Beklerken resim, WAV ve FLAC dönüştürmeye devam edebilirsiniz.</p>
+      <button type="button" id="ff-notice-ok" class="btn primary sm">Anladım</button>
     </div>
   </section>
 
-  <section class="card" aria-labelledby="h-cikti">
-    <h2 id="h-cikti">Çıktı</h2>
-    <fieldset>
-      <legend class="sr">Kayıt konumu</legend>
-      <label class="radio"><input type="radio" name="dir" value="same_as_source"> Kaynak dosyanın klasörüne kaydet</label>
-      <div class="radio">
-        <label><input type="radio" name="dir" value="fixed"> Sabit klasör</label>
-        <button type="button" id="pick" class="btn">Seç</button>
+  <section class="group" aria-labelledby="h-genel">
+    <h2 id="h-genel" class="group-title">Genel</h2>
+    <div class="card">
+      <div class="row">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-power"/></svg></span>
+        <div class="grow">
+          <label for="autostart" class="label">Windows ile başlat</label>
+          <p class="desc" id="d-autostart">Oturum açıldığında simge tepsisinde hazır bekler.</p>
+        </div>
+        <input type="checkbox" id="autostart" class="switch" role="switch" aria-describedby="d-autostart">
       </div>
-      <p id="path" class="muted path" hidden></p>
-    </fieldset>
-    <div class="row field">
-      <label for="conflict" class="grow">Aynı adlı dosya varsa</label>
-      <select id="conflict">
-        <option value="auto_rename">Ad ekle: dosya (1)</option>
-        <option value="overwrite">Üzerine yaz</option>
-        <option value="replace_original">Orijinali silip yerine koy</option>
-      </select>
     </div>
-    <p id="warn" class="warn" role="note" hidden>Dikkat: dönüştürme bitince orijinal dosya Geri Dönüşüm Kutusu'na taşınır ve yerine yeni dosya konur.</p>
   </section>
 
-  <section class="card" aria-labelledby="h-kalite">
-    <h2 id="h-kalite">Kalite</h2>
-    <div class="row">
-      <label for="quality" class="grow">JPEG kalitesi</label>
-      <output id="qval" for="quality" class="val">85</output>
+  <section class="group" aria-labelledby="h-cikti">
+    <h2 id="h-cikti" class="group-title">Çıktı</h2>
+    <div class="card">
+      <div class="row top-align" role="radiogroup" aria-labelledby="l-dir">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg></span>
+        <div class="grow">
+          <span id="l-dir" class="label">Kayıt konumu</span>
+          <div class="choices">
+            <label class="choice"><input type="radio" name="dir" value="same_as_source"><span>Kaynak dosyanın yanına</span></label>
+            <div class="choice">
+              <label><input type="radio" name="dir" value="fixed"><span>Sabit bir klasöre</span></label>
+              <button type="button" id="pick" class="btn sm">Klasör seç</button>
+            </div>
+          </div>
+          <p id="path" class="path" hidden></p>
+        </div>
+      </div>
+      <div class="row">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-files"/></svg></span>
+        <div class="grow">
+          <label for="conflict" class="label">Aynı adlı dosya varsa</label>
+        </div>
+        <span class="select">
+          <select id="conflict">
+            <option value="auto_rename">Numara ekle: dosya (1)</option>
+            <option value="overwrite">Üzerine yaz</option>
+            <option value="replace_original">Orijinalin yerine koy</option>
+          </select>
+          <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+      <p id="warn" class="banner warn inset" role="note" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>Dönüştürme bitince orijinal dosya Geri Dönüşüm Kutusu'na taşınır, yerine yenisi konur.</span></p>
     </div>
-    <input type="range" id="quality" min="1" max="100" step="1">
   </section>
 
-  <section class="card" aria-labelledby="h-ffmpeg">
-    <h2 id="h-ffmpeg">Video ve ses (ffmpeg)</h2>
-    <p id="ff-status" class="status" role="status">Durum denetleniyor…</p>
-    <progress id="ff-bar" max="100" value="0" hidden aria-label="ffmpeg indirme ilerlemesi"></progress>
-    <div class="actions"><button type="button" id="ff-retry" class="btn" hidden>Yeniden dene</button></div>
-    <p class="muted">ffmpeg ücretsiz ve açık kaynaklı bir araçtır. Video, MP3, OGG ve AAC dönüştürme için gereklidir ve otomatik olarak indirilir. Resim, WAV ve FLAC dönüştürme için gerekmez.</p>
+  <section class="group" aria-labelledby="h-kalite">
+    <h2 id="h-kalite" class="group-title">Kalite</h2>
+    <div class="card">
+      <div class="row top-align">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span>
+        <div class="grow">
+          <div class="label-line">
+            <label for="quality" class="label">JPEG kalitesi</label>
+            <output id="qval" for="quality" class="val">85</output>
+          </div>
+          <input type="range" id="quality" class="slider" min="1" max="100" step="1" aria-describedby="d-quality">
+          <p class="desc scale" id="d-quality"><span>Küçük dosya</span><span>Yüksek kalite</span></p>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section class="card" aria-labelledby="h-menu">
-    <h2 id="h-menu">Sağ tık menüsü</h2>
-    <div class="actions">
-      <button type="button" id="menu-add" class="btn primary">Menüyü yeniden kaydet</button>
-      <button type="button" id="menu-del" class="btn">Menüyü kaldır</button>
+  <section class="group" aria-labelledby="h-ffmpeg">
+    <h2 id="h-ffmpeg" class="group-title">Video ve ses</h2>
+    <div class="card">
+      <div id="ff" class="row top-align ff" data-state="checking">
+        <span class="tile ff-tile">
+          <svg id="ff-sheet" class="sheet" viewBox="0 0 25 30" aria-hidden="true">
+            <defs><clipPath id="ff-clip"><path d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/></clipPath></defs>
+            <g clip-path="url(#ff-clip)"><g class="level"><path class="ink" d="M-24 0q3-2 6 0t6 0t6 0t6 0t6 0t6 0t6 0t6 0V40h-48z"/></g></g>
+            <path class="outline" d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/>
+            <path class="fold" d="M15.5 1v5.5a2 2 0 0 0 2 2H23"/>
+            <path class="pict" d="M9 15.5v7l6-3.5z"/>
+            <path class="mark-ok" pathLength="1" d="M7.5 18.5l3.2 3.2 6.8-7"/>
+            <path class="mark-err" pathLength="1" d="M12.5 13.5v5.5M12.5 22.6v.2"/>
+          </svg>
+        </span>
+        <div class="grow">
+          <div class="label-line">
+            <span class="label">ffmpeg</span>
+            <span id="ff-pct" class="val" hidden></span>
+          </div>
+          <p id="ff-status" class="desc ff-status" role="status">Durum denetleniyor…</p>
+          <div id="ff-bar" class="bar" role="progressbar" aria-label="ffmpeg indirme ilerlemesi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span></span></div>
+          <button type="button" id="ff-retry" class="btn sm" hidden><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg>Yeniden dene</button>
+        </div>
+      </div>
+      <p class="foot">Ücretsiz ve açık kaynaklı, kendiliğinden indirilir. Resim, WAV ve FLAC onsuz da dönüştürülür.</p>
     </div>
-    <p id="toast" class="status" role="status" aria-live="polite"></p>
-    <p class="muted">Windows 11'de menü, sağ tıkta "Daha fazla seçenek göster" altında görünür.</p>
+  </section>
+
+  <section class="group" aria-labelledby="h-menu">
+    <h2 id="h-menu" class="group-title">Sağ tık menüsü</h2>
+    <div class="card">
+      <div class="row top-align">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-pointer"/></svg></span>
+        <div class="grow">
+          <span class="label">Explorer menüsü</span>
+          <p class="desc">Windows 11'de "Daha fazla seçenek göster" altında görünür.</p>
+          <div class="actions">
+            <button type="button" id="menu-add" class="btn primary sm">Yeniden kaydet</button>
+            <button type="button" id="menu-del" class="btn sm">Kaldır</button>
+          </div>
+          <p id="toast" class="toast" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 
 <div id="modal" class="backdrop" hidden>
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="m-title" aria-describedby="m-text">
-    <h2 id="m-title">Orijinali silip yerine koy?</h2>
-    <p id="m-text">Dönüştürülen dosyanın yerine geçen orijinal dosya Geri Dönüşüm Kutusu'na taşınır. Bu seçeneği açmak istiyor musunuz?</p>
+    <span class="tile danger"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg></span>
+    <h2 id="m-title">Orijinal dosya silinsin mi?</h2>
+    <p id="m-text">Her dönüştürmeden sonra orijinal dosya Geri Dönüşüm Kutusu'na taşınır ve yerine yeni dosya konur.</p>
     <div class="actions end">
       <button type="button" id="m-no" class="btn">Vazgeç</button>
       <button type="button" id="m-yes" class="btn danger">Evet, aç</button>
