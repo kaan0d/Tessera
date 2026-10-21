@@ -62,6 +62,107 @@ pub fn set_lang(l: Lang) {
 pub const MSGS: &[(&str, &str, &str)] = &[
     // context menu
     ("menu.convert_to", "Convert to {fmt}", "{fmt} olarak dönüştür"),
+    // merge verbs
+    ("menu.merge_pdf", "Merge into PDF", "PDF olarak birleştir"),
+    (
+        "menu.merge_audio",
+        "Merge audio into one file",
+        "Sesleri tek dosyada birleştir",
+    ),
+    // built-in presets
+    ("preset.web", "Shrink for web", "Web için küçült"),
+    ("preset.whatsapp", "For WhatsApp", "WhatsApp için"),
+    ("preset.email", "Email: under 10 MB", "E-posta: 10 MB altı"),
+    ("preset.discord", "Discord: under 8 MB", "Discord: 8 MB altı"),
+    (
+        "preset.strip",
+        "Remove location & metadata",
+        "Konum ve üst verileri sil",
+    ),
+    ("preset.pdf", "Make a PDF", "PDF yap"),
+    // preset errors
+    (
+        "preset.bad_name",
+        "The preset name must be 1 to 40 characters",
+        "Hazır ayar adı 1 ile 40 karakter arasında olmalı",
+    ),
+    (
+        "preset.bad_id",
+        "The preset id may only use a-z, 0-9, - and _ (up to 32 characters)",
+        "Hazır ayar kimliği yalnızca a-z, 0-9, - ve _ içerebilir (en çok 32 karakter)",
+    ),
+    (
+        "preset.builtin",
+        "Built-in presets cannot be changed",
+        "Yerleşik hazır ayarlar değiştirilemez",
+    ),
+    (
+        "preset.bad_kinds",
+        "Pick at least one file type for the preset",
+        "Hazır ayar için en az bir dosya türü seçin",
+    ),
+    (
+        "preset.bad_target",
+        "The preset has an unknown target format",
+        "Hazır ayarın hedef biçimi bilinmiyor",
+    ),
+    (
+        "preset.same_needs_option",
+        "Keeping the format needs a resize, a size limit or metadata removal",
+        "Biçimi korumak için boyutlandırma, boyut sınırı veya üst veri silme gerekir",
+    ),
+    (
+        "preset.too_many",
+        "You can have at most {max} custom presets",
+        "En fazla {max} özel hazır ayar olabilir",
+    ),
+    ("preset.not_found", "Preset not found", "Hazır ayar bulunamadı"),
+    (
+        "notify.preset_skip",
+        "{n} file(s) skipped: not supported by {name}",
+        "{n} dosya atlandı: {name} bunları desteklemiyor",
+    ),
+    (
+        "job.merge_name",
+        "Merging {n} files",
+        "{n} dosya birleştiriliyor",
+    ),
+    // undo
+    (
+        "undo.not_found",
+        "That history entry no longer exists",
+        "Bu geçmiş kaydı artık yok",
+    ),
+    (
+        "undo.nothing",
+        "There is nothing to undo for this entry",
+        "Bu kayıt için geri alınacak bir şey yok",
+    ),
+    (
+        "undo.no_output",
+        "The converted file is already gone",
+        "Dönüştürülen dosya zaten yok",
+    ),
+    (
+        "undo.changed",
+        "The converted file was changed after it was made, so it was left alone",
+        "Dönüştürülen dosya sonradan değişmiş, bu yüzden dokunulmadı",
+    ),
+    (
+        "undo.occupied",
+        "A file already exists at the original location: {path}",
+        "Özgün konumda zaten bir dosya var: {path}",
+    ),
+    (
+        "undo.restore_failed",
+        "Could not restore the original ({detail}). It is still in the Recycle Bin: {path}",
+        "Orijinal dosya geri getirilemedi ({detail}). Hâlâ Geri Dönüşüm Kutusu'nda: {path}",
+    ),
+    (
+        "undo.delete_failed",
+        "Could not move the converted file to the Recycle Bin: {detail}",
+        "Dönüştürülen dosya Geri Dönüşüm Kutusu'na taşınamadı: {detail}",
+    ),
     // tray
     ("tray.open", "Settings", "Ayarlar"),
     ("tray.quit", "Quit", "Çıkış"),

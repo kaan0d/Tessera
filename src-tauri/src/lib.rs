@@ -4,6 +4,7 @@ pub mod convert;
 pub mod ffmpeg;
 pub mod i18n;
 pub mod panel;
+pub mod preset;
 pub mod queue;
 pub mod settings;
 pub mod shell;

@@ -8,6 +8,7 @@ use crate::convert::output::validate_template;
 use crate::convert::{Conflict, Format, Options, OutDir, OutputParams, Quality};
 use crate::i18n::Lang;
 use crate::panel::Corner;
+use crate::preset::{self, Preset};
 use crate::shell::EXTS;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -57,6 +58,10 @@ pub enum MenuSort {
 pub struct MenuOpts {
     pub icons: bool,
     pub sort: MenuSort,
+    /// Preset verbs after the format verbs.
+    pub presets_enabled: bool,
+    /// "Merge into PDF" / "Merge audio" verbs.
+    pub merge: bool,
 }
 
 impl Default for MenuOpts {
@@ -64,6 +69,8 @@ impl Default for MenuOpts {
         MenuOpts {
             icons: true,
             sort: MenuSort::Default,
+            presets_enabled: true,
+            merge: true,
         }
     }
 }
@@ -71,6 +78,10 @@ impl Default for MenuOpts {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    /// Settings file generation; 0 = written before versions existed. Bumped by `load_from`
+    /// after it appends formats added since (see `SETTINGS_VERSION`).
+    #[serde(default)]
+    pub settings_version: u32,
     /// UI and message language; anything unknown reads as English.
     pub language: Lang,
     pub autostart: bool,
@@ -91,11 +102,26 @@ pub struct Settings {
     pub ffmpeg_ready: bool,
     /// The first-run ffmpeg info card was dismissed.
     pub ffmpeg_notice_seen: bool,
+    /// User presets (built-ins are in code). Owned by the preset commands; `set_settings` keeps them.
+    pub presets: Vec<Preset>,
+    /// Ids of hidden presets, built-in or custom. Owned by `set_preset_hidden`.
+    pub hidden_presets: Vec<String>,
+    /// Record finished jobs in history.json.
+    pub history_enabled: bool,
 }
+
+/// Current settings generation.
+pub const SETTINGS_VERSION: u32 = 1;
+/// Targets and sources added by engine wave A; appended once for files older than version 1.
+const NEW_TARGETS_V1: [&str; 2] = ["avif", "pdf"];
+const NEW_SOURCES_V1: [&str; 13] = [
+    "avif", "svg", "heic", "heif", "dng", "cr2", "cr3", "nef", "arw", "orf", "rw2", "raf", "pdf",
+];
 
 impl Default for Settings {
     fn default() -> Self {
         Settings {
+            settings_version: SETTINGS_VERSION,
             language: Lang::En,
             autostart: false,
             output_dir: OutputDir::SameAsSource,
@@ -109,6 +135,9 @@ impl Default for Settings {
             legacy_jpeg_quality: None,
             ffmpeg_ready: false,
             ffmpeg_notice_seen: false,
+            presets: vec![],
+            hidden_presets: vec![],
+            history_enabled: true,
         }
     }
 }
@@ -136,6 +165,31 @@ impl Settings {
         if validate_template(&self.name_template, self.language).is_err() {
             self.name_template = "{name}".into();
         }
+        let lang = self.language;
+        let mut seen = std::collections::HashSet::new();
+        self.presets
+            .retain_mut(|p| p.validate(lang).is_ok() && seen.insert(p.id.clone()));
+        self.presets.truncate(preset::MAX_CUSTOM);
+        let known: Vec<String> = preset::all(&self).into_iter().map(|p| p.id).collect();
+        clean_list(&mut self.hidden_presets, |id| known.iter().any(|k| k == id));
+        self
+    }
+
+    /// One-time upgrade of an old file: formats added since are appended to the user's lists.
+    fn migrate(mut self) -> Self {
+        if self.settings_version < 1 {
+            for e in NEW_TARGETS_V1 {
+                if !self.enabled_targets.iter().any(|x| x == e) {
+                    self.enabled_targets.push(e.into());
+                }
+            }
+            for e in NEW_SOURCES_V1 {
+                if !self.menu_sources.iter().any(|x| x == e) {
+                    self.menu_sources.push(e.into());
+                }
+            }
+        }
+        self.settings_version = SETTINGS_VERSION;
         self
     }
 
@@ -168,11 +222,15 @@ impl Settings {
     }
 }
 
-pub fn settings_path() -> PathBuf {
+pub fn data_dir() -> PathBuf {
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(std::env::temp_dir);
-    base.join(APP_NAME).join("settings.json")
+    base.join(APP_NAME)
+}
+
+pub fn settings_path() -> PathBuf {
+    data_dir().join("settings.json")
 }
 
 /// Missing or corrupt file gives defaults.
@@ -182,6 +240,7 @@ pub fn load_from(path: &Path) -> Settings {
         .and_then(|s| serde_json::from_str::<Settings>(&s).ok())
         .unwrap_or_default()
         .normalized()
+        .migrate()
 }
 
 /// Writes a temp file then renames it over the target.
@@ -281,6 +340,7 @@ mod tests {
             menu: MenuOpts {
                 icons: false,
                 sort: MenuSort::Alphabetical,
+                ..MenuOpts::default()
             },
             ..Settings::default()
         };
@@ -332,5 +392,45 @@ mod tests {
         assert!(matches!(o.output.dir, OutDir::SameAsSource));
         assert_eq!(o.output.template, "{name}");
         assert_eq!(o.quality, Quality::default());
+    }
+
+    #[test]
+    fn old_files_get_new_formats_once() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("s.json");
+        // a v0 file: user turned PNG off and kept a short list
+        fs::write(
+            &p,
+            br#"{"enabled_targets":["jpg","mp3"],"menu_sources":["png","mp3"]}"#,
+        )
+        .unwrap();
+        let s = load_from(&p);
+        assert_eq!(s.settings_version, SETTINGS_VERSION);
+        assert_eq!(s.enabled_targets, ["jpg", "mp3", "avif", "pdf"]);
+        assert!(s.menu_sources.contains(&"heic".to_string()) && s.menu_sources.len() == 15);
+        assert!(!s.menu_sources.contains(&"jpg".to_string()));
+        // saved at the new version: the user's later choices are not overridden
+        let mut s = s;
+        s.enabled_targets.retain(|e| e != "pdf");
+        save_to(&p, &s).unwrap();
+        assert!(!load_from(&p).enabled_targets.contains(&"pdf".to_string()));
+        // new fields default sensibly on an old file
+        fs::write(&p, b"{}").unwrap();
+        let s = load_from(&p);
+        assert!(s.menu.presets_enabled && s.menu.merge && s.history_enabled);
+        assert!(s.presets.is_empty() && s.hidden_presets.is_empty());
+    }
+
+    #[test]
+    fn presets_are_cleaned_on_load() {
+        let json = r#"{"presets":[
+            {"id":"a","custom_name":"A","kinds":["image"],"target":"png"},
+            {"id":"a","custom_name":"dup","kinds":["image"],"target":"png"},
+            {"id":"web","custom_name":"clash","kinds":["image"],"target":"png"},
+            {"id":"bad","custom_name":"","kinds":["image"],"target":"png"}],
+            "hidden_presets":["web","a","zzz","web"]}"#;
+        let s = serde_json::from_str::<Settings>(json).unwrap().normalized();
+        assert_eq!(s.presets.len(), 1);
+        assert_eq!(s.hidden_presets, ["web", "a"]);
     }
 }
