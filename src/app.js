@@ -211,6 +211,44 @@ function buildKinds(box, items, sources) {
   }
 }
 
+// null = every catalog entry
+const PROFILES = {
+  normal: {
+    src: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'heic', 'heif', 'pdf', 'wav', 'mp3', 'm4a', 'mp4', 'mov'],
+    dst: ['png', 'jpg', 'webp', 'gif', 'pdf', 'wav', 'mp3', 'mp4'],
+  },
+  all: { src: null, dst: null },
+};
+const profileSets = (p) => ({
+  menu_sources: catalog.sources.map((x) => x.ext).filter((e) => !p.src || p.src.includes(e)),
+  enabled_targets: catalog.targets.map((x) => x.ext).filter((e) => !p.dst || p.dst.includes(e)),
+});
+const sameList = (a, b) => a.length === b.length && a.every((e) => b.includes(e));
+const activeProfile = () => Object.keys(PROFILES).find((id) => {
+  const p = profileSets(PROFILES[id]);
+  return sameList(p.menu_sources, s.menu_sources) && sameList(p.enabled_targets, s.enabled_targets);
+});
+
+function paintProfiles() {
+  const box = $('profiles');
+  if (!box.firstChild) {
+    for (const id of Object.keys(PROFILES)) {
+      const c = document.createElement('button');
+      c.type = 'button';
+      c.className = 'chip';
+      c.dataset.id = id;
+      c.onclick = () => change(profileSets(PROFILES[id]));
+      box.append(c);
+    }
+  }
+  const cur = activeProfile();
+  for (const c of box.children) {
+    c.textContent = t('profile.' + c.dataset.id);
+    c.setAttribute('aria-pressed', c.dataset.id === cur);
+  }
+  $('p-hint').textContent = t(cur ? `profile.${cur}_desc` : 'profile.custom_desc');
+}
+
 function paintChips() {
   if (!catalog || !s) return;
   for (const c of $$('#targets .chip')) {
@@ -221,6 +259,7 @@ function paintChips() {
     c.title = locked ? t('chip.locked') : 'ff' in c.dataset ? t('chip.ff') : '';
   }
   for (const c of $$('#sources .chip')) c.setAttribute('aria-pressed', s.menu_sources.includes(c.dataset.ext));
+  paintProfiles();
   paintHints();
 }
 
