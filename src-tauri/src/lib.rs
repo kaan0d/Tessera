@@ -2,6 +2,7 @@ pub mod app_info;
 pub mod cli;
 pub mod convert;
 pub mod ffmpeg;
+pub mod panel;
 pub mod queue;
 pub mod settings;
 pub mod shell;
@@ -9,6 +10,7 @@ pub mod shell;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use serde::Serialize;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, State, WindowEvent};
@@ -34,7 +36,7 @@ fn set_ffmpeg_ready(app: &AppHandle, ready: bool) {
     let state = app.state::<AppState>();
     let mut s = state.settings.lock().unwrap();
     s.ffmpeg_ready = ready;
-    let _ = shell::install(ready);
+    let _ = shell::install(&s);
     let _ = settings::save_to(&settings::settings_path(), &s);
 }
 
@@ -94,22 +96,67 @@ fn get_settings(state: State<AppState>) -> Settings {
 
 #[tauri::command]
 fn set_settings(settings: Settings, state: State<AppState>) -> Result<Settings, String> {
+    settings.validate()?;
     let mut cur = state.settings.lock().unwrap();
     let mut new = settings.normalized();
     new.ffmpeg_ready = cur.ffmpeg_ready;
     shell::set_autostart(new.autostart)
         .map_err(|e| format!("Otomatik başlatma ayarlanamadı: {e}"))?;
-    shell::install(new.ffmpeg_ready).map_err(|e| format!("Sağ tık menüsü kaydedilemedi: {e}"))?;
+    shell::install(&new).map_err(|e| format!("Sağ tık menüsü kaydedilemedi: {e}"))?;
     settings::save_to(&settings::settings_path(), &new)
         .map_err(|e| format!("Ayarlar kaydedilemedi: {e}"))?;
+    *state.queue.panel.lock().unwrap() = new.panel;
     *cur = new.clone();
     Ok(new)
 }
 
+#[derive(Serialize)]
+struct CatalogSource {
+    ext: &'static str,
+    kind: &'static str,
+}
+
+#[derive(Serialize)]
+struct CatalogTarget {
+    ext: &'static str,
+    kind: &'static str,
+    needs_ffmpeg: bool,
+}
+
+#[derive(Serialize)]
+struct Catalog {
+    sources: Vec<CatalogSource>,
+    targets: Vec<CatalogTarget>,
+}
+
+/// Every source extension that can get a menu and every output format, for the settings grids.
+#[tauri::command]
+fn get_catalog() -> Catalog {
+    Catalog {
+        sources: shell::EXTS
+            .iter()
+            .filter_map(|e| {
+                convert::Format::from_ext(e).map(|f| CatalogSource {
+                    ext: e,
+                    kind: f.kind(),
+                })
+            })
+            .collect(),
+        targets: convert::Format::ALL
+            .iter()
+            .map(|f| CatalogTarget {
+                ext: f.ext(),
+                kind: f.kind(),
+                needs_ffmpeg: convert::needs_ffmpeg(*f),
+            })
+            .collect(),
+    }
+}
+
 #[tauri::command]
 fn install_context_menu(state: State<AppState>) -> Result<(), String> {
-    let ready = state.settings.lock().unwrap().ffmpeg_ready;
-    shell::install(ready).map_err(|e| format!("Sağ tık menüsü kaydedilemedi: {e}"))
+    let s = state.settings.lock().unwrap().clone();
+    shell::install(&s).map_err(|e| format!("Sağ tık menüsü kaydedilemedi: {e}"))
 }
 
 #[tauri::command]
@@ -167,6 +214,17 @@ fn show_window(app: &AppHandle) {
 fn start_convert(app: &AppHandle, target: convert::Format, files: Vec<PathBuf>) {
     let state = app.state::<AppState>();
     let s = state.settings.lock().unwrap().clone();
+    if !s.target_enabled(target) {
+        notify(
+            app,
+            "Dönüştürme başarısız",
+            &format!(
+                "{} biçimi ayarlardan kapatılmış",
+                target.ext().to_uppercase()
+            ),
+        );
+        return;
+    }
     state
         .queue
         .enqueue(app, target, files, &s.to_options(), s.ffmpeg_ready);
@@ -177,8 +235,8 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
     let code = |r: std::io::Result<()>| i32::from(r.is_err());
     match cmd {
         Cli::InstallMenu => {
-            let ready = settings::load_from(&settings::settings_path()).ffmpeg_ready;
-            Some(code(shell::install(ready)))
+            let s = settings::load_from(&settings::settings_path());
+            Some(code(shell::install(&s)))
         }
         Cli::RemoveMenu => {
             // autostart goes too: this is the uninstall path
@@ -209,6 +267,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             get_settings,
+            get_catalog,
             set_settings,
             install_context_menu,
             remove_context_menu,
@@ -229,12 +288,15 @@ pub fn run() {
             let s = settings::load_from(&path);
             if first_run {
                 // best effort: the UI can retry through install_context_menu
-                let _ = shell::install(s.ffmpeg_ready);
+                let _ = shell::install(&s);
                 let _ = settings::save_to(&path, &s);
             }
+            if let Some(w) = app.get_webview_window("progress") {
+                panel::init(&w);
+            }
             app.manage(AppState {
+                queue: Queue::new(app.handle().clone(), s.panel),
                 settings: Mutex::new(s),
-                queue: Queue::new(app.handle().clone()),
                 download: Arc::default(),
             });
             ensure_ffmpeg(app.handle());

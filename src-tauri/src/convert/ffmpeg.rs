@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::{output, security, supported_targets, uses_ffmpeg};
-use super::{Conflict, ConvertError, Format, Options};
+use super::{Conflict, ConvertError, Format, Options, Quality};
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
@@ -37,51 +37,92 @@ fn muxer(t: Format) -> &'static str {
 
 /// Codec arguments per target. Only encoders present in the pinned LGPL build:
 /// libopenh264 (H.264), libvpx-vp9, libopus, libvorbis, libmp3lame, native aac/mpeg4/gif.
-fn codec_args(t: Format) -> &'static [&'static str] {
-    const H264: &[&str] = &[
-        "-map",
-        "0:v:0",
-        "-map",
-        "0:a:0?",
-        "-vf",
-        "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-        "-c:v",
-        "libopenh264",
-        "-b:v",
-        "6M",
-        "-pix_fmt",
-        "yuv420p",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "192k",
-    ];
+fn codec_args(t: Format, q: &Quality) -> Vec<String> {
+    let v = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
     match t {
-        Format::Mp4 | Format::Mkv | Format::Mov => H264,
-        Format::Avi => &[
-            "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "mpeg4", "-q:v", "4", "-pix_fmt", "yuv420p",
-            "-c:a", "libmp3lame", "-q:a", "4",
-        ],
-        Format::Webm => &[
-            "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0",
-            "-row-mt", "1", "-deadline", "good", "-cpu-used", "4", "-pix_fmt", "yuv420p", "-c:a",
-            "libopus", "-b:a", "128k",
-        ],
-        Format::Gif => &[
-            "-map", "0:v:0", "-an", "-loop", "0", "-vf",
-            "fps=12,scale='min(480,iw)':-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse",
-        ],
-        Format::Mp3 => &["-vn", "-map", "0:a:0", "-c:a", "libmp3lame", "-q:a", "2"],
-        Format::Ogg => &["-vn", "-map", "0:a:0", "-c:a", "libvorbis", "-q:a", "5"],
-        Format::Aac => &["-vn", "-map", "0:a:0", "-c:a", "aac", "-b:a", "192k"],
-        Format::Wav => &["-vn", "-map", "0:a:0", "-c:a", "pcm_s16le"],
-        Format::Flac => &["-vn", "-map", "0:a:0", "-c:a", "flac"],
-        _ => &[],
+        Format::Mp4 | Format::Mkv | Format::Mov => {
+            let mut a = v(&[
+                "-map",
+                "0:v:0",
+                "-map",
+                "0:a:0?",
+                "-vf",
+                "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                "-c:v",
+                "libopenh264",
+                "-b:v",
+            ]);
+            a.push(format!("{}M", q.video_mbps));
+            a.extend(v(&["-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k"]));
+            a
+        }
+        Format::Avi => v(&[
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0?",
+            "-c:v",
+            "mpeg4",
+            "-q:v",
+            "4",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "libmp3lame",
+            "-q:a",
+            "4",
+        ]),
+        Format::Webm => v(&[
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0?",
+            "-c:v",
+            "libvpx-vp9",
+            "-crf",
+            "32",
+            "-b:v",
+            "0",
+            "-row-mt",
+            "1",
+            "-deadline",
+            "good",
+            "-cpu-used",
+            "4",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "libopus",
+            "-b:a",
+            "128k",
+        ]),
+        Format::Gif => {
+            let mut a = v(&["-map", "0:v:0", "-an", "-loop", "0", "-vf"]);
+            a.push(format!(
+                "fps={},scale='min({},iw)':-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse",
+                q.gif_fps, q.gif_width
+            ));
+            a
+        }
+        Format::Mp3 => {
+            let mut a = v(&["-vn", "-map", "0:a:0", "-c:a", "libmp3lame", "-q:a"]);
+            a.push(q.mp3_q.to_string());
+            a
+        }
+        Format::Ogg => {
+            let mut a = v(&["-vn", "-map", "0:a:0", "-c:a", "libvorbis", "-q:a"]);
+            a.push(q.ogg_q.to_string());
+            a
+        }
+        Format::Aac => v(&["-vn", "-map", "0:a:0", "-c:a", "aac", "-b:a", "192k"]),
+        Format::Wav => v(&["-vn", "-map", "0:a:0", "-c:a", "pcm_s16le"]),
+        Format::Flac => v(&["-vn", "-map", "0:a:0", "-c:a", "flac"]),
+        _ => vec![],
     }
 }
 
 /// Full argument list (without the program name).
-pub fn build_args(input: &Path, output: &Path, target: Format) -> Vec<OsString> {
+pub fn build_args(input: &Path, output: &Path, target: Format, q: &Quality) -> Vec<OsString> {
     let mut a: Vec<OsString> = [
         "-nostdin",
         "-y",
@@ -94,7 +135,7 @@ pub fn build_args(input: &Path, output: &Path, target: Format) -> Vec<OsString> 
     .map(OsString::from)
     .into();
     a.push(input.into());
-    a.extend(codec_args(target).iter().map(OsString::from));
+    a.extend(codec_args(target, q).into_iter().map(OsString::from));
     a.extend(["-f", muxer(target)].map(OsString::from));
     if target == Format::Mp4 {
         a.extend(["-movflags", "+faststart"].map(OsString::from));
@@ -163,7 +204,15 @@ pub fn convert_with_ffmpeg(
     let dest = output::plan(&src, target.ext(), &opts.output)?;
     progress(0.0);
     output::write_via_temp(&dest, |tmp| {
-        run_child(ffmpeg, &src, tmp, target, cancel, &mut progress)
+        run_child(
+            ffmpeg,
+            &src,
+            tmp,
+            target,
+            &opts.quality,
+            cancel,
+            &mut progress,
+        )
     })?;
     if opts.output.conflict == Conflict::ReplaceOriginal {
         output::recycle(&src)?;
@@ -177,11 +226,12 @@ fn run_child(
     src: &Path,
     tmp: &Path,
     target: Format,
+    q: &Quality,
     cancel: &AtomicBool,
     progress: &mut impl FnMut(f32),
 ) -> Result<(), ConvertError> {
     let mut child = Command::new(ffmpeg)
-        .args(build_args(src, tmp, target))
+        .args(build_args(src, tmp, target, q))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -261,10 +311,15 @@ mod tests {
     use super::*;
 
     fn args(t: Format) -> Vec<String> {
-        build_args(Path::new(r"C:\in put.mkv"), Path::new(r"C:\o.tmp"), t)
-            .into_iter()
-            .map(|s| s.to_string_lossy().into_owned())
-            .collect()
+        build_args(
+            Path::new(r"C:\in put.mkv"),
+            Path::new(r"C:\o.tmp"),
+            t,
+            &Quality::default(),
+        )
+        .into_iter()
+        .map(|s| s.to_string_lossy().into_owned())
+        .collect()
     }
 
     #[test]
@@ -296,12 +351,32 @@ mod tests {
             Format::Flac,
         ];
         for t in video.into_iter().chain(other) {
-            assert!(!codec_args(t).is_empty() && muxer(t) != "null", "{t:?}");
+            assert!(
+                !codec_args(t, &Quality::default()).is_empty() && muxer(t) != "null",
+                "{t:?}"
+            );
         }
         assert!(args(Format::Mp4).contains(&"+faststart".to_string()));
         assert!(args(Format::Webm).contains(&"libvpx-vp9".to_string()));
         assert!(args(Format::Mp4).contains(&"libopenh264".to_string()));
         assert!(!args(Format::Wav).contains(&"-c:v".to_string()));
+    }
+
+    #[test]
+    fn quality_reaches_args() {
+        let q = Quality {
+            mp3_q: 7,
+            ogg_q: 9,
+            video_mbps: 20,
+            gif_fps: 25,
+            gif_width: 800,
+            ..Quality::default()
+        };
+        let a = |t| codec_args(t, &q).join(" ");
+        assert!(a(Format::Mp3).ends_with("-q:a 7"));
+        assert!(a(Format::Ogg).ends_with("-q:a 9"));
+        assert!(a(Format::Mp4).contains("-b:v 20M"));
+        assert!(a(Format::Gif).contains("fps=25,scale='min(800,iw)'"));
     }
 
     #[test]

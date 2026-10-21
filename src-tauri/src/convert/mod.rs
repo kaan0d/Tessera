@@ -7,6 +7,8 @@ pub mod security;
 
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
 pub use error::ConvertError;
 pub use output::{Conflict, OutDir, OutputParams};
 
@@ -118,22 +120,87 @@ impl Format {
     pub fn is_video(self) -> bool {
         VIDEO.contains(&self)
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct Options {
-    /// 1..=100
-    pub jpeg_quality: u8,
-    pub output: OutputParams,
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Options {
-            jpeg_quality: 85,
-            output: OutputParams::default(),
+    /// "image" | "audio" | "video"
+    pub fn kind(self) -> &'static str {
+        if self.is_image() {
+            "image"
+        } else if self.is_video() {
+            "video"
+        } else {
+            "audio"
         }
     }
+
+    pub const ALL: [Format; 17] = [
+        Format::Png,
+        Format::Jpg,
+        Format::Webp,
+        Format::Bmp,
+        Format::Gif,
+        Format::Tiff,
+        Format::Ico,
+        Format::Wav,
+        Format::Flac,
+        Format::Mp3,
+        Format::Ogg,
+        Format::Aac,
+        Format::Mp4,
+        Format::Mkv,
+        Format::Avi,
+        Format::Webm,
+        Format::Mov,
+    ];
+}
+
+/// Encoder quality knobs; `clamped` pins each to its valid range.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Quality {
+    /// 1..=100
+    pub jpeg: u8,
+    /// lame VBR `-q:a`, 0 (best) ..= 9
+    pub mp3_q: u8,
+    /// vorbis `-q:a`, 0 ..= 10
+    pub ogg_q: u8,
+    /// H.264 bitrate, 1..=30 Mbit/s
+    pub video_mbps: u8,
+    /// 5..=30
+    pub gif_fps: u8,
+    /// 120..=1280 px
+    pub gif_width: u16,
+}
+
+impl Default for Quality {
+    fn default() -> Self {
+        Quality {
+            jpeg: 85,
+            mp3_q: 2,
+            ogg_q: 5,
+            video_mbps: 6,
+            gif_fps: 12,
+            gif_width: 480,
+        }
+    }
+}
+
+impl Quality {
+    pub fn clamped(self) -> Self {
+        Quality {
+            jpeg: self.jpeg.clamp(1, 100),
+            mp3_q: self.mp3_q.min(9),
+            ogg_q: self.ogg_q.min(10),
+            video_mbps: self.video_mbps.clamp(1, 30),
+            gif_fps: self.gif_fps.clamp(5, 30),
+            gif_width: self.gif_width.clamp(120, 1280),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Options {
+    pub quality: Quality,
+    pub output: OutputParams,
 }
 
 /// Targets whose encoder is not in this crate (done by ffmpeg).
@@ -190,7 +257,7 @@ pub fn convert(
     progress(0.0);
     output::write_atomic(&dest, |w| {
         if from.is_image() {
-            image::convert(&src, target, opts.jpeg_quality, w)
+            image::convert(&src, target, opts.quality.jpeg, w)
         } else {
             audio::convert(&src, ext, target, w, &mut progress)
         }

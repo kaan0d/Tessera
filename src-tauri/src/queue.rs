@@ -5,10 +5,12 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, LogicalSize, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::convert::{self, convert, uses_ffmpeg, ConvertError, Format, Options};
+use crate::panel;
+use crate::settings::Panel;
 
 #[derive(Clone, Serialize)]
 struct Progress {
@@ -43,35 +45,37 @@ pub struct Queue {
     next_id: AtomicU64,
     cancels: Cancels,
     active: Arc<AtomicUsize>,
+    pub panel: SharedPanel,
 }
 
-/// Shows the progress card sized for `n` rows, or hides it when idle.
+/// Panel settings, shared with the settings command so changes apply to the next event.
+pub type SharedPanel = Arc<Mutex<Panel>>;
+
 static SYNC_GEN: AtomicUsize = AtomicUsize::new(0);
 
-fn sync_window(app: &AppHandle, n: usize) {
+/// Shows the progress panel sized for `n` rows, or hides it a while after the queue empties.
+fn sync_window(app: &AppHandle, n: usize, panel: &SharedPanel) {
     let Some(w) = app.get_webview_window("progress") else {
         return;
     };
     let gen = SYNC_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    let p = *panel.lock().unwrap();
     if n == 0 {
         // keep the card up long enough to see the last result
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(7));
+            std::thread::sleep(std::time::Duration::from_secs(p.seconds.into()));
             if SYNC_GEN.load(Ordering::SeqCst) == gen {
                 let _ = w.hide();
             }
         });
     } else {
-        let _ = w.set_size(LogicalSize::new(
-            360.0,
-            110.0 + 44.0 * (n.min(6) - 1) as f64,
-        ));
-        let _ = w.show();
+        panel::show(app, &w, n, p.corner);
     }
 }
 
 impl Queue {
-    pub fn new(app: AppHandle) -> Queue {
+    pub fn new(app: AppHandle, panel: Panel) -> Queue {
+        let panel: SharedPanel = Arc::new(Mutex::new(panel));
         let (tx, rx) = channel::<Job>();
         let rx = Arc::new(Mutex::new(rx));
         let cancels: Cancels = Arc::default();
@@ -80,15 +84,21 @@ impl Queue {
             .map_or(2, |n| n.get())
             .min(4);
         for _ in 0..n {
-            let (rx, app, cancels, active) =
-                (rx.clone(), app.clone(), cancels.clone(), active.clone());
-            std::thread::spawn(move || worker(rx, app, cancels, active));
+            let (rx, app, cancels, active, panel) = (
+                rx.clone(),
+                app.clone(),
+                cancels.clone(),
+                active.clone(),
+                panel.clone(),
+            );
+            std::thread::spawn(move || worker(rx, app, cancels, active, panel));
         }
         Queue {
             tx,
             next_id: AtomicU64::new(1),
             cancels,
             active,
+            panel,
         }
     }
 
@@ -111,7 +121,11 @@ impl Queue {
                 );
                 let cancel = Arc::new(AtomicBool::new(false));
                 self.cancels.lock().unwrap().insert(id, cancel.clone());
-                sync_window(app, self.active.fetch_add(1, Ordering::Relaxed) + 1);
+                sync_window(
+                    app,
+                    self.active.fetch_add(1, Ordering::Relaxed) + 1,
+                    &self.panel,
+                );
                 let _ = app.emit(
                     "job-progress",
                     Progress {
@@ -146,6 +160,7 @@ fn worker(
     app: AppHandle,
     cancels: Cancels,
     active: Arc<AtomicUsize>,
+    panel: SharedPanel,
 ) {
     loop {
         // the lock is released at the end of this statement, so other workers can take jobs
@@ -163,8 +178,10 @@ fn worker(
             )
         };
         let _ = app.emit("job-done", done);
-        sync_window(&app, active.fetch_sub(1, Ordering::Relaxed) - 1);
-        let _ = app.notification().builder().title(title).body(body).show();
+        sync_window(&app, active.fetch_sub(1, Ordering::Relaxed) - 1, &panel);
+        if panel.lock().unwrap().windows_toast {
+            let _ = app.notification().builder().title(title).body(body).show();
+        }
     }
 }
 
