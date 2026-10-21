@@ -8,7 +8,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, LogicalSize, Manager};
 use tauri_plugin_notification::NotificationExt;
 
-use crate::convert::{convert, needs_ffmpeg, ConvertError, Format, Options};
+use crate::convert::{convert, uses_ffmpeg, ConvertError, Format, Options};
 
 #[derive(Clone, Serialize)]
 struct Progress {
@@ -185,7 +185,12 @@ fn run(app: &AppHandle, job: &Job) -> Done {
             );
         }
     };
-    let result = if needs_ffmpeg(job.target) {
+    let from = job
+        .path
+        .extension()
+        .and_then(|e| e.to_str())
+        .and_then(Format::from_ext);
+    let result = if from.is_some_and(|f| uses_ffmpeg(f, job.target)) {
         if job.ffmpeg_ready {
             ffmpeg_convert(job, on_progress)
         } else {

@@ -7,16 +7,16 @@ use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
 use winreg::RegKey;
 
 use crate::app_info::APP_NAME;
-use crate::convert::{needs_ffmpeg, supported_targets, Format};
+use crate::convert::{supported_targets, uses_ffmpeg, Format};
 
 /// Real registry root for file associations.
 pub const REAL_ROOT: &str = r"Software\Classes";
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 
 /// Source extensions (must all be accepted by `Format::from_ext`).
-const EXTS: [&str; 16] = [
+const EXTS: [&str; 21] = [
     "png", "jpg", "jpeg", "webp", "bmp", "gif", "tif", "tiff", "ico", "wav", "flac", "mp3", "ogg",
-    "oga", "aac", "m4a",
+    "oga", "aac", "m4a", "mp4", "mkv", "avi", "webm", "mov",
 ];
 
 fn label(t: Format) -> String {
@@ -36,9 +36,10 @@ pub fn install_at(root: &str, exe: &Path, ffmpeg_ready: bool) -> io::Result<()> 
     remove_at(root)?;
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     for ext in EXTS {
+        let src = Format::from_ext(ext);
         let targets: Vec<Format> = supported_targets(ext)
             .into_iter()
-            .filter(|&t| ffmpeg_ready || !needs_ffmpeg(t))
+            .filter(|&t| ffmpeg_ready || src.is_none_or(|s| !uses_ffmpeg(s, t)))
             .collect();
         if targets.is_empty() {
             continue;
@@ -123,6 +124,7 @@ mod tests {
         let exe = Path::new(r"C:\Program Files\X\x.exe");
         install_at(&root, exe, false).unwrap();
         install_at(&root, exe, false).unwrap();
+        assert!(hkcu.open_subkey(menu_key(&root, "mp4")).is_err());
 
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         assert_eq!(png.get_value::<String, _>("MUIVerb").unwrap(), APP_NAME);
@@ -142,6 +144,8 @@ mod tests {
         install_at(&root, exe, true).unwrap();
         let mp3 = hkcu.open_subkey(menu_key(&root, "mp3")).unwrap();
         assert!(mp3.open_subkey(r"shell\ogg").is_ok());
+        let mp4 = hkcu.open_subkey(menu_key(&root, "mp4")).unwrap();
+        assert!(mp4.open_subkey(r"shell\mkv").is_ok() && mp4.open_subkey(r"shell\gif").is_ok());
 
         remove_at(&root).unwrap();
         remove_at(&root).unwrap();

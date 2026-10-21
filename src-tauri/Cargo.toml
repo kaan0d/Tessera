@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "donusturx"
 version = "0.1.0"
 edition = "2021"
@@ -25,6 +25,9 @@ hound = "3"
 flacenc = "0.5"
 thiserror = "2"
 trash = "5"
+ureq = "3"
+sha2 = "0.10"
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 
 [profile.release]
 lto = true

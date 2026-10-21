@@ -23,6 +23,11 @@ pub enum Format {
     Mp3,
     Ogg,
     Aac,
+    Mp4,
+    Mkv,
+    Avi,
+    Webm,
+    Mov,
 }
 
 const IMAGES: [Format; 7] = [
@@ -41,6 +46,22 @@ const AUDIO: [Format; 5] = [
     Format::Ogg,
     Format::Aac,
 ];
+const VIDEO: [Format; 5] = [
+    Format::Mp4,
+    Format::Mkv,
+    Format::Avi,
+    Format::Webm,
+    Format::Mov,
+];
+/// Targets for a video source: other containers, GIF, and audio extraction.
+const FROM_VIDEO: [Format; 6] = [
+    Format::Gif,
+    Format::Mp3,
+    Format::Ogg,
+    Format::Aac,
+    Format::Wav,
+    Format::Flac,
+];
 
 impl Format {
     pub fn from_ext(ext: &str) -> Option<Format> {
@@ -57,6 +78,11 @@ impl Format {
             "mp3" => Format::Mp3,
             "ogg" | "oga" => Format::Ogg,
             "aac" | "m4a" => Format::Aac,
+            "mp4" => Format::Mp4,
+            "mkv" => Format::Mkv,
+            "avi" => Format::Avi,
+            "webm" => Format::Webm,
+            "mov" => Format::Mov,
             _ => return None,
         })
     }
@@ -76,11 +102,20 @@ impl Format {
             Format::Mp3 => "mp3",
             Format::Ogg => "ogg",
             Format::Aac => "aac",
+            Format::Mp4 => "mp4",
+            Format::Mkv => "mkv",
+            Format::Avi => "avi",
+            Format::Webm => "webm",
+            Format::Mov => "mov",
         }
     }
 
     pub fn is_image(self) -> bool {
         IMAGES.contains(&self)
+    }
+
+    pub fn is_video(self) -> bool {
+        VIDEO.contains(&self)
     }
 }
 
@@ -100,10 +135,16 @@ impl Default for Options {
     }
 }
 
-/// Targets whose encoder is not in this crate (done by ffmpeg in a later stage).
-/// AAC is not a target the right-click menu offers, so it is not listed by `supported_targets`.
+/// Targets whose encoder is not in this crate (done by ffmpeg).
+/// AAC is only offered for video sources by `supported_targets`.
 pub fn needs_ffmpeg(target: Format) -> bool {
-    matches!(target, Format::Mp3 | Format::Ogg | Format::Aac)
+    target.is_video() || matches!(target, Format::Mp3 | Format::Ogg | Format::Aac)
+}
+
+/// True when the conversion runs through ffmpeg: a video source (even for WAV/FLAC/GIF
+/// output) or a target the pure-Rust engine cannot write.
+pub fn uses_ffmpeg(src: Format, target: Format) -> bool {
+    src.is_video() || needs_ffmpeg(target)
 }
 
 /// Targets offered for a source extension (empty if the extension is unknown).
@@ -114,6 +155,8 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
     };
     let (family, extra): (&[Format], &[Format]) = if src.is_image() {
         (&IMAGES, &[])
+    } else if src.is_video() {
+        (&VIDEO, &FROM_VIDEO)
     } else {
         (&AUDIO, &[])
     };
@@ -121,7 +164,7 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
         .iter()
         .chain(extra)
         .copied()
-        .filter(|&t| t != src && t != Format::Aac)
+        .filter(|&t| t != src && (src.is_video() || t != Format::Aac))
         .collect()
 }
 
@@ -138,7 +181,7 @@ pub fn convert(
     if !supported_targets(ext).contains(&target) {
         return Err(ConvertError::Unsupported);
     }
-    if needs_ffmpeg(target) {
+    if uses_ffmpeg(from, target) {
         return Err(ConvertError::NeedsFfmpeg);
     }
 
@@ -180,5 +223,26 @@ mod tests {
         assert!(needs_ffmpeg(Format::Mp3) && needs_ffmpeg(Format::Ogg));
         assert!(!needs_ffmpeg(Format::Wav) && !needs_ffmpeg(Format::Flac));
         assert!(!needs_ffmpeg(Format::Png));
+        assert!(needs_ffmpeg(Format::Mp4) && needs_ffmpeg(Format::Webm));
+        assert!(uses_ffmpeg(Format::Mkv, Format::Wav) && uses_ffmpeg(Format::Mp4, Format::Gif));
+        assert!(!uses_ffmpeg(Format::Png, Format::Gif));
+    }
+
+    #[test]
+    fn video_matrix() {
+        let t = supported_targets("MP4");
+        assert!(!t.contains(&Format::Mp4) && t.contains(&Format::Mkv));
+        for f in [
+            Format::Gif,
+            Format::Mp3,
+            Format::Aac,
+            Format::Wav,
+            Format::Flac,
+        ] {
+            assert!(t.contains(&f), "{f:?}");
+        }
+        assert_eq!(t.len(), 4 + 6);
+        assert!(!supported_targets("wav").contains(&Format::Mp4));
+        assert!(!supported_targets("gif").contains(&Format::Mp4));
     }
 }
