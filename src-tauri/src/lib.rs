@@ -500,6 +500,18 @@ fn panel_preview(
     Ok(())
 }
 
+/// Third-party license notices as plain text (compiled in).
+#[tauri::command]
+fn get_licenses() -> String {
+    app_info::LICENSES.to_string()
+}
+
+/// {name, version, repo_url, license} for the About page.
+#[tauri::command]
+fn app_info() -> app_info::AppInfo {
+    app_info::info()
+}
+
 /// Reveals a file in Explorer (or opens a folder).
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
@@ -979,7 +991,9 @@ pub fn run() {
             get_drop_files,
             get_drop_options,
             run_drop,
-            close_drop_window
+            close_drop_window,
+            get_licenses,
+            app_info
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {
