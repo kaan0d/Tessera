@@ -46,12 +46,21 @@ pub struct Queue {
 }
 
 /// Shows the progress card sized for `n` rows, or hides it when idle.
+static SYNC_GEN: AtomicUsize = AtomicUsize::new(0);
+
 fn sync_window(app: &AppHandle, n: usize) {
     let Some(w) = app.get_webview_window("progress") else {
         return;
     };
+    let gen = SYNC_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     if n == 0 {
-        let _ = w.hide();
+        // keep the card up long enough to see the last result
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(7));
+            if SYNC_GEN.load(Ordering::SeqCst) == gen {
+                let _ = w.hide();
+            }
+        });
     } else {
         let _ = w.set_size(LogicalSize::new(
             360.0,
