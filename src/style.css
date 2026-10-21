@@ -490,7 +490,8 @@ input[type=radio]:checked::after{scale:1}
 .cli-row+.cli-row{border-top:1px solid var(--line)}
 .cmd{display:block;font-family:"Cascadia Mono",Consolas,ui-monospace,monospace;font-size:12px;color:var(--ink);
   padding:5px 8px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);
-  overflow-wrap:anywhere;user-select:all}
+  font-variant-ligatures:none;user-select:all}
+.cmd span{white-space:nowrap}
 .cli-row .desc{margin-top:3px;font-size:var(--t-xs)}
 
 /* editor dialogs: header, scrolling body, footer with a live summary */

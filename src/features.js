@@ -111,6 +111,12 @@ function msg(id, text) {
   $(id).textContent = text || '';
 }
 
+// brings the first problem in a dialog into view
+function showFirstError(dlgId) {
+  const m = $$(`#${dlgId} .dlg-body .field-msg`).find((x) => x.textContent);
+  if (m) m.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
+
 async function pickDir() {
   const d = T && T.dialog;
   if (!d) return showError(t('err.no_dialog')), null;
@@ -344,7 +350,10 @@ async function pdSave(ev) {
   pdTried = true;
   const p = pdPaint(true);
   msg('pd-err', '');
-  if (!p) return (document.querySelector('#pd [aria-invalid=true]') || $('pd-save')).focus();
+  if (!p) {
+    const bad = document.querySelector('#pd [aria-invalid=true]');
+    return bad ? bad.focus() : showFirstError('pd');
+  }
   const b = $('pd-save');
   b.disabled = true;
   try {
@@ -648,7 +657,7 @@ async function wdSave(ev) {
   ev.preventDefault();
   msg('wd-err', '');
   const r = wdCollect();
-  if (!r) return;
+  if (!r) return showFirstError('wd');
   const rules = wdIndex >= 0 ? watch.rules.map((x, k) => (k === wdIndex ? r : x)) : [...watch.rules, r];
   const b = $('wd-save');
   b.disabled = true;
@@ -717,7 +726,10 @@ function renderCli() {
   $('cli').replaceChildren(...rows.map(([cmd, key]) => {
     const li = el('li', 'cli-row');
     const txt = el('div', 'grow');
-    txt.append(el('code', 'cmd', cmd), el('p', 'desc', t(key)));
+    const code = el('code', 'cmd');
+    // words never break inside ("--max-edge" stays whole), lines wrap between them
+    cmd.split(' ').forEach((w, i) => code.append(i ? ' ' : '', el('span', '', w)));
+    txt.append(code, el('p', 'desc', t(key)));
     const b = iconBtn('i-copy', t('cli.copy'));
     b.onclick = () => copy(cmd, b);
     li.append(txt, b);

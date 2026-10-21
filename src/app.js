@@ -609,6 +609,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ffReady = !!s.ffmpeg_ready;
     goodTpl = s.name_template;
     render();
+    paintNav(); // header text in the saved language
   } catch (e) {
     showError(t('err.load', { err: e }));
     $$('main input,main select,main button').forEach((x) => (x.disabled = true));
