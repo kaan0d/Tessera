@@ -162,6 +162,16 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("ce.unsupported", "Unsupported format", "Desteklenmeyen biçim"),
     ("ce.too_large", "File too large", "Dosya çok büyük"),
     (
+        "ce.target_size",
+        "The size limit cannot be reached without making the result unusable",
+        "Boyut sınırına, sonuç kullanılamaz hale gelmeden ulaşılamıyor",
+    ),
+    (
+        "ce.protected",
+        "The file is password protected",
+        "Dosya parola korumalı",
+    ),
+    (
         "ce.needs_ffmpeg",
         "This conversion needs ffmpeg",
         "Bu dönüşüm için ffmpeg gerekiyor",

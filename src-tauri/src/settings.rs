@@ -163,6 +163,7 @@ impl Settings {
                 },
                 template: self.name_template.clone(),
             },
+            ..Options::default()
         }
     }
 }
@@ -218,7 +219,7 @@ mod tests {
         let s = load_from(&p);
         assert!(s.autostart && s.quality.jpeg == 1 && s.conflict == ConflictMode::AutoRename);
         assert!(!s.ffmpeg_notice_seen && !s.ffmpeg_ready);
-        assert_eq!(s.enabled_targets.len(), 17);
+        assert_eq!(s.enabled_targets.len(), Format::ALL.len());
         assert_eq!(s.name_template, "{name}");
         // the legacy key is never written back
         let v = serde_json::to_value(&s).unwrap();

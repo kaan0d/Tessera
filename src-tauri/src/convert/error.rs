@@ -22,6 +22,10 @@ pub enum ConvertError {
     Corrupt,
     Unsupported,
     TooLarge,
+    /// `max_bytes` cannot be met (quality and size floors reached, or bitrate too low).
+    TargetSize,
+    /// Password-protected document.
+    Protected,
     NeedsFfmpeg,
     Cancelled,
     Encode(String),
@@ -59,6 +63,8 @@ impl ConvertError {
             E::Corrupt => plain("ce.corrupt"),
             E::Unsupported => plain("ce.unsupported"),
             E::TooLarge => plain("ce.too_large"),
+            E::TargetSize => plain("ce.target_size"),
+            E::Protected => plain("ce.protected"),
             E::NeedsFfmpeg => plain("ce.needs_ffmpeg"),
             E::Cancelled => plain("ce.cancelled"),
             E::Encode(d) => with("ce.encode", d),
@@ -128,6 +134,8 @@ mod tests {
             ConvertError::Corrupt,
             ConvertError::Unsupported,
             ConvertError::TooLarge,
+            ConvertError::TargetSize,
+            ConvertError::Protected,
             ConvertError::NeedsFfmpeg,
             ConvertError::Cancelled,
             ConvertError::Encode("x".into()),

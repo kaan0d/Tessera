@@ -16,9 +16,10 @@ pub const REAL_ROOT: &str = r"Software\Classes";
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 
 /// Source extensions (must all be accepted by `Format::from_ext`).
-pub const EXTS: [&str; 21] = [
-    "png", "jpg", "jpeg", "webp", "bmp", "gif", "tif", "tiff", "ico", "wav", "flac", "mp3", "ogg",
-    "oga", "aac", "m4a", "mp4", "mkv", "avi", "webm", "mov",
+pub const EXTS: [&str; 34] = [
+    "png", "jpg", "jpeg", "webp", "bmp", "gif", "tif", "tiff", "ico", "avif", "svg", "heic",
+    "heif", "dng", "cr2", "cr3", "nef", "arw", "orf", "rw2", "raf", "pdf", "wav", "flac", "mp3",
+    "ogg", "oga", "aac", "m4a", "mp4", "mkv", "avi", "webm", "mov",
 ];
 
 fn label(t: Format, lang: Lang) -> String {
@@ -215,12 +216,12 @@ mod tests {
         let mut s = ready(true);
         assert_eq!(
             exts(verbs("png", &s)),
-            ["jpg", "webp", "bmp", "gif", "tiff", "ico"]
+            ["jpg", "webp", "bmp", "gif", "tiff", "ico", "avif", "pdf"]
         );
         s.menu.sort = MenuSort::Alphabetical;
         assert_eq!(
             exts(verbs("png", &s)),
-            ["bmp", "gif", "ico", "jpg", "tiff", "webp"]
+            ["avif", "bmp", "gif", "ico", "jpg", "pdf", "tiff", "webp"]
         );
         s.enabled_targets = vec!["jpg".into(), "wav".into()];
         assert_eq!(verbs("png", &s), [Format::Jpg]);
@@ -243,7 +244,7 @@ mod tests {
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         assert!(png.get_value::<String, _>("Icon").is_err());
         assert!(png
-            .open_subkey(r"shell\00_bmp")
+            .open_subkey(r"shell _avif")
             .unwrap()
             .get_value::<String, _>("Icon")
             .is_err());
@@ -258,7 +259,10 @@ mod tests {
         assert_eq!(label(Format::Jpg, Lang::Tr), "JPG olarak dönüştür");
         let root = test_root("d");
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-        for (lang, want) in [(Lang::En, "Convert to JPG"), (Lang::Tr, "JPG olarak dönüştür")] {
+        for (lang, want) in [
+            (Lang::En, "Convert to JPG"),
+            (Lang::Tr, "JPG olarak dönüştür"),
+        ] {
             let s = Settings {
                 language: lang,
                 ..ready(false)

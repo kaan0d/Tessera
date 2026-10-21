@@ -1,9 +1,23 @@
+//! Conversion engine.
+//!
+//! Presets and the UI describe a job with [`Options`]: start from `Options::default()` (or
+//! `Options::from(..)` in settings) and chain the builder methods, e.g.
+//! `Options::default().resize(Resize::MaxEdge(1280)).max_bytes(200_000).strip_metadata(true)`.
+//! Every value is clamped by [`Options::clamped`] before use, so out-of-range input from a
+//! preset or settings file is safe. Then call [`convert`] (pure-Rust paths) or
+//! [`ffmpeg::convert_with_ffmpeg`] when [`uses_ffmpeg`] says so.
+
 mod audio;
 mod error;
 pub mod ffmpeg;
 mod image;
 pub mod output;
+pub mod pdf;
+mod raw;
 pub mod security;
+mod size;
+mod svg;
+mod transform;
 
 use std::path::{Path, PathBuf};
 
@@ -11,6 +25,7 @@ use serde::{Deserialize, Serialize};
 
 pub use error::{ConvertError, PathIssue};
 pub use output::{Conflict, OutDir, OutputParams};
+pub use transform::{Fit, Resize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Format {
@@ -21,6 +36,15 @@ pub enum Format {
     Gif,
     Tiff,
     Ico,
+    Avif,
+    /// Source only (decoded through ffmpeg).
+    Heic,
+    /// Source only: rasterized SVG.
+    Svg,
+    /// Source only: dng cr2 cr3 nef arw orf rw2 raf (embedded preview, see `raw.rs`).
+    Raw,
+    /// Target for any image; source: page `Options::page`.
+    Pdf,
     Wav,
     Flac,
     Mp3,
@@ -33,7 +57,8 @@ pub enum Format {
     Mov,
 }
 
-const IMAGES: [Format; 7] = [
+/// Raster formats that work as source and target.
+const IMAGES: [Format; 8] = [
     Format::Png,
     Format::Jpg,
     Format::Webp,
@@ -41,7 +66,10 @@ const IMAGES: [Format; 7] = [
     Format::Gif,
     Format::Tiff,
     Format::Ico,
+    Format::Avif,
 ];
+/// Image sources that cannot be written.
+const IMAGE_ONLY_SOURCES: [Format; 3] = [Format::Heic, Format::Svg, Format::Raw];
 const AUDIO: [Format; 5] = [
     Format::Wav,
     Format::Flac,
@@ -76,6 +104,11 @@ impl Format {
             "gif" => Format::Gif,
             "tif" | "tiff" => Format::Tiff,
             "ico" => Format::Ico,
+            "avif" => Format::Avif,
+            "heic" | "heif" => Format::Heic,
+            "svg" => Format::Svg,
+            "dng" | "cr2" | "cr3" | "nef" | "arw" | "orf" | "rw2" | "raf" => Format::Raw,
+            "pdf" => Format::Pdf,
             "wav" => Format::Wav,
             "flac" => Format::Flac,
             "mp3" => Format::Mp3,
@@ -90,7 +123,7 @@ impl Format {
         })
     }
 
-    /// Extension used for output files.
+    /// Extension used for output files (`Raw` is never an output; "dng" stands for the family).
     pub fn ext(self) -> &'static str {
         match self {
             Format::Png => "png",
@@ -100,6 +133,11 @@ impl Format {
             Format::Gif => "gif",
             Format::Tiff => "tiff",
             Format::Ico => "ico",
+            Format::Avif => "avif",
+            Format::Heic => "heic",
+            Format::Svg => "svg",
+            Format::Raw => "dng",
+            Format::Pdf => "pdf",
             Format::Wav => "wav",
             Format::Flac => "flac",
             Format::Mp3 => "mp3",
@@ -113,26 +151,30 @@ impl Format {
         }
     }
 
+    /// Pictures: raster formats plus SVG, HEIC and RAW sources.
     pub fn is_image(self) -> bool {
-        IMAGES.contains(&self)
+        IMAGES.contains(&self) || IMAGE_ONLY_SOURCES.contains(&self)
     }
 
     pub fn is_video(self) -> bool {
         VIDEO.contains(&self)
     }
 
-    /// "image" | "audio" | "video"
+    /// "image" | "audio" | "video" | "document"
     pub fn kind(self) -> &'static str {
         if self.is_image() {
             "image"
         } else if self.is_video() {
             "video"
+        } else if self == Format::Pdf {
+            "document"
         } else {
             "audio"
         }
     }
 
-    pub const ALL: [Format; 17] = [
+    /// Every output format (what the settings grid lists). Source-only formats are not here.
+    pub const ALL: [Format; 19] = [
         Format::Png,
         Format::Jpg,
         Format::Webp,
@@ -140,6 +182,8 @@ impl Format {
         Format::Gif,
         Format::Tiff,
         Format::Ico,
+        Format::Avif,
+        Format::Pdf,
         Format::Wav,
         Format::Flac,
         Format::Mp3,
@@ -157,7 +201,7 @@ impl Format {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Quality {
-    /// 1..=100
+    /// 1..=100 (JPEG; also the AVIF quality and the JPEG quality inside PDFs)
     pub jpeg: u8,
     /// lame VBR `-q:a`, 0 (best) ..= 9
     pub mp3_q: u8,
@@ -197,10 +241,89 @@ impl Quality {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+/// Everything a job can ask for. `Default` changes nothing: no transform, orientation
+/// baked into pixels, metadata never copied.
+#[derive(Debug, Clone)]
 pub struct Options {
     pub quality: Quality,
     pub output: OutputParams,
+    /// Size rule for image and PDF/SVG outputs, and a scale filter for video targets.
+    pub resize: Option<Resize>,
+    /// Output carries no EXIF/GPS/XMP/comments. The image encoders never write metadata,
+    /// so this matters for ICC in JPEG-in-PDF and for ffmpeg outputs (container tags).
+    pub strip_metadata: bool,
+    /// Apply the EXIF orientation to the pixels before the (EXIF-free) output is written,
+    /// so photos do not come out sideways. On by default; turning it off is for tests.
+    pub preserve_orientation: bool,
+    /// Compress to at most this many bytes: JPEG/AVIF quality search, then downscaling;
+    /// bitrate from the duration for video, MP3, OGG, AAC. WAV, FLAC and GIF cannot trade
+    /// quality for size, so they fail with `TargetSize` when over the limit.
+    /// Fails with `ConvertError::TargetSize` when it cannot be met.
+    pub max_bytes: Option<u64>,
+    /// PDF source: page to render, 1-based.
+    pub page: u32,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Options {
+            quality: Quality::default(),
+            output: OutputParams::default(),
+            resize: None,
+            strip_metadata: false,
+            preserve_orientation: true,
+            max_bytes: None,
+            page: 1,
+        }
+    }
+}
+
+impl Options {
+    pub fn resize(mut self, r: Resize) -> Self {
+        self.resize = Some(r);
+        self
+    }
+
+    pub fn strip_metadata(mut self, on: bool) -> Self {
+        self.strip_metadata = on;
+        self
+    }
+
+    pub fn max_bytes(mut self, n: u64) -> Self {
+        self.max_bytes = Some(n);
+        self
+    }
+
+    pub fn quality(mut self, q: Quality) -> Self {
+        self.quality = q;
+        self
+    }
+
+    pub fn output(mut self, o: OutputParams) -> Self {
+        self.output = o;
+        self
+    }
+
+    pub fn page(mut self, n: u32) -> Self {
+        self.page = n;
+        self
+    }
+
+    /// Every field pinned to its valid range (`convert` does this itself).
+    pub fn clamped(&self) -> Self {
+        Options {
+            quality: self.quality.clamped(),
+            resize: self.resize.map(Resize::clamped),
+            max_bytes: self.max_bytes.map(|n| n.max(1)),
+            page: self.page.max(1),
+            ..self.clone()
+        }
+    }
+
+    /// True when the job changes the content (so same-format output is meaningful).
+    pub fn transforms(&self) -> bool {
+        self.resize.is_some() || self.strip_metadata || self.max_bytes.is_some()
+    }
 }
 
 /// Targets whose encoder is not in this crate (done by ffmpeg).
@@ -210,18 +333,22 @@ pub fn needs_ffmpeg(target: Format) -> bool {
 }
 
 /// True when the conversion runs through ffmpeg: a video source (even for WAV/FLAC/GIF
-/// output) or a target the pure-Rust engine cannot write.
+/// output), a HEIC/AVIF source (decoded by ffmpeg) or a target the pure-Rust engine
+/// cannot write.
 pub fn uses_ffmpeg(src: Format, target: Format) -> bool {
-    src.is_video() || needs_ffmpeg(target)
+    src.is_video() || matches!(src, Format::Heic | Format::Avif) || needs_ffmpeg(target)
 }
 
 /// Targets offered for a source extension (empty if the extension is unknown).
-/// Includes ffmpeg-only targets; filter with `needs_ffmpeg` when ffmpeg is missing.
+/// Includes ffmpeg-only targets; filter with `uses_ffmpeg` when ffmpeg is missing.
 pub fn supported_targets(ext: &str) -> Vec<Format> {
     let Some(src) = Format::from_ext(ext) else {
         return vec![];
     };
+    let pdf = [Format::Pdf];
     let (family, extra): (&[Format], &[Format]) = if src.is_image() {
+        (&IMAGES, &pdf)
+    } else if src == Format::Pdf {
         (&IMAGES, &[])
     } else if src.is_video() {
         (&VIDEO, &FROM_VIDEO)
@@ -236,6 +363,13 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
         .collect()
 }
 
+/// `supported_targets` plus same-format output for raster images when the job transforms
+/// them (resize, size limit, strip), which is how "shrink this JPEG" works.
+pub fn allows(ext: &str, from: Format, target: Format, opts: &Options) -> bool {
+    supported_targets(ext).contains(&target)
+        || (target == from && IMAGES.contains(&from) && opts.transforms())
+}
+
 /// Converts `input` to `target`, returning the written file's path.
 /// `progress` receives 0.0..=1.0.
 pub fn convert(
@@ -244,9 +378,10 @@ pub fn convert(
     opts: &Options,
     mut progress: impl FnMut(f32),
 ) -> Result<PathBuf, ConvertError> {
+    let opts = &opts.clamped();
     let (src, from) = security::validate_input(input)?;
     let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
-    if !supported_targets(ext).contains(&target) {
+    if !allows(ext, from, target, opts) {
         return Err(ConvertError::Unsupported);
     }
     if uses_ffmpeg(from, target) {
@@ -256,12 +391,20 @@ pub fn convert(
     let dest = output::plan(&src, target.ext(), &opts.output)?;
     progress(0.0);
     output::write_atomic(&dest, |w| {
-        if from.is_image() {
-            image::convert(&src, target, opts.quality.jpeg, w)
+        if from.is_image() || from == Format::Pdf {
+            let photo = matches!(from, Format::Jpg | Format::Raw);
+            image::convert(&src, from, target, photo, opts, w)
         } else {
             audio::convert(&src, ext, target, w, &mut progress)
         }
     })?;
+    // the pure-Rust audio writers (WAV, FLAC) cannot trade quality for size
+    if let (Some(max), false) = (opts.max_bytes, from.is_image() || from == Format::Pdf) {
+        if std::fs::metadata(&dest)?.len() > max {
+            let _ = std::fs::remove_file(&dest);
+            return Err(ConvertError::TargetSize);
+        }
+    }
     if opts.output.conflict == Conflict::ReplaceOriginal {
         output::recycle(&src)?;
     }
@@ -277,7 +420,8 @@ mod tests {
     fn format_matrix() {
         let t = supported_targets("JPEG");
         assert!(!t.contains(&Format::Jpg));
-        assert!(t.contains(&Format::Png) && t.contains(&Format::Ico) && t.len() == 6);
+        assert!(t.contains(&Format::Png) && t.contains(&Format::Ico) && t.len() == 8);
+        assert!(t.contains(&Format::Avif) && t.contains(&Format::Pdf));
         assert!(supported_targets("tif").contains(&Format::Webp));
         let a = supported_targets("mp3");
         assert_eq!(a, vec![Format::Wav, Format::Flac, Format::Ogg]);
