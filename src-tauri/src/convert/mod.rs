@@ -271,6 +271,8 @@ pub struct Options {
     /// quality for size, so they fail with `TargetSize` when over the limit.
     /// Fails with `ConvertError::TargetSize` when it cannot be met.
     pub max_bytes: Option<u64>,
+    /// Video targets: leave the audio track out.
+    pub no_audio: bool,
     /// PDF source: page to render, 1-based.
     pub page: u32,
     /// Set from another thread to stop a running job: decode/encode loops, every image of a
@@ -290,6 +292,7 @@ impl Default for Options {
             strip_metadata: false,
             preserve_orientation: true,
             max_bytes: None,
+            no_audio: false,
             page: 1,
             cancel: None,
             ffmpeg: None,
@@ -366,7 +369,7 @@ impl Options {
 
     /// True when the job changes the content (so same-format output is meaningful).
     pub fn transforms(&self) -> bool {
-        self.resize.is_some() || self.strip_metadata || self.max_bytes.is_some()
+        self.resize.is_some() || self.strip_metadata || self.max_bytes.is_some() || self.no_audio
     }
 }
 

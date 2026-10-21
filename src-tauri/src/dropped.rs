@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::convert::combine::{MergeKind, MAX_FILES as MERGE_MAX};
 use crate::convert::{needs_ffmpeg, supported_targets, uses_ffmpeg, Format};
 use crate::folder;
+use crate::preset::PresetOptions;
 use crate::settings::Settings;
 
 /// Most files one drop handles (same cap as a folder verb).
@@ -18,9 +19,20 @@ pub const MAX_FILES: usize = folder::MAX_FILES;
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Choice {
-    Target { target: String },
-    Preset { id: String },
-    Merge { merge: String },
+    Target {
+        target: String,
+    },
+    Preset {
+        id: String,
+    },
+    Merge {
+        merge: String,
+    },
+    /// One-off settings from the chooser's custom page. `target` is a format or "same".
+    Custom {
+        target: String,
+        options: PresetOptions,
+    },
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -28,7 +40,8 @@ pub struct DropTarget {
     pub ext: &'static str,
     pub kind: &'static str,
     pub needs_ffmpeg: bool,
-    /// Switched on in the settings and, when it needs ffmpeg, ffmpeg is ready.
+    /// When it needs ffmpeg, ffmpeg is ready. (Formats switched off in the settings are not
+    /// offered at all.)
     pub allowed: bool,
 }
 
@@ -114,6 +127,7 @@ pub fn choices(files: &[PathBuf], s: &Settings) -> Choices {
         Format::ALL
             .iter()
             .copied()
+            .filter(|t| s.target_enabled(*t))
             .filter(|t| {
                 known
                     .iter()
@@ -125,7 +139,7 @@ pub fn choices(files: &[PathBuf], s: &Settings) -> Choices {
                     ext: t.ext(),
                     kind: t.kind(),
                     needs_ffmpeg: ff,
-                    allowed: s.target_enabled(t) && (s.ffmpeg_ready || !ff),
+                    allowed: s.ffmpeg_ready || !ff,
                 }
             })
             .collect()
@@ -211,8 +225,9 @@ mod tests {
         };
         let c = choices(&p(&["a.wav"]), &s);
         assert_eq!(get(&c, "mp3"), Some(true));
-        assert_eq!(get(&c, "flac"), Some(false)); // listed, but switched off
-                                                  // a single file never offers a merge
+        assert_eq!(get(&c, "flac"), None); // switched off in the settings: not offered
+        assert_eq!(exts(&c), ["mp3"]);
+        // a single file never offers a merge
         assert!(c.merge.is_empty());
     }
 

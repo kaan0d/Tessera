@@ -44,6 +44,8 @@ pub struct Extra {
     pub video_bps: Option<u64>,
     /// Audio bitrate in bit/s (replaces the quality-based default).
     pub audio_bps: Option<u64>,
+    /// Video targets: no audio track in the output.
+    pub no_audio: bool,
 }
 
 /// ffmpeg scale/crop filters for a resize rule; sides come out even where the rule allows
@@ -169,6 +171,15 @@ fn codec_args(t: Format, q: &Quality, x: &Extra) -> Vec<String> {
         Format::Flac => v(&["-vn", "-map", "0:a:0", "-c:a", "flac"]),
         _ => return vec![],
     };
+    if x.no_audio && t.is_video() {
+        if let Some(i) = a
+            .windows(2)
+            .position(|w| w[0] == "-map" && w[1] == "0:a:0?")
+        {
+            a.drain(i..i + 2);
+        }
+        a.push("-an".to_string());
+    }
     if x.strip {
         a.extend(v(&[
             "-map_metadata",
@@ -421,13 +432,15 @@ pub fn convert_with_ffmpeg(
         let mut x = Extra {
             resize: opts.resize,
             strip: opts.strip_metadata,
+            no_audio: opts.no_audio,
             ..Extra::default()
         };
         if let Some(max) = opts.max_bytes {
             if target.is_video() || matches!(target, Format::Mp3 | Format::Ogg | Format::Aac) {
                 let p = probe(ffmpeg, &src)?;
                 let d = p.duration_us.ok_or(ConvertError::TargetSize)?;
-                let b = plan_bitrates(max, d, target, p.has_audio, &opts.quality)?;
+                let b =
+                    plan_bitrates(max, d, target, p.has_audio && !opts.no_audio, &opts.quality)?;
                 (x.video_bps, x.audio_bps) = (b.video_bps, b.audio_bps);
             }
         }
@@ -768,6 +781,21 @@ mod tests {
 ",
         );
         assert_eq!(p, Probe::default());
+    }
+
+    #[test]
+    fn no_audio_drops_the_audio_track_of_video_targets() {
+        let x = Extra {
+            no_audio: true,
+            ..Extra::default()
+        };
+        for t in [Format::Mp4, Format::Webm, Format::Avi] {
+            let args = codec_args(t, &Quality::default(), &x);
+            assert!(args.contains(&"-an".to_string()), "{t:?}");
+            assert!(!args.contains(&"0:a:0?".to_string()), "{t:?}");
+        }
+        let kept = codec_args(Format::Mp4, &Quality::default(), &Extra::default());
+        assert!(kept.contains(&"0:a:0?".to_string()));
     }
 
     #[test]

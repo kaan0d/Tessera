@@ -313,6 +313,7 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "That choice does not fit the selected files",
         "Bu seçim seçilen dosyalara uymuyor",
     ),
+    ("drop.custom_name", "Custom settings", "Özel ayar"),
     // commands
     (
         "cmd.autostart",

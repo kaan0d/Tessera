@@ -22,6 +22,8 @@ pub struct PresetOptions {
     pub jpeg_quality: Option<u8>,
     /// 1..=30, overrides the settings video bitrate.
     pub video_mbps: Option<u8>,
+    /// Video outputs get no audio track.
+    pub no_audio: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -161,6 +163,7 @@ impl Preset {
         o.resize = p.resize;
         o.strip_metadata = p.strip_metadata;
         o.max_bytes = p.max_bytes;
+        o.no_audio = p.no_audio;
         if let Some(q) = p.jpeg_quality {
             o.quality.jpeg = q;
             o.quality.webp = q;
@@ -240,7 +243,8 @@ impl Preset {
         o.max_bytes = o.max_bytes.map(|n| n.max(1));
         o.jpeg_quality = o.jpeg_quality.map(|q| q.clamp(1, 100));
         o.video_mbps = o.video_mbps.map(|q| q.clamp(1, 30));
-        let transforms = o.resize.is_some() || o.strip_metadata || o.max_bytes.is_some();
+        let transforms =
+            o.resize.is_some() || o.strip_metadata || o.max_bytes.is_some() || o.no_audio;
         let keeps = self.target == "same" || self.video_target.as_deref() == Some("same");
         if keeps && !transforms {
             return bad("preset.same_needs_option");

@@ -627,6 +627,14 @@ fn start_preset(app: &AppHandle, id: &str, files: Vec<PathBuf>) {
         );
         return;
     };
+    run_preset(app, p, files);
+}
+
+/// Runs `p` over `files` through the queue (also used for one-off presets from the chooser).
+fn run_preset(app: &AppHandle, p: preset::Preset, files: Vec<PathBuf>) {
+    let state = app.state::<AppState>();
+    let s = state.settings.lock().unwrap().clone();
+    let lang = s.language;
     let opts = p.options_for(&s);
     let (mut specs, mut skipped) = (vec![], 0);
     for path in files {
@@ -794,6 +802,29 @@ fn run_drop(
                 return bad();
             };
             start_merge(&app, kind, known);
+        }
+        dropped::Choice::Custom { target, options } => {
+            let same = target == "same";
+            if !same
+                && !Format::from_ext(&target).is_some_and(|f| {
+                    f.ext() == target && c.targets.iter().any(|x| x.ext == f.ext() && x.allowed)
+                })
+            {
+                return bad();
+            }
+            let mut p = preset::Preset {
+                id: "custom".into(),
+                custom_name: Some(t(lang, "drop.custom_name").to_string()),
+                kinds: c.kinds.iter().map(|k| k.to_string()).collect(),
+                target,
+                options,
+                ..preset::Preset::default()
+            };
+            // same clamping as a saved preset; "same" without any change is refused there
+            if p.validate(lang).is_err() {
+                return bad();
+            }
+            run_preset(&app, p, known);
         }
     }
     close_drop(&app);
