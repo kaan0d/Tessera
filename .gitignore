@@ -8,3 +8,4 @@ dist/
 
 # local notes
 development/
+src-tauri/tests
