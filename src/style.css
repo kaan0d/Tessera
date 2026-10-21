@@ -623,7 +623,7 @@ body.busy .dr-stack .s0 .outline,body.busy .dr-stack .s0 .fold{stroke:var(--acce
 .dr-skip{display:flex;align-items:flex-start;gap:8px;margin:0 20px 6px;padding:7px 10px;border-radius:var(--r-md);font-size:var(--t-xs);
   background:var(--warn-bg);color:var(--warn-ink);border:1px solid var(--warn-line)}
 .dr-skip .ic{width:14px;height:14px;margin-top:1px}
-.dr-body{grid-row:3;min-height:0;overflow-y:auto;overflow-x:hidden;padding:6px 20px 18px;scrollbar-width:thin;border-top:1px solid var(--line)}
+.dr-body{grid-row:3;min-height:0;overflow-y:auto;overflow-x:hidden;padding:6px 10px 18px 20px;border-top:1px solid var(--line)}
 .dr-q{font-size:var(--t-lg);font-weight:600;line-height:1.3;margin:8px 0 12px}
 .dr-sec+.dr-sec{margin-top:18px}
 .dr-sec-title{margin:0 0 8px;font-size:var(--t-sm);font-weight:600;color:var(--muted)}
@@ -759,3 +759,14 @@ html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 .ff .bar{height:8px}
 #p-hint{padding-left:var(--s4)}
 .tile img{width:22px;height:22px}
+
+/* scrollbars: one slim rounded thumb on a transparent track, no arrow buttons (WebView2 would
+   draw the classic Windows one). Elements with `scrollbar-width:none` stay hidden. */
+::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-strong);border:3px solid transparent;background-clip:content-box;border-radius:999px;
+  transition:background var(--d2)}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:content-box}
+::-webkit-scrollbar-thumb:active{background:var(--accent);background-clip:content-box}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+::-webkit-scrollbar-corner{background:transparent}
