@@ -96,7 +96,8 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
             .copied()
             .filter(|f| {
                 if audio {
-                    f.kind() == "audio"
+                    // AAC is only offered for video sources
+                    f.kind() == "audio" && *f != Format::Aac
                 } else {
                     f.is_image()
                 }
@@ -660,7 +661,9 @@ mod tests {
         // ffmpeg ready adds mp3 and ogg
         install_at(&root, exe, &ready(true)).unwrap();
         let menu = hkcu.open_subkey(folder_key(&root)).unwrap();
-        assert!(verb_names(&menu).iter().any(|n| n.ends_with("_mp3")));
+        let names = verb_names(&menu);
+        assert!(names.iter().any(|n| n.ends_with("_mp3")));
+        assert!(!names.iter().any(|n| n.ends_with("_aac")));
 
         // switched off: the key is gone, the file menus stay
         let mut off = ready(true);
