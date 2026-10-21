@@ -242,6 +242,12 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Klasör izlenemedi: {err}",
     ),
     ("watch.label", "Watch: {folder}", "İzleme: {folder}"),
+    // command line
+    (
+        "cli.no_ffmpeg",
+        "This conversion needs ffmpeg, which is not installed. Start the app once so it can install it.",
+        "Bu dönüşüm için ffmpeg gerekiyor ama kurulu değil. Kurması için uygulamayı bir kez başlatın.",
+    ),
     // tray
     ("tray.open", "Settings", "Ayarlar"),
     ("tray.quit", "Quit", "Çıkış"),

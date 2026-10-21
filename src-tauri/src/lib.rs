@@ -3,6 +3,7 @@ pub mod batch;
 pub mod cli;
 pub mod convert;
 pub mod ffmpeg;
+pub mod headless;
 pub mod history;
 pub mod i18n;
 pub mod panel;
@@ -677,6 +678,11 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
 pub fn run() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let cmd = cli::parse(&args, None);
+    // subcommands never reach the Tauri runtime
+    let cmd = match cmd {
+        Cli::Cmd(c) => std::process::exit(headless::run(c)),
+        other => other,
+    };
     if let Some(code) = run_headless(&cmd) {
         std::process::exit(code);
     }
