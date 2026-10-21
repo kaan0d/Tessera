@@ -163,7 +163,10 @@ function buildKinds(box, items, sources) {
     row.className = 'row top-align kind';
     const tile = document.createElement('span');
     tile.className = 'tile';
-    tile.append(icon(ic));
+    const pic = document.createElement('img');
+    pic.src = `kinds/${kind}.svg`;
+    pic.alt = '';
+    tile.append(pic);
     const grow = document.createElement('div');
     grow.className = 'grow';
     const line = document.createElement('div');

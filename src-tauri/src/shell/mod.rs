@@ -1,5 +1,6 @@
 //! HKCU-only Explorer context menu and autostart. No admin rights needed.
 
+use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -139,25 +140,41 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
     vec![targets(false), presets, targets(true)]
 }
 
-/// Stock Windows icon for a verb, so each menu line shows what it does (`imageres.dll` indices
-/// are stable across Windows 10 and 11). `name` is the verb key without its position prefix.
-fn verb_icon(name: &str) -> String {
-    let index = match name {
-        "preset_web" => 170,
-        "preset_whatsapp" | "preset_discord" => 166,
-        "preset_email" => 15,
-        "preset_strip" => 73,
-        "preset_pdf" => 85,
-        "merge_pdf" | "merge_audio" => 245,
-        n if n.starts_with("preset_") => 322,
-        n => match Format::from_ext(n).map(Format::kind) {
-            Some("image") => 108,
-            Some("video") => 178,
-            Some("document") => 85,
-            _ => 206,
-        },
+/// Menu icon files, one per source kind (transparent .ico, brand colours).
+const KIND_ICONS: [(&str, &[u8]); 4] = [
+    ("image", include_bytes!("../../menu-icons/image.ico")),
+    ("audio", include_bytes!("../../menu-icons/audio.ico")),
+    ("video", include_bytes!("../../menu-icons/video.ico")),
+    ("document", include_bytes!("../../menu-icons/document.ico")),
+];
+
+/// Writes the kind icons next to the settings; Explorer reads them by path. A failed write only
+/// costs the icon, never the menu.
+fn write_kind_icons(dir: &Path) {
+    let _ = fs::create_dir_all(dir);
+    for (kind, bytes) in KIND_ICONS {
+        let file = dir.join(format!("{kind}.ico"));
+        if fs::read(&file).ok().as_deref() != Some(bytes) {
+            let _ = fs::write(file, bytes);
+        }
+    }
+}
+
+/// Icon path for a verb: the kind it produces or works on. `name` is the verb key without its
+/// position prefix (`jpg`, `preset_web`, `merge_pdf`).
+fn verb_icon(dir: &Path, name: &str, s: &Settings) -> String {
+    let kind = if let Some(id) = name.strip_prefix("preset_") {
+        preset::find(s, id)
+            .and_then(|p| p.kinds.first().cloned())
+            .unwrap_or_else(|| "image".into())
+    } else if let Some(k) = name.strip_prefix("merge_") {
+        if k == "pdf" { "document" } else { "audio" }.into()
+    } else {
+        Format::from_ext(name).map_or("image", Format::kind).into()
     };
-    format!("imageres.dll,{index}")
+    dir.join(format!("{kind}.ico"))
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// Registers the cascading menu under `root` (idempotent: starts from a clean slate).
@@ -169,6 +186,10 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
     }
     remove_at(root)?;
     let icon = format!(r#""{exe}",0"#);
+    let icons = crate::settings::data_dir().join("menu-icons");
+    if s.menu.icons {
+        write_kind_icons(&icons);
+    }
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     for ext in EXTS {
         let targets = verbs(ext, s);
@@ -225,7 +246,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                     verb.set_value("CommandFlags", &0x20u32)?;
                 }
                 if s.menu.icons {
-                    verb.set_value("Icon", &verb_icon(&name))?;
+                    verb.set_value("Icon", &verb_icon(&icons, &name, s))?;
                 }
                 let (cmd, _) = verb.create_subkey("command")?;
                 cmd.set_value("", &format!(r#""{exe}" {args} "%1""#))?;
@@ -254,7 +275,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                     verb.set_value("CommandFlags", &0x20u32)?;
                 }
                 if s.menu.icons {
-                    verb.set_value("Icon", &verb_icon(&name))?;
+                    verb.set_value("Icon", &verb_icon(&icons, &name, s))?;
                 }
                 let (cmd, _) = verb.create_subkey("command")?;
                 cmd.set_value("", &format!(r#""{exe}" --folder {} "%1""#, action.arg()))?;
@@ -442,10 +463,10 @@ mod tests {
         );
         // png's first target is jpg
         let verb = png.open_subkey(r"shell\00_jpg").unwrap();
-        assert_eq!(
-            verb.get_value::<String, _>("Icon").unwrap(),
-            "imageres.dll,108"
-        );
+        assert!(verb
+            .get_value::<String, _>("Icon")
+            .unwrap()
+            .ends_with(r"menu-icons\image.ico"));
         assert_eq!(
             verb.open_subkey("command")
                 .unwrap()

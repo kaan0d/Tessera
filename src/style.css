@@ -757,3 +757,4 @@ html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 /* settings ffmpeg card bar: thicker so it reads */
 .ff .bar{height:8px}
 #p-hint{padding-left:var(--s4)}
+.tile img{width:22px;height:22px}
