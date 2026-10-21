@@ -34,3 +34,7 @@ strip = true
 
 [dev-dependencies]
 tempfile = "3"
+
+[[test]]
+name = "convert"
+path = "../development/tests/convert.rs"
