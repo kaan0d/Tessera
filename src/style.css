@@ -381,7 +381,7 @@ body.prog .p-card.leaving{animation:toast-out 340ms var(--ease) forwards}
 .p-timer{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--accent);opacity:0;transform-origin:left;
   transition-property:scale,opacity;transition-timing-function:linear}
 .p-timer.run{opacity:.7;scale:0 1}
-.p-head{flex:none;height:66px;display:flex;align-items:center;gap:var(--s3);padding:0 var(--s4);position:relative;
+.p-head{flex:none;height:64px;display:flex;align-items:center;gap:var(--s3);padding:0 var(--s4);position:relative;
   background:linear-gradient(180deg,var(--accent-soft),transparent)}
 .p-head .mark{width:30px;height:30px;border-radius:9px;box-shadow:0 3px 8px var(--accent-ink)}
 .p-title{font-family:var(--font-display);font-size:var(--t-lg);font-weight:600;line-height:1.25;letter-spacing:-.005em}
@@ -391,10 +391,10 @@ body.prog .p-card.leaving{animation:toast-out 340ms var(--ease) forwards}
 .p-head .bar{position:absolute;left:0;right:0;bottom:0;margin:0;height:2px;border-radius:0;background:var(--line)}
 .p-head .bar>span{border-radius:0}
 .p-head.done .p-pct{display:none}
-.jobs{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;list-style:none;margin:0;padding:0}
+.jobs{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;list-style:none;margin:0;padding:0}
 .job{display:grid;grid-template-rows:1fr;transition:grid-template-rows var(--d3) var(--ease),opacity var(--d2)}
 .job>div{min-height:0;overflow:hidden}
-.job-in{height:44px;display:flex;align-items:center;gap:var(--s3);padding:0 var(--s2) 0 var(--s4)}
+.job-in{box-sizing:border-box;height:44px;display:flex;align-items:center;gap:var(--s3);padding:0 var(--s2) 0 var(--s4)}
 .job+.job .job-in{border-top:1px solid var(--line)}
 .job .sheet{width:24px;height:29px;flex:none}
 .job .name{font-size:var(--t-sm);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
