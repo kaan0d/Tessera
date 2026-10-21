@@ -1,5 +1,87 @@
 <!doctype html>
 <html lang="tr">
-<head><meta charset="utf-8"><title>DonusturX</title></head>
-<body></body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>DonusturX</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<main>
+  <header class="top">
+    <h1 id="app-title"></h1>
+    <span id="saved" class="saved" role="status" aria-live="polite"></span>
+  </header>
+  <p id="error" class="error" role="alert" hidden></p>
+
+  <section class="card" aria-labelledby="h-genel">
+    <h2 id="h-genel">Genel</h2>
+    <div class="row">
+      <label for="autostart" class="grow">Windows ile başlat</label>
+      <input type="checkbox" id="autostart" class="switch" role="switch">
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-cikti">
+    <h2 id="h-cikti">Çıktı</h2>
+    <fieldset>
+      <legend class="sr">Kayıt konumu</legend>
+      <label class="radio"><input type="radio" name="dir" value="same_as_source"> Kaynak dosyanın klasörüne kaydet</label>
+      <div class="radio">
+        <label><input type="radio" name="dir" value="fixed"> Sabit klasör</label>
+        <button type="button" id="pick" class="btn">Seç</button>
+      </div>
+      <p id="path" class="muted path" hidden></p>
+    </fieldset>
+    <div class="row field">
+      <label for="conflict" class="grow">Aynı adlı dosya varsa</label>
+      <select id="conflict">
+        <option value="auto_rename">Ad ekle: dosya (1)</option>
+        <option value="overwrite">Üzerine yaz</option>
+        <option value="replace_original">Orijinali silip yerine koy</option>
+      </select>
+    </div>
+    <p id="warn" class="warn" role="note" hidden>Dikkat: dönüştürme bitince orijinal dosya Geri Dönüşüm Kutusu'na taşınır ve yerine yeni dosya konur.</p>
+  </section>
+
+  <section class="card" aria-labelledby="h-kalite">
+    <h2 id="h-kalite">Kalite</h2>
+    <div class="row">
+      <label for="quality" class="grow">JPEG kalitesi</label>
+      <output id="qval" for="quality" class="val">85</output>
+    </div>
+    <input type="range" id="quality" min="1" max="100" step="1">
+  </section>
+
+  <section class="card" aria-labelledby="h-ffmpeg">
+    <h2 id="h-ffmpeg">Video ve ses (ffmpeg)</h2>
+    <p id="ff-status" class="status" role="status">Durum denetleniyor…</p>
+    <progress id="ff-bar" max="100" value="0" hidden aria-label="ffmpeg indirme ilerlemesi"></progress>
+    <p class="muted">ffmpeg ücretsiz ve açık kaynaklı bir araçtır. Video, MP3 ve OGG dönüştürme için gereklidir; gerektiğinde otomatik olarak indirilir. Resim dönüştürme için gerekmez.</p>
+  </section>
+
+  <section class="card" aria-labelledby="h-menu">
+    <h2 id="h-menu">Sağ tık menüsü</h2>
+    <div class="actions">
+      <button type="button" id="menu-add" class="btn primary">Menüyü yeniden kaydet</button>
+      <button type="button" id="menu-del" class="btn">Menüyü kaldır</button>
+    </div>
+    <p id="toast" class="status" role="status" aria-live="polite"></p>
+    <p class="muted">Windows 11'de menü, sağ tıkta "Daha fazla seçenek göster" altında görünür.</p>
+  </section>
+</main>
+
+<div id="modal" class="backdrop" hidden>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="m-title" aria-describedby="m-text">
+    <h2 id="m-title">Orijinali silip yerine koy?</h2>
+    <p id="m-text">Dönüştürülen dosyanın yerine geçen orijinal dosya Geri Dönüşüm Kutusu'na taşınır. Bu seçeneği açmak istiyor musunuz?</p>
+    <div class="actions end">
+      <button type="button" id="m-no" class="btn">Vazgeç</button>
+      <button type="button" id="m-yes" class="btn danger">Evet, aç</button>
+    </div>
+  </div>
+</div>
+</body>
 </html>
