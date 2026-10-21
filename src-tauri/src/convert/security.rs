@@ -30,6 +30,15 @@ pub fn validate_output_dir(dir: &Path) -> Result<PathBuf, ConvertError> {
     Ok(canon)
 }
 
+/// Canonical form of an existing local directory (no UNC/device paths); nothing is created.
+pub fn validate_dir(dir: &Path) -> Result<PathBuf, ConvertError> {
+    let canon = canonical(dir)?;
+    if !canon.is_dir() {
+        return Err(ConvertError::InvalidPath(PathIssue::NotDir));
+    }
+    Ok(canon)
+}
+
 fn reject_device(path: &Path) -> Result<(), ConvertError> {
     let s = path.to_string_lossy();
     if s.starts_with(r"\\") || s.starts_with("//") {

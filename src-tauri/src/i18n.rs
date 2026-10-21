@@ -200,6 +200,48 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Tarayıcı açılamadı",
     ),
     ("update.title", "Update available", "Güncelleme var"),
+    // folder watch
+    (
+        "watch.too_many",
+        "You can have at most {max} watch rules",
+        "En fazla {max} izleme kuralı olabilir",
+    ),
+    (
+        "watch.bad_id",
+        "A watch rule has an invalid or duplicate id",
+        "Bir izleme kuralının kimliği geçersiz ya da tekrarlanıyor",
+    ),
+    (
+        "watch.bad_folder",
+        "Pick a folder on a local drive: {folder}",
+        "Yerel bir sürücüdeki klasörü seçin: {folder}",
+    ),
+    (
+        "watch.forbidden_folder",
+        "This folder cannot be used for watching or output: {folder}",
+        "Bu klasör izleme veya çıktı için kullanılamaz: {folder}",
+    ),
+    (
+        "watch.bad_ext",
+        "Unknown file type in a watch rule: {ext}",
+        "İzleme kuralında bilinmeyen dosya türü: {ext}",
+    ),
+    (
+        "watch.bad_output",
+        "A watch rule has an invalid output location",
+        "Bir izleme kuralının çıktı konumu geçersiz",
+    ),
+    (
+        "watch.missing_folder",
+        "The folder does not exist: {folder}",
+        "Klasör bulunamadı: {folder}",
+    ),
+    (
+        "watch.start_failed",
+        "Could not watch the folder: {err}",
+        "Klasör izlenemedi: {err}",
+    ),
+    ("watch.label", "Watch: {folder}", "İzleme: {folder}"),
     // tray
     ("tray.open", "Settings", "Ayarlar"),
     ("tray.quit", "Quit", "Çıkış"),

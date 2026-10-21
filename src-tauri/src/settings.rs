@@ -10,6 +10,7 @@ use crate::i18n::Lang;
 use crate::panel::Corner;
 use crate::preset::{self, Preset};
 use crate::shell::EXTS;
+use crate::watch::{self, Watch};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -117,6 +118,8 @@ pub struct Settings {
     /// Record finished jobs in history.json.
     pub history_enabled: bool,
     pub updates: Updates,
+    /// Folder watch rules. Owned by `set_watch`; `set_settings` keeps them.
+    pub watch: Watch,
 }
 
 /// Current settings generation.
@@ -148,6 +151,7 @@ impl Default for Settings {
             hidden_presets: vec![],
             history_enabled: true,
             updates: Updates::default(),
+            watch: Watch::default(),
         }
     }
 }
@@ -180,6 +184,7 @@ impl Settings {
         self.presets
             .retain_mut(|p| p.validate(lang).is_ok() && seen.insert(p.id.clone()));
         self.presets.truncate(preset::MAX_CUSTOM);
+        self.watch.rules.truncate(watch::MAX_RULES);
         let known: Vec<String> = preset::all(&self).into_iter().map(|p| p.id).collect();
         clean_list(&mut self.hidden_presets, |id| known.iter().any(|k| k == id));
         self
@@ -437,7 +442,7 @@ mod tests {
         fs::write(&p, b"{}").unwrap();
         let s = load_from(&p);
         assert!(s.menu.presets_enabled && s.menu.merge && s.history_enabled);
-        assert!(!s.updates.check_on_start);
+        assert!(!s.updates.check_on_start && !s.watch.enabled && s.watch.rules.is_empty());
         assert!(s.presets.is_empty() && s.hidden_presets.is_empty());
     }
 

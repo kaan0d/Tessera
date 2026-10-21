@@ -287,6 +287,10 @@ fn worker(
             let _ = app.emit("history-changed", ());
         }
         cancels.lock().unwrap().remove(&job.id);
+        if let Some(out) = &done.output {
+            // watch rules must not pick our own output up again
+            crate::watch::note_output(std::path::Path::new(out));
+        }
         let lang = i18n::lang();
         let (title, body) = if done.ok {
             (t(lang, "notify.done_title"), done.name.clone())

@@ -11,6 +11,7 @@ pub mod queue;
 pub mod settings;
 pub mod shell;
 pub mod update;
+pub mod watch;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -37,6 +38,7 @@ struct AppState {
     queue: Queue,
     download: Arc<Download>,
     merges: Arc<Mutex<Collector>>,
+    watcher: Mutex<Option<watch::Running>>,
 }
 
 /// Milliseconds on a monotonic clock, for the merge collector.
@@ -126,6 +128,8 @@ fn set_settings(
     // presets are changed through their own commands
     new.presets = cur.presets.clone();
     new.hidden_presets = cur.hidden_presets.clone();
+    // watch rules are changed through set_watch
+    new.watch = cur.watch.clone();
     new.settings_version = settings::SETTINGS_VERSION;
     let lang = new.language;
     let msg = |key, e: std::io::Error| fmt(lang, key, &[("err", &e.to_string())]);
@@ -142,6 +146,8 @@ fn set_settings(
         i18n::set_lang(lang);
         let _ = set_tray_menu(&app, lang);
         let _ = app.emit("language-changed", lang.code());
+        // status errors are localized
+        restart_watch(&app);
     }
     Ok(new)
 }
@@ -277,6 +283,89 @@ async fn undo_job(id: u64, app: AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let _ = app.emit("history-changed", ());
     r
+}
+
+#[derive(Serialize)]
+struct WatchInfo {
+    #[serde(flatten)]
+    watch: watch::Watch,
+    status: Vec<watch::RuleStatus>,
+}
+
+fn watch_info(app: &AppHandle) -> WatchInfo {
+    let state = app.state::<AppState>();
+    let watch = state.settings.lock().unwrap().watch.clone();
+    let status = state
+        .watcher
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|r| r.status.clone())
+        .unwrap_or_default();
+    WatchInfo { watch, status }
+}
+
+/// (Re)starts the folder watchers from the saved settings. Pending files are dropped.
+/// Never call with the settings lock held: the watcher thread takes it.
+fn restart_watch(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let s = state.settings.lock().unwrap().clone();
+    let mut slot = state.watcher.lock().unwrap();
+    if let Some(old) = slot.take() {
+        old.stop();
+    }
+    let handle = app.clone();
+    let sink: watch::Sink = Arc::new(move |rule, path| enqueue_watch(&handle, rule, path));
+    *slot = Some(watch::start(
+        &s.watch,
+        s.language,
+        sink,
+        watch::Timing::default(),
+    ));
+}
+
+/// A stable new file under `rule`: queued like any other job (history kind "watch").
+fn enqueue_watch(app: &AppHandle, rule: &watch::WatchRule, path: PathBuf) {
+    let state = app.state::<AppState>();
+    let s = state.settings.lock().unwrap().clone();
+    let Some((target, opts)) = watch::plan_job(rule, &path, &s) else {
+        return;
+    };
+    let folder = Path::new(&rule.folder)
+        .file_name()
+        .map_or(rule.folder.clone(), |n| n.to_string_lossy().into());
+    let label = fmt(s.language, "watch.label", &[("folder", &folder)]);
+    let spec = Spec {
+        path,
+        target,
+        opts,
+        merge: None,
+    };
+    state
+        .queue
+        .enqueue_specs(app, vec![spec], Kind::Watch, &label, s.ffmpeg_ready);
+}
+
+#[tauri::command]
+fn get_watch(app: AppHandle) -> WatchInfo {
+    watch_info(&app)
+}
+
+/// Validates, saves and restarts the watchers. Returns the saved watch config.
+#[tauri::command]
+fn set_watch(watch: watch::Watch, app: AppHandle) -> Result<watch::Watch, String> {
+    let state = app.state::<AppState>();
+    let mut cur = state.settings.lock().unwrap();
+    let mut w = watch;
+    w.validate(&cur, cur.language)?;
+    let mut new = cur.clone();
+    new.watch = w.clone();
+    settings::save_to(&settings::settings_path(), &new)
+        .map_err(|e| fmt(new.language, "cmd.save", &[("err", &e.to_string())]))?;
+    *cur = new;
+    drop(cur);
+    restart_watch(&app);
+    Ok(w)
 }
 
 /// Latest release check (blocking network call, so it runs on a worker thread).
@@ -624,7 +713,9 @@ pub fn run() {
             clear_history,
             undo_job,
             check_update,
-            open_url
+            open_url,
+            get_watch,
+            set_watch
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {
@@ -652,8 +743,10 @@ pub fn run() {
                 settings: Mutex::new(s),
                 download: Arc::default(),
                 merges: Arc::new(Mutex::new(Collector::new(batch::QUIET_MS))),
+                watcher: Mutex::new(None),
             });
             ensure_ffmpeg(app.handle());
+            restart_watch(app.handle());
             if app
                 .state::<AppState>()
                 .settings
@@ -700,6 +793,13 @@ pub fn run() {
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("failed to start the application");
+        .build(tauri::generate_context!())
+        .expect("failed to start the application")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                if let Some(w) = app.state::<AppState>().watcher.lock().unwrap().take() {
+                    w.stop();
+                }
+            }
+        });
 }
