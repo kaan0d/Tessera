@@ -30,6 +30,8 @@ pub struct Settings {
     pub jpeg_quality: u8,
     /// Owned by the ffmpeg stage; `set_settings` never overwrites it from the UI.
     pub ffmpeg_ready: bool,
+    /// The first-run ffmpeg info card was dismissed.
+    pub ffmpeg_notice_seen: bool,
 }
 
 impl Default for Settings {
@@ -40,6 +42,7 @@ impl Default for Settings {
             conflict: ConflictMode::AutoRename,
             jpeg_quality: 85,
             ffmpeg_ready: false,
+            ffmpeg_notice_seen: false,
         }
     }
 }
@@ -118,6 +121,7 @@ mod tests {
         fs::write(&p, br#"{"jpeg_quality":0,"autostart":true}"#).unwrap();
         let s = load_from(&p);
         assert!(s.autostart && s.jpeg_quality == 1 && s.conflict == ConflictMode::AutoRename);
+        assert!(!s.ffmpeg_notice_seen && !s.ffmpeg_ready);
     }
 
     #[test]
@@ -132,6 +136,7 @@ mod tests {
             conflict: ConflictMode::ReplaceOriginal,
             jpeg_quality: 70,
             ffmpeg_ready: true,
+            ffmpeg_notice_seen: true,
         };
         save_to(&p, &s).unwrap();
         assert_eq!(load_from(&p), s);

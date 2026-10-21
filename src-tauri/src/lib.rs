@@ -1,32 +1,90 @@
 pub mod app_info;
 pub mod cli;
 pub mod convert;
+pub mod ffmpeg;
 pub mod queue;
 pub mod settings;
 pub mod shell;
 
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
-use serde::Serialize;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, State, WindowEvent};
+use tauri_plugin_notification::NotificationExt;
 
 use cli::Cli;
+use ffmpeg::{Download, FfmpegStatus};
 use queue::Queue;
 use settings::Settings;
 
 struct AppState {
     settings: Mutex<Settings>,
     queue: Queue,
+    download: Arc<Download>,
 }
 
-#[derive(Serialize)]
-struct FfmpegStatus {
-    ready: bool,
-    downloading: bool,
-    percent: f32,
+fn notify(app: &AppHandle, title: &str, body: &str) {
+    let _ = app.notification().builder().title(title).body(body).show();
+}
+
+/// Persists `ffmpeg_ready` and refreshes the context menu so ffmpeg verbs appear or go.
+fn set_ffmpeg_ready(app: &AppHandle, ready: bool) {
+    let state = app.state::<AppState>();
+    let mut s = state.settings.lock().unwrap();
+    s.ffmpeg_ready = ready;
+    let _ = shell::install(ready);
+    let _ = settings::save_to(&settings::settings_path(), &s);
+}
+
+/// Downloads ffmpeg on a background thread; no-op while one is already running.
+fn start_ffmpeg_download(app: &AppHandle) {
+    let download = app.state::<AppState>().download.clone();
+    if !download.begin() {
+        return;
+    }
+    notify(
+        app,
+        "ffmpeg indiriliyor",
+        "Video ve MP3/OGG dönüştürme için ücretsiz, açık kaynaklı ffmpeg aracı bir kez indirilecek (yaklaşık 170 MB).",
+    );
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let result = ffmpeg::install_with_retries(&download);
+        if result.is_ok() {
+            set_ffmpeg_ready(&app, true);
+            notify(
+                &app,
+                "ffmpeg hazır",
+                "Video ve ses dönüştürme kullanıma hazır.",
+            );
+        }
+        download.finish(result.err());
+    });
+}
+
+/// Startup check: a working ffmpeg is marked ready, a missing or corrupt one is downloaded.
+fn ensure_ffmpeg(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let ready = app
+            .state::<AppState>()
+            .settings
+            .lock()
+            .unwrap()
+            .ffmpeg_ready;
+        if ffmpeg::is_working(&ffmpeg::exe_path()) {
+            if !ready {
+                set_ffmpeg_ready(&app, true);
+            }
+            return;
+        }
+        if ready {
+            set_ffmpeg_ready(&app, false);
+        }
+        start_ffmpeg_download(&app);
+    });
 }
 
 #[tauri::command]
@@ -64,14 +122,15 @@ fn cancel_job(id: u64, state: State<AppState>) {
     state.queue.cancel(id);
 }
 
-// STAGE 4: report the real download state here.
 #[tauri::command]
 fn ffmpeg_status(state: State<AppState>) -> FfmpegStatus {
-    FfmpegStatus {
-        ready: state.settings.lock().unwrap().ffmpeg_ready,
-        downloading: false,
-        percent: 0.0,
-    }
+    let ready = state.settings.lock().unwrap().ffmpeg_ready;
+    state.download.status(ready)
+}
+
+#[tauri::command]
+fn retry_ffmpeg_download(app: AppHandle) {
+    start_ffmpeg_download(&app);
 }
 
 /// Reveals a file in Explorer (or opens a folder).
@@ -155,6 +214,7 @@ pub fn run() {
             remove_context_menu,
             cancel_job,
             ffmpeg_status,
+            retry_ffmpeg_download,
             open_folder
         ])
         .on_window_event(|w, e| {
@@ -175,7 +235,9 @@ pub fn run() {
             app.manage(AppState {
                 settings: Mutex::new(s),
                 queue: Queue::new(app.handle().clone()),
+                download: Arc::default(),
             });
+            ensure_ffmpeg(app.handle());
 
             let open = MenuItem::with_id(app, "open", "Ayarlar", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Çıkış", true, None::<&str>)?;
