@@ -16,6 +16,12 @@
   </header>
   <p id="error" class="error" role="alert" hidden></p>
 
+  <section id="ff-notice" class="card notice" aria-labelledby="h-notice" hidden>
+    <h2 id="h-notice">ffmpeg indiriliyor</h2>
+    <p>Video, MP3, OGG ve AAC dönüştürmek için ücretsiz ve açık kaynaklı ffmpeg aracı gerekir. Uygulama bunu yalnızca bir kez, yaklaşık 170 MB olarak otomatik indirir. İndirme arka planda sürer; resim, WAV ve FLAC dönüştürme beklemeden çalışır.</p>
+    <div class="actions end"><button type="button" id="ff-notice-ok" class="btn primary">Anladım</button></div>
+  </section>
+
   <section class="card" aria-labelledby="h-genel">
     <h2 id="h-genel">Genel</h2>
     <div class="row">
@@ -59,7 +65,8 @@
     <h2 id="h-ffmpeg">Video ve ses (ffmpeg)</h2>
     <p id="ff-status" class="status" role="status">Durum denetleniyor…</p>
     <progress id="ff-bar" max="100" value="0" hidden aria-label="ffmpeg indirme ilerlemesi"></progress>
-    <p class="muted">ffmpeg ücretsiz ve açık kaynaklı bir araçtır. Video, MP3 ve OGG dönüştürme için gereklidir; gerektiğinde otomatik olarak indirilir. Resim dönüştürme için gerekmez.</p>
+    <div class="actions"><button type="button" id="ff-retry" class="btn" hidden>Yeniden dene</button></div>
+    <p class="muted">ffmpeg ücretsiz ve açık kaynaklı bir araçtır. Video, MP3, OGG ve AAC dönüştürme için gereklidir ve otomatik olarak indirilir. Resim, WAV ve FLAC dönüştürme için gerekmez.</p>
   </section>
 
   <section class="card" aria-labelledby="h-menu">

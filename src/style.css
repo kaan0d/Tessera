@@ -21,6 +21,7 @@ p{margin:6px 0 0}
 .row{display:flex;align-items:center;gap:12px}
 .grow{flex:1}
 .field{margin-top:10px}
+.notice{border-color:var(--accent)}
 .muted{color:var(--muted);font-size:12px}
 .path{word-break:break-all;margin-left:26px}
 .status{font-size:13px}

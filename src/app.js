@@ -25,6 +25,7 @@ function render() {
   $('warn').hidden = s.conflict !== 'replace_original';
   $('quality').value = s.jpeg_quality;
   $('qval').textContent = s.jpeg_quality;
+  $('ff-notice').hidden = !!s.ffmpeg_notice_seen;
 }
 
 function save() {
@@ -113,13 +114,17 @@ async function refreshFfmpeg() {
     const f = await invoke('ffmpeg_status');
     bar.hidden = !f.downloading;
     bar.value = f.percent || 0;
-    st.classList.remove('err');
+    const failed = !f.ready && !f.downloading && !!f.error;
+    $('ff-retry').hidden = !failed;
+    st.classList.toggle('err', failed);
     st.textContent = f.ready
-      ? 'Hazır: video, MP3 ve OGG dönüştürülebilir.'
+      ? 'Hazır: video, MP3, OGG ve AAC dönüştürülebilir.'
       : f.downloading
         ? `İndiriliyor… %${Math.round(f.percent || 0)}`
-        : 'Henüz indirilmedi. İlk video veya ses dönüştürmesinde otomatik indirilir.';
-    if (!f.ready) ffTimer = setTimeout(refreshFfmpeg, f.downloading ? 1000 : 5000);
+        : failed
+          ? `İndirilemedi: ${f.error}`
+          : 'ffmpeg denetleniyor, indirme birazdan başlar…';
+    if (!f.ready) ffTimer = setTimeout(refreshFfmpeg, f.downloading ? 1000 : 3000);
   } catch (e) {
     st.classList.add('err');
     st.textContent = 'ffmpeg durumu alınamadı: ' + e;
@@ -146,6 +151,15 @@ function bind() {
     s.jpeg_quality = +e.target.value;
     $('qval').textContent = s.jpeg_quality;
     save();
+  };
+  $('ff-notice-ok').onclick = () => change({ ffmpeg_notice_seen: true });
+  $('ff-retry').onclick = async () => {
+    try {
+      await invoke('retry_ffmpeg_download');
+    } catch (e) {
+      showError('İndirme başlatılamadı: ' + e);
+    }
+    refreshFfmpeg();
   };
   $('menu-add').onclick = (e) => menuAction('install_context_menu', 'Menü kaydedildi.', e.currentTarget);
   $('menu-del').onclick = (e) => menuAction('remove_context_menu', 'Menü kaldırıldı.', e.currentTarget);
