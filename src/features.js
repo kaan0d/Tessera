@@ -60,12 +60,6 @@ const fileName = (p) => String(p || '').split(/[\\/]/).pop();
 const extOf = (p) => (/\.([^.\\/]+)$/.exec(p || '') || [, ''])[1].toLowerCase();
 const dirOf = (p) => String(p || '').replace(/[\\/][^\\/]*$/, '');
 const kindOfExt = (e) => (catalog && (catalog.sources.find((x) => x.ext === e) || catalog.targets.find((x) => x.ext === e)) || {}).kind || 'document';
-const num = (n, d = 1) => new Intl.NumberFormat(LANG, { maximumFractionDigits: d }).format(n);
-
-function fmtBytes(b) {
-  return b >= 1e6 ? t('unit.mb', { n: num(b / 1e6) }) : t('unit.kb', { n: num(b / 1e3, 0) });
-}
-
 function paintSeg(name) {
   $$(`input[name=${name}]`).forEach((r, i) => r.checked && seg(r.closest('.seg'), i));
 }
@@ -82,6 +76,12 @@ function openDlg(id, first) {
   const m = $(id);
   const prev = document.activeElement;
   const key = (e) => {
+    // Escape in a filled search box clears it first, the next one closes
+    if (e.key === 'Escape' && e.target.type === 'search' && e.target.value) {
+      e.preventDefault();
+      e.target.value = '';
+      return e.target.dispatchEvent(new Event('input'));
+    }
     if (e.key === 'Escape') return e.preventDefault(), closeDlg();
     if (e.key !== 'Tab') return;
     const f = $$('button,input,select', m).filter((x) => !x.disabled && x.offsetParent);
@@ -130,22 +130,6 @@ async function pickDir() {
 }
 
 /* ======================================================================== presets */
-function presetSummary(p) {
-  const o = p.options || {};
-  const parts = [p.target === 'same' ? t('pr.s_same') : p.target.toUpperCase()];
-  if (p.video_target && p.kinds.includes('video'))
-    parts.push(t('pr.s_video', { fmt: p.video_target === 'same' ? t('pr.s_same_l') : p.video_target.toUpperCase() }));
-  const r = o.resize;
-  if (r && r.max_edge != null) parts.push(t('pr.s_edge', { n: r.max_edge }));
-  else if (r && r.percent != null) parts.push(t('pr.s_pct', { n: r.percent }));
-  else if (r && r.exact) parts.push(t('pr.s_exact', { w: r.exact.w, h: r.exact.h, fit: t({ contain: 'fit.contain_l', cover: 'fit.cover_l', stretch: 'fit.stretch_l' }[r.exact.fit] || 'fit.contain_l') }));
-  if (o.max_bytes) parts.push(t('pr.s_max', { size: fmtBytes(o.max_bytes) }));
-  if (o.jpeg_quality) parts.push(t('pr.s_q', { n: o.jpeg_quality }));
-  if (o.video_mbps) parts.push(t('pr.s_v', { n: o.video_mbps }));
-  if (o.strip_metadata) parts.push(t('pr.s_strip'));
-  return parts.join(' · ');
-}
-
 function kindChips(kinds) {
   const box = el('div', 'kchips');
   for (const k of KIND_ORDER.filter((x) => kinds.includes(x))) {
@@ -769,6 +753,115 @@ async function copy(text, b) {
   }, 1600);
 }
 
+/* ======================================================================== about + licenses */
+let about = null; // app_info
+
+function paintAbout() {
+  $('ab-name').textContent = (about && about.name) || document.title;
+  $('ab-ver').textContent = about ? t('ab.version', { version: about.version, license: about.license }) : '';
+}
+
+async function loadAbout() {
+  try {
+    about = await invoke('app_info');
+  } catch (e) {
+    msg('ab-err', String(e));
+  }
+  paintAbout();
+}
+
+// the notices are ~375 KB: fetched on first open, one <pre> per section so the filter only toggles blocks
+let lic = null; // [{text, lower, pre, table}]
+let licText = '';
+let licTimer = null;
+
+async function openLicenses() {
+  openDlg('ld', $('ld-q'));
+  if (lic) return;
+  const body = $('ld-body');
+  body.replaceChildren(el('p', 'lic-msg', t('ld.loading')));
+  $('ld-copy').disabled = true;
+  try {
+    licText = await invoke('get_licenses');
+  } catch (e) {
+    body.replaceChildren(el('p', 'lic-msg err', t('ld.error', { err: e })));
+    return;
+  }
+  lic = licText.split(/\n(?=#{1,3} )/).map((text) => {
+    const pre = el('pre', 'lic-sec', text);
+    return { text, lower: text.toLowerCase(), pre, table: /^\|/m.test(text) };
+  });
+  body.replaceChildren(...lic.map((x) => x.pre), el('p', 'lic-msg lic-none'));
+  $('ld-copy').disabled = false;
+  licFilter();
+}
+
+function licFilter() {
+  if (!lic) return;
+  const q = $('ld-q').value.trim().toLowerCase();
+  let n = 0;
+  for (const x of lic) {
+    const hit = !q || x.lower.includes(q);
+    x.pre.hidden = !hit;
+    if (!hit) continue;
+    n++;
+    // the crate table keeps its header and only the matching rows
+    if (x.table) {
+      let head = 0;
+      x.pre.textContent = !q ? x.text : x.text.split('\n').filter((l) => !l.startsWith('|') || head++ < 2 || l.toLowerCase().includes(q)).join('\n');
+    }
+  }
+  $('ld-count').textContent = !q ? '' : n ? t('ld.found', { n }) : t('ld.none');
+  const none = $('ld-body').querySelector('.lic-none');
+  none.hidden = !q || n > 0;
+  none.textContent = none.hidden ? '' : t('ld.none_text', { q: $('ld-q').value.trim() });
+  $('ld-body').scrollTop = 0;
+  licMark(q);
+}
+
+// marks the matches without touching the text (CSS Custom Highlight API); skipped where unsupported
+function licMark(q) {
+  if (!window.Highlight || !CSS.highlights) return;
+  CSS.highlights.delete('lic');
+  if (q.length < 2) return;
+  const h = new Highlight();
+  let left = 1500; // ponytail: caps the marks for very common words; nothing else is affected
+  for (const x of lic) {
+    if (x.pre.hidden) continue;
+    const node = x.pre.firstChild;
+    const low = node ? node.data.toLowerCase() : '';
+    for (let i = low.indexOf(q); i >= 0 && left > 0; i = low.indexOf(q, i + q.length), left--) {
+      const r = new Range();
+      r.setStart(node, i);
+      r.setEnd(node, i + q.length);
+      h.add(r);
+    }
+  }
+  CSS.highlights.set('lic', h);
+}
+
+// copies text and shows the result on the button itself for a moment
+async function copyText(text, b, labelKey) {
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch { /* clipboard refused; the text stays selectable */ }
+  const ic = b.querySelector('use');
+  const label = b.querySelector('span');
+  ic.setAttribute('href', ok ? '#i-check' : '#i-alert');
+  b.classList.toggle('done', ok);
+  if (label) label.textContent = t(ok ? 'cli.copied' : 'cli.copy_fail');
+  else b.setAttribute('aria-label', t(ok ? 'cli.copied' : 'cli.copy_fail')), (b.title = b.getAttribute('aria-label'));
+  clearTimeout(b.timer);
+  b.timer = setTimeout(() => {
+    ic.setAttribute('href', '#i-copy');
+    b.classList.remove('done');
+    if (label) label.textContent = t(labelKey);
+    else b.setAttribute('aria-label', t(labelKey)), (b.title = t(labelKey));
+  }, 1600);
+}
+
 /* ======================================================================== wiring */
 let clock = null;
 
@@ -783,6 +876,9 @@ function onSection(id) {
 
 function featuresRelabel() {
   renderCli();
+  paintAbout();
+  if (lic) licFilter();
+  else if ($('ld-body').firstChild) $('ld-body').firstChild.textContent = t('ld.loading');
   paintUpdate();
   if (!$('upd-banner').hidden && lastUpdate) $('upd-banner-text').textContent = t('upd.banner', { latest: lastUpdate.latest });
   renderHistory();
@@ -838,8 +934,17 @@ function featuresInit() {
       setTimeout(loadWatch, 400);
     });
   }
+  $('ab-lic').onclick = openLicenses;
+  $('ab-repo').onclick = () => invoke('open_url', { url: about ? about.repo_url : '' }).then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));
+  $('ab-ff-copy').onclick = (e) => copyText($('ab-ff-url').textContent, e.currentTarget, 'ab.copy_link');
+  $('ld-copy').onclick = (e) => copyText(licText, e.currentTarget, 'ld.copy');
+  $('ld-q').oninput = () => {
+    clearTimeout(licTimer);
+    licTimer = setTimeout(licFilter, 120);
+  };
   renderCli();
   paintUpdate();
+  loadAbout();
   loadPresets().then(() => loadWatch());
   loadHistory();
 }

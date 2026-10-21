@@ -17,9 +17,9 @@ setLang('en'); // until settings say otherwise
 // ponytail: fills only what an older settings.json may lack; the backend owns the real defaults
 function normalize(x) {
   x.language = x.language === 'tr' ? 'tr' : 'en';
-  x.quality = { jpeg: 85, mp3_q: 2, ogg_q: 6, video_mbps: 8, gif_fps: 15, gif_width: 480, ...x.quality };
+  x.quality = { jpeg: 85, webp: 80, webp_lossless: false, mp3_q: 2, ogg_q: 6, video_mbps: 8, gif_fps: 15, gif_width: 480, ...x.quality };
   x.panel = { corner: 'top_right', seconds: 7, windows_toast: false, ...x.panel };
-  x.menu = { icons: true, sort: 'default', presets_enabled: true, merge: true, ...x.menu };
+  x.menu = { icons: true, sort: 'default', presets_enabled: true, merge: true, folder: true, folder_recursive: false, sendto: false, ...x.menu };
   x.updates = { check_on_start: false, ...x.updates };
   x.history_enabled ??= true;
   x.enabled_targets ||= [];
@@ -125,6 +125,7 @@ const MP3_KBPS = [245, 225, 190, 175, 165, 130, 115, 100, 85, 65]; // lame -V0..
 const OGG_KBPS = [64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 500]; // vorbis -q0..-q10 nominal
 const SLIDERS = {
   'q-jpeg': { get: () => s.quality.jpeg, set: (v) => setIn('quality', 'jpeg', v), show: (v) => [v, ''] },
+  'q-webp': { get: () => s.quality.webp, set: (v) => setIn('quality', 'webp', v), show: (v) => [v, ''] },
   // mp3_q: 0 is best, so the slider runs inverted and stores the raw value
   'q-mp3': { get: () => 9 - s.quality.mp3_q, set: (v) => setIn('quality', 'mp3_q', 9 - v), show: (v) => ['≈' + MP3_KBPS[9 - v], 'kb/s'] },
   'q-ogg': { get: () => s.quality.ogg_q, set: (v) => setIn('quality', 'ogg_q', v), show: (v) => ['≈' + OGG_KBPS[v], 'kb/s'] },
@@ -291,6 +292,7 @@ async function loadCatalog() {
     buildKinds($('targets'), catalog.targets, false);
     buildKinds($('sources'), catalog.sources, true);
     paintChips();
+    paintWebp();
     tplPaint();
   } catch (e) {
     $('cat-err').hidden = false;
@@ -381,6 +383,12 @@ function render() {
   $('icons-sw').checked = s.menu.icons;
   $('presets-sw').checked = s.menu.presets_enabled;
   $('merge-sw').checked = s.menu.merge;
+  $('folder-sw').checked = s.menu.folder;
+  $('folder-rec-sw').checked = s.menu.folder_recursive;
+  $('folder-rec-sw').disabled = !s.menu.folder;
+  $('folder-rec-sw').closest('.row').classList.toggle('off', !s.menu.folder);
+  $('sendto-sw').checked = s.menu.sendto;
+  paintWebp();
   $('hist-sw').checked = s.history_enabled;
   $('upd-sw').checked = s.updates.check_on_start;
   $('pr-off').hidden = s.menu.presets_enabled;
@@ -394,6 +402,32 @@ function render() {
     if (r.checked) seg(r.closest('.seg'), i);
   });
   paintChips();
+}
+
+// lossy WebP is encoded by ffmpeg; until it is ready (or with lossless on) the slider has nothing to say
+function paintWebp() {
+  const ll = s.quality.webp_lossless;
+  $('webp-ll').checked = ll;
+  $('q-webp').disabled = ll;
+  $('webp-q').classList.toggle('off', ll);
+  const wp = catalog && catalog.targets.find((x) => x.ext === 'webp');
+  $('webp-note').hidden = ll || ffReady || !(wp && wp.better_with_ffmpeg);
+}
+
+/* ---------- files dragged onto the window ---------- */
+// Tauri reports the drag (enter/over/leave/drop with real paths); the chooser window takes it from there
+function dragDrop() {
+  const w = T && T.webview && T.webview.getCurrentWebview && T.webview.getCurrentWebview();
+  if (!w) return;
+  const dz = $('dz');
+  let files = false;
+  w.onDragDropEvent(({ payload: p }) => {
+    if (p.type === 'enter') files = !!(p.paths && p.paths.length);
+    if (p.type === 'enter' || p.type === 'over') return dz.classList.toggle('on', files);
+    dz.classList.remove('on');
+    if (p.type === 'drop' && p.paths && p.paths.length)
+      invoke('drop_files', { paths: p.paths }).catch((e) => showError(t('err.drop', { err: e })));
+  });
 }
 
 /* ---------- existing pieces ---------- */
@@ -486,6 +520,7 @@ function ffView(state, text, pct) {
   if (ffReady !== (state === 'ready')) {
     ffReady = state === 'ready';
     paintChips();
+    if (s) paintWebp();
   }
 }
 
@@ -548,6 +583,10 @@ function bind() {
   $('icons-sw').onchange = (e) => setIn('menu', 'icons', e.target.checked);
   $('presets-sw').onchange = (e) => setIn('menu', 'presets_enabled', e.target.checked);
   $('merge-sw').onchange = (e) => setIn('menu', 'merge', e.target.checked);
+  $('folder-sw').onchange = (e) => setIn('menu', 'folder', e.target.checked);
+  $('folder-rec-sw').onchange = (e) => setIn('menu', 'folder_recursive', e.target.checked);
+  $('sendto-sw').onchange = (e) => setIn('menu', 'sendto', e.target.checked);
+  $('webp-ll').onchange = (e) => setIn('quality', 'webp_lossless', e.target.checked);
   $('hist-sw').onchange = (e) => change({ history_enabled: e.target.checked });
   $('upd-sw').onchange = (e) => setIn('updates', 'check_on_start', e.target.checked);
   $$('input[name=sort]').forEach((r) => (r.onchange = () => setIn('menu', 'sort', r.value)));
@@ -601,6 +640,7 @@ document.addEventListener('visibilitychange', intro);
 // features.js loads after this file; DOMContentLoaded waits for both
 document.addEventListener('DOMContentLoaded', async () => {
   bind();
+  dragDrop();
   paintNav();
   intro();
   try {

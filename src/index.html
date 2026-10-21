@@ -7,6 +7,7 @@
 <title>new-app</title>
 <link rel="stylesheet" href="style.css">
 <script src="i18n.js" defer></script>
+<script src="summary.js" defer></script>
 <script src="app.js" defer></script>
 <script src="features.js" defer></script>
 </head>
@@ -49,6 +50,8 @@
   <symbol id="i-merge" viewBox="0 0 24 24"><path d="M4.5 6.5h4l4 5.5-4 5.5h-4"/><path d="M12.5 12h7m-3-3 3 3-3 3"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13.5 6.5 19 12l-5.5 5.5"/></symbol>
   <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10"/><path d="M19.5 4.5 11 13"/><path d="M17 14v4.5a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1H10"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4.5 12h11M11 6.5l5.5 5.5-5.5 5.5"/><path d="M19.5 5v14"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 5 6v5.5c0 4.3 3 7.8 7 9 4-1.2 7-4.7 7-9V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></symbol>
 </svg>
 
@@ -272,6 +275,24 @@
             <p class="desc scale" aria-hidden="true"><span data-i18n="q.small"></span><span data-i18n="q.high"></span></p>
           </div>
         </div>
+        <div class="row top-align">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span>
+          <div class="grow">
+            <div class="q" id="webp-q">
+              <div class="label-line"><label for="q-webp" class="label">WebP</label><output for="q-webp" class="val"><span></span><small></small></output></div>
+              <input type="range" id="q-webp" class="slider" data-q="webp" min="1" max="100" step="1">
+              <p class="desc scale" aria-hidden="true"><span data-i18n="q.small"></span><span data-i18n="q.high"></span></p>
+            </div>
+            <div class="subopt">
+              <div class="grow">
+                <label for="webp-ll" class="label" data-i18n="q.webp_ll"></label>
+                <p class="desc" id="d-webp-ll" data-i18n="q.webp_ll_desc"></p>
+              </div>
+              <input type="checkbox" id="webp-ll" class="switch" role="switch" aria-describedby="d-webp-ll">
+            </div>
+          </div>
+        </div>
+        <p id="webp-note" class="foot hint" role="note" hidden><svg class="ic badge" aria-hidden="true"><use href="#i-download"/></svg><span data-i18n="q.webp_note"></span></p>
       </div>
     </div>
     <div class="group">
@@ -404,6 +425,34 @@
         </div>
       </div>
     </div>
+    <div class="group">
+      <h2 class="group-title" data-i18n="mn.places"></h2>
+      <div class="card">
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg></span>
+          <div class="grow">
+            <label for="folder-sw" class="label" data-i18n="mn.folder"></label>
+            <p class="desc" id="d-folder" data-i18n="mn.folder_desc"></p>
+          </div>
+          <input type="checkbox" id="folder-sw" class="switch" role="switch" aria-describedby="d-folder">
+        </div>
+        <div class="row sub">
+          <div class="grow">
+            <label for="folder-rec-sw" class="label" data-i18n="mn.folder_rec"></label>
+            <p class="desc" id="d-folder-rec" data-i18n="mn.folder_rec_desc"></p>
+          </div>
+          <input type="checkbox" id="folder-rec-sw" class="switch" role="switch" aria-describedby="d-folder-rec">
+        </div>
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg></span>
+          <div class="grow">
+            <label for="sendto-sw" class="label" data-i18n="mn.sendto"></label>
+            <p class="desc" id="d-sendto" data-i18n="mn.sendto_desc"></p>
+          </div>
+          <input type="checkbox" id="sendto-sw" class="switch" role="switch" aria-describedby="d-sendto">
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="row top-align">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-pointer"/></svg></span>
@@ -532,6 +581,35 @@
         </div>
         <ul id="cli" class="cli"></ul>
         <p class="foot" data-i18n="cli.foot"></p>
+      </div>
+    </div>
+    <div class="group">
+      <h2 class="group-title" data-i18n="ab.title"></h2>
+      <div class="card">
+        <div class="row top-align about">
+          <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+            <rect width="40" height="40" rx="11" fill="url(#mark-g)"/>
+            <path class="mark-sheet" d="M14 8.5h9.5l5.5 5.5v16a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2v-19.5a2 2 0 0 1 2-2z"/>
+            <rect class="mark-ink" x="10" y="20.5" width="22" height="13" clip-path="url(#mark-c)"/>
+            <path class="mark-fold" d="M23.5 8.5V12a2 2 0 0 0 2 2H29"/>
+          </svg>
+          <div class="grow">
+            <span class="label" id="ab-name"></span>
+            <p class="desc" id="ab-ver"></p>
+            <div class="actions">
+              <button type="button" id="ab-repo" class="btn sm"><span data-i18n="ab.source"></span><svg class="ic" aria-hidden="true"><use href="#i-external"/></svg></button>
+              <button type="button" id="ab-lic" class="btn sm" aria-haspopup="dialog"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg><span data-i18n="ab.licenses"></span></button>
+            </div>
+            <p id="ab-err" class="field-msg" role="alert"></p>
+          </div>
+        </div>
+        <div class="foot ff-src">
+          <p data-i18n="ab.ffmpeg"></p>
+          <div class="url-line">
+            <code id="ab-ff-url" class="cmd">https://ffmpeg.org/download.html</code>
+            <button type="button" id="ab-ff-copy" class="iconbtn" data-i18n-attr="aria-label:ab.copy_link;title:ab.copy_link"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg></button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -726,6 +804,37 @@
       </div>
     </footer>
   </form>
+</div>
+
+<!-- open-source licenses -->
+<div id="ld" class="backdrop" hidden>
+  <div class="dialog sheet-dlg lic-dlg" role="dialog" aria-modal="true" aria-labelledby="ld-title">
+    <header class="dlg-head">
+      <span class="tile accent"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg></span>
+      <h2 id="ld-title" class="grow" data-i18n="ld.title"></h2>
+      <button type="button" class="iconbtn" data-close data-i18n-attr="aria-label:dlg.close;title:dlg.close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="lic-tools">
+      <span class="search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="ld-q" class="field plain" spellcheck="false" autocomplete="off" data-i18n-attr="placeholder:ld.search;aria-label:ld.search" aria-describedby="ld-count"></span>
+      <span id="ld-count" class="count" role="status" aria-live="polite"></span>
+      <button type="button" id="ld-copy" class="btn sm"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg><span data-i18n="ld.copy"></span></button>
+    </div>
+    <div id="ld-body" class="dlg-body lic-body" tabindex="0" aria-labelledby="ld-title"></div>
+  </div>
+</div>
+
+<!-- shown while files are dragged over the window -->
+<div id="dz" class="dropzone" aria-hidden="true">
+  <div class="dz-frame">
+    <svg class="dz-art" viewBox="0 0 120 96">
+      <path class="e-sheet back" d="M36 22h24l11 11v42a3 3 0 0 1-3 3H36a3 3 0 0 1-3-3V25a3 3 0 0 1 3-3z"/>
+      <path class="e-sheet" d="M48 14h26l12 12v46a3 3 0 0 1-3 3H48a3 3 0 0 1-3-3V17a3 3 0 0 1 3-3z"/>
+      <path class="e-fold" d="M74 14v9a3 3 0 0 0 3 3h9"/>
+      <path class="dz-arrow" d="M65 36v22m-8-8 8 8 8-8"/>
+    </svg>
+    <p class="dz-title" data-i18n="dz.title"></p>
+    <p class="dz-sub" data-i18n="dz.sub"></p>
+  </div>
 </div>
 </body>
 </html>
