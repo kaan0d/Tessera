@@ -243,8 +243,11 @@ input[type=radio]:checked::after{scale:1}
 /* format chips: a small sheet with a folded corner that fills with ink when on */
 .kinds .row{padding:12px var(--s4) 14px}
 .kinds .label-line{align-items:center;min-height:24px}
-.mini{display:flex;gap:2px;margin-right:-6px}
-.mini .link{font-size:var(--t-xs)}
+.mini{display:flex;gap:6px}
+.mini .link{height:24px;padding:0 10px;font-size:var(--t-xs);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1);
+  transition:background var(--d1),border-color var(--d1),color var(--d1),scale var(--d1) var(--ease)}
+@media (hover:hover){.mini .link:hover{background:var(--accent-soft);border-color:var(--accent-ink);color:var(--accent)}}
+.mini .link:active{scale:.95}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .chip{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:30px;min-width:54px;padding:0 12px;
   border-radius:var(--r-md);border:1px solid var(--line-strong);color:var(--muted);cursor:pointer;
@@ -732,3 +735,25 @@ html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
   .p-card{--acrylic:var(--surface);backdrop-filter:none}
 }
 @media (forced-colors:active){.switch::after,input[type=radio]::after{background:CanvasText}.sheet .ink{fill:Highlight}}
+
+/* profiles */
+.profiles{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);padding:var(--s3) var(--s4)}
+.profile{position:relative;display:grid;gap:3px;text-align:left;padding:12px 40px 13px 14px;border-radius:var(--r-lg);border:1px solid var(--line-strong);
+  background:var(--surface);color:var(--ink);cursor:pointer;font:inherit;
+  transition:background var(--d2),border-color var(--d2),scale var(--d1) var(--ease)}
+.profile .p-name{font-size:var(--t-md);font-weight:650}
+.profile .p-desc{font-size:var(--t-sm);color:var(--muted);line-height:1.4}
+.profile .p-check{position:absolute;top:12px;right:12px;width:18px;height:18px;padding:3px;border-radius:50%;box-sizing:border-box;
+  border:1px solid var(--line-strong);color:transparent;stroke-width:2.5;transition:background var(--d2),color var(--d2),border-color var(--d2)}
+.profile[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+.profile[aria-pressed=true] .p-check{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+@media (hover:hover){.profile[aria-pressed=false]:hover{border-color:var(--muted)}}
+.profile:active{scale:.985}
+@media (max-width:560px){.profiles{grid-template-columns:1fr}}
+/* ffmpeg progress inside the formats hint */
+.hint-bar{display:inline-block;width:120px;height:6px;margin:0 8px 1px 10px;vertical-align:middle;border-radius:999px;background:var(--track);overflow:hidden}
+.hint-bar>span{display:block;height:100%;border-radius:inherit;background:var(--accent);transform-origin:left;scale:var(--p) 1;transition:scale var(--d3) var(--ease)}
+.hint b{font-variant-numeric:tabular-nums;color:var(--accent)}
+/* settings ffmpeg card bar: thicker so it reads */
+.ff .bar{height:8px}
+#p-hint{padding-left:var(--s4)}

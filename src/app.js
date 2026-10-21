@@ -235,18 +235,24 @@ function paintProfiles() {
     for (const id of Object.keys(PROFILES)) {
       const c = document.createElement('button');
       c.type = 'button';
-      c.className = 'chip';
+      c.className = 'profile';
       c.dataset.id = id;
+      const name = document.createElement('span'), desc = document.createElement('span');
+      name.className = 'p-name';
+      desc.className = 'p-desc';
+      c.append(name, desc, icon('i-check', 'ic p-check'));
       c.onclick = () => change(profileSets(PROFILES[id]));
       box.append(c);
     }
   }
   const cur = activeProfile();
   for (const c of box.children) {
-    c.textContent = t('profile.' + c.dataset.id);
+    c.firstChild.textContent = t('profile.' + c.dataset.id);
+    c.children[1].textContent = t(`profile.${c.dataset.id}_desc`);
     c.setAttribute('aria-pressed', c.dataset.id === cur);
   }
-  $('p-hint').textContent = t(cur ? `profile.${cur}_desc` : 'profile.custom_desc');
+  $('p-hint').hidden = !!cur;
+  $('p-hint').textContent = t('profile.custom_desc');
 }
 
 function paintChips() {
@@ -274,11 +280,27 @@ function paintHints(flash) {
   if (flash) {
     hint(th, 'warn', [icon('i-alert'), flash]);
     clearTimeout(hintTimer);
-    hintTimer = setTimeout(() => paintHints(), 3200);
+    flashing = true;
+    hintTimer = setTimeout(() => { flashing = false; paintHints(); }, 3200);
   } else if (!s.enabled_targets.length) {
     hint(th, 'warn', [icon('i-alert'), t('hint.none_targets')]);
   } else if (anyFf && !ffReady) {
-    hint(th, '', [icon('i-download', 'ic badge'), t('hint.ff_wait'), gotoLink(t('hint.see_status'), 't-ileri')]);
+    const wait = [icon('i-download', 'ic badge'), t('hint.ff_wait'), gotoLink(t('hint.see_status'), 't-ileri')];
+    if (ffPct !== null) {
+      const bar = document.createElement('span');
+      bar.className = 'hint-bar';
+      bar.setAttribute('role', 'progressbar');
+      bar.setAttribute('aria-label', t('ff.bar'));
+      bar.setAttribute('aria-valuemin', 0);
+      bar.setAttribute('aria-valuemax', 100);
+      bar.setAttribute('aria-valuenow', ffPct);
+      bar.style.setProperty('--p', ffPct / 100);
+      bar.append(document.createElement('span'));
+      const pct = document.createElement('b');
+      pct.textContent = t('pct', { n: ffPct });
+      wait.push(bar, pct);
+    }
+    hint(th, '', wait);
   } else if (anyFf) {
     hint(th, '', [icon('i-download', 'ic badge'), t('hint.ff_ready')]);
   } else hint(th, '', []);
@@ -541,6 +563,9 @@ async function menuAction(cmd, okKey, btn) {
   btn.classList.remove('busy');
 }
 
+let flashing = false; // a flash message owns the targets hint
+let ffPct = null; // percent while downloading, else null
+
 function ffView(state, text, pct) {
   const sheet = $('ff-sheet'), bar = $('ff-bar');
   $('ff').dataset.state = state;
@@ -556,6 +581,11 @@ function ffView(state, text, pct) {
   $('ff-pct').hidden = state !== 'downloading';
   $('ff-pct').textContent = t('pct', { n: Math.round(p) });
   $('ff-retry').hidden = state !== 'error';
+  const dl = state === 'downloading' ? Math.round(pct) : null;
+  if (dl !== ffPct) {
+    ffPct = dl;
+    if (catalog && s && !flashing) paintHints();
+  }
   if (ffReady !== (state === 'ready')) {
     ffReady = state === 'ready';
     paintChips();
