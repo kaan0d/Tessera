@@ -163,6 +163,43 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Could not move the converted file to the Recycle Bin: {detail}",
         "Dönüştürülen dosya Geri Dönüşüm Kutusu'na taşınamadı: {detail}",
     ),
+    // update check
+    (
+        "update.available",
+        "Version {latest} is available (you have {current})",
+        "{latest} sürümü yayında (sizdeki: {current})",
+    ),
+    (
+        "update.up_to_date",
+        "You are up to date (version {current})",
+        "Güncelsiniz (sürüm {current})",
+    ),
+    (
+        "update.none_yet",
+        "No releases have been published yet, so you are up to date",
+        "Henüz sürüm yayınlanmamış, yani güncelsiniz",
+    ),
+    (
+        "update.failed",
+        "Could not check for updates: {err}",
+        "Güncellemeler denetlenemedi: {err}",
+    ),
+    (
+        "update.bad_response",
+        "The update server sent an unexpected answer",
+        "Güncelleme sunucusu beklenmeyen bir yanıt verdi",
+    ),
+    (
+        "update.bad_url",
+        "This link cannot be opened",
+        "Bu bağlantı açılamaz",
+    ),
+    (
+        "update.open_failed",
+        "Could not open the browser",
+        "Tarayıcı açılamadı",
+    ),
+    ("update.title", "Update available", "Güncelleme var"),
     // tray
     ("tray.open", "Settings", "Ayarlar"),
     ("tray.quit", "Quit", "Çıkış"),

@@ -75,6 +75,14 @@ impl Default for MenuOpts {
     }
 }
 
+/// Opt-in update check (the only network use besides the ffmpeg download).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Updates {
+    /// Check once, shortly after launch.
+    pub check_on_start: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -108,6 +116,7 @@ pub struct Settings {
     pub hidden_presets: Vec<String>,
     /// Record finished jobs in history.json.
     pub history_enabled: bool,
+    pub updates: Updates,
 }
 
 /// Current settings generation.
@@ -138,6 +147,7 @@ impl Default for Settings {
             presets: vec![],
             hidden_presets: vec![],
             history_enabled: true,
+            updates: Updates::default(),
         }
     }
 }
@@ -427,6 +437,7 @@ mod tests {
         fs::write(&p, b"{}").unwrap();
         let s = load_from(&p);
         assert!(s.menu.presets_enabled && s.menu.merge && s.history_enabled);
+        assert!(!s.updates.check_on_start);
         assert!(s.presets.is_empty() && s.hidden_presets.is_empty());
     }
 

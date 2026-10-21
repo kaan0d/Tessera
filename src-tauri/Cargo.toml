@@ -26,13 +26,15 @@ flacenc = "0.5"
 trash = "5"
 ureq = "3"
 sha2 = "0.10"
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_SystemInformation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Console", "Win32_System_SystemInformation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 resvg = { version = "0.48", default-features = false, features = ["text", "system-fonts", "raster-images"] }
 hayro = "0.8"
 pdf-writer = "0.15"
 kamadak-exif = "0.6"
 miniz_oxide = "0.8"
+semver = "1"
+notify = { version = "8", default-features = false }
 
 [profile.release]
 lto = true

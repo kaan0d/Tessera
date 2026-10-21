@@ -10,6 +10,7 @@ pub mod preset;
 pub mod queue;
 pub mod settings;
 pub mod shell;
+pub mod update;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -276,6 +277,36 @@ async fn undo_job(id: u64, app: AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let _ = app.emit("history-changed", ());
     r
+}
+
+/// Latest release check (blocking network call, so it runs on a worker thread).
+#[tauri::command]
+async fn check_update() -> Result<update::UpdateInfo, String> {
+    let lang = i18n::lang();
+    tauri::async_runtime::spawn_blocking(move || update::check(lang))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Opens a link inside the project's GitHub repository in the default browser.
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    update::open_url(&url, i18n::lang())
+}
+
+/// Once, ~10 s after launch: tells the user when a newer release exists. Silent otherwise.
+fn check_update_on_start(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        let lang = i18n::lang();
+        if let Ok(info) = update::check(lang) {
+            if info.available {
+                notify(&app, t(lang, "update.title"), &info.message);
+                let _ = app.emit("update-available", &info);
+            }
+        }
+    });
 }
 
 #[derive(Serialize)]
@@ -591,7 +622,9 @@ pub fn run() {
             set_preset_hidden,
             get_history,
             clear_history,
-            undo_job
+            undo_job,
+            check_update,
+            open_url
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {
@@ -621,6 +654,16 @@ pub fn run() {
                 merges: Arc::new(Mutex::new(Collector::new(batch::QUIET_MS))),
             });
             ensure_ffmpeg(app.handle());
+            if app
+                .state::<AppState>()
+                .settings
+                .lock()
+                .unwrap()
+                .updates
+                .check_on_start
+            {
+                check_update_on_start(app.handle());
+            }
 
             let mut tray = TrayIconBuilder::with_id(TRAY_ID)
                 .tooltip(app_info::APP_NAME)
