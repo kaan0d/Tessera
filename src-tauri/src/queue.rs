@@ -377,7 +377,7 @@ fn run(app: &AppHandle, job: &Job) -> Done {
     let opts = job.opts.clone().cancel(job.cancel.clone());
     let result = if let Some((kind, files)) = &job.merge {
         combine::run(*kind, files, &opts, on_progress)
-    } else if from.is_some_and(|f| uses_ffmpeg(f, job.target)) {
+    } else if from.is_some_and(|f| uses_ffmpeg(f, job.target) || opts.ffmpeg_only(f)) {
         if job.ffmpeg_ready {
             ffmpeg_convert(job, on_progress)
         } else {

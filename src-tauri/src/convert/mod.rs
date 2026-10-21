@@ -200,6 +200,9 @@ impl Format {
     ];
 }
 
+/// Longest cut point accepted (seconds): 100 hours.
+const MAX_TRIM: f32 = 360_000.0;
+
 /// Encoder quality knobs; `clamped` pins each to its valid range.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -273,6 +276,14 @@ pub struct Options {
     pub max_bytes: Option<u64>,
     /// Video targets: leave the audio track out.
     pub no_audio: bool,
+    /// Audio bitrate in kbit/s for lossy audio (also the audio track of a video).
+    pub audio_kbps: Option<u16>,
+    /// Audio and video: mix the sound down to one channel.
+    pub mono: bool,
+    /// Audio and video: cut from this second ...
+    pub trim_start: Option<f32>,
+    /// ... to this second (end of the file when `None`).
+    pub trim_end: Option<f32>,
     /// PDF source: page to render, 1-based.
     pub page: u32,
     /// Set from another thread to stop a running job: decode/encode loops, every image of a
@@ -293,6 +304,10 @@ impl Default for Options {
             preserve_orientation: true,
             max_bytes: None,
             no_audio: false,
+            audio_kbps: None,
+            mono: false,
+            trim_start: None,
+            trim_end: None,
             page: 1,
             cancel: None,
             ffmpeg: None,
@@ -362,6 +377,9 @@ impl Options {
             quality: self.quality.clamped(),
             resize: self.resize.map(Resize::clamped),
             max_bytes: self.max_bytes.map(|n| n.max(1)),
+            audio_kbps: self.audio_kbps.map(|k| k.clamp(8, 512)),
+            trim_start: self.trim_start.map(|t| t.clamp(0.0, MAX_TRIM)),
+            trim_end: self.trim_end.map(|t| t.clamp(0.0, MAX_TRIM)),
             page: self.page.max(1),
             ..self.clone()
         }
@@ -369,7 +387,25 @@ impl Options {
 
     /// True when the job changes the content (so same-format output is meaningful).
     pub fn transforms(&self) -> bool {
-        self.resize.is_some() || self.strip_metadata || self.max_bytes.is_some() || self.no_audio
+        self.resize.is_some()
+            || self.strip_metadata
+            || self.max_bytes.is_some()
+            || self.no_audio
+            || self.cuts_media()
+    }
+
+    /// Options only ffmpeg applies: a cut, a bitrate, mono.
+    fn cuts_media(&self) -> bool {
+        self.audio_kbps.is_some()
+            || self.mono
+            || self.trim_start.is_some_and(|t| t > 0.0)
+            || self.trim_end.is_some()
+    }
+
+    /// True when `from` is sound or video and the job asks for something only ffmpeg does,
+    /// even where the target alone would not need it (WAV to WAV).
+    pub fn ffmpeg_only(&self, from: Format) -> bool {
+        matches!(from.kind(), "audio" | "video") && self.cuts_media()
     }
 }
 
@@ -436,7 +472,7 @@ pub fn convert(
     if !allows(ext, from, target, opts) {
         return Err(ConvertError::Unsupported);
     }
-    if uses_ffmpeg(from, target) {
+    if uses_ffmpeg(from, target) || opts.ffmpeg_only(from) {
         return Err(ConvertError::NeedsFfmpeg);
     }
 

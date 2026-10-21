@@ -46,6 +46,11 @@ pub struct Extra {
     pub audio_bps: Option<u64>,
     /// Video targets: no audio track in the output.
     pub no_audio: bool,
+    /// One audio channel.
+    pub mono: bool,
+    /// Cut: start second and length in seconds (to the end when `None`).
+    pub trim_start: f64,
+    pub trim_len: Option<f64>,
 }
 
 /// ffmpeg scale/crop filters for a resize rule; sides come out even where the rule allows
@@ -180,6 +185,9 @@ fn codec_args(t: Format, q: &Quality, x: &Extra) -> Vec<String> {
         }
         a.push("-an".to_string());
     }
+    if x.mono && !(t.is_video() && x.no_audio) && !matches!(t, Format::Gif) {
+        a.extend(v(&["-ac", "1"]));
+    }
     if x.strip {
         a.extend(v(&[
             "-map_metadata",
@@ -205,7 +213,7 @@ pub fn build_args(
     q: &Quality,
     x: &Extra,
 ) -> Vec<OsString> {
-    let mut a = head_args(input);
+    let mut a = head_args(input, x);
     a.extend(codec_args(target, q, x).into_iter().map(OsString::from));
     a.extend(["-f", muxer(target)].map(OsString::from));
     if target == Format::Mp4 {
@@ -215,7 +223,7 @@ pub fn build_args(
     a
 }
 
-fn head_args(input: &Path) -> Vec<OsString> {
+fn head_args(input: &Path, x: &Extra) -> Vec<OsString> {
     let mut a: Vec<OsString> = [
         "-nostdin",
         "-y",
@@ -226,10 +234,17 @@ fn head_args(input: &Path) -> Vec<OsString> {
         // the input is one local file; a crafted playlist must not pull in anything else
         "-protocol_whitelist",
         "file",
-        "-i",
     ]
     .map(OsString::from)
     .into();
+    // input options: seeking before -i skips straight to the cut
+    if x.trim_start > 0.0 {
+        a.extend(["-ss".into(), format!("{:.3}", x.trim_start).into()]);
+    }
+    if let Some(len) = x.trim_len {
+        a.extend(["-t".into(), format!("{len:.3}").into()]);
+    }
+    a.push("-i".into());
     a.push(input.into());
     a
 }
@@ -237,7 +252,7 @@ fn head_args(input: &Path) -> Vec<OsString> {
 /// First picture of a HEIC/AVIF file as PNG (ffmpeg stitches the tile grid and applies
 /// the rotation).
 fn still_args(input: &Path, output: &Path) -> Vec<OsString> {
-    let mut a = head_args(input);
+    let mut a = head_args(input, &Extra::default());
     a.extend(
         [
             "-frames:v",
@@ -409,7 +424,7 @@ pub fn convert_with_ffmpeg(
     let opts = &opts.clamped();
     let (src, from) = security::validate_input(input)?;
     let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
-    if !allows(ext, from, target, opts) || !uses_ffmpeg(from, target) {
+    if !allows(ext, from, target, opts) || !(uses_ffmpeg(from, target) || opts.ffmpeg_only(from)) {
         return Err(ConvertError::Unsupported);
     }
     if !ffmpeg.is_file() {
@@ -433,12 +448,27 @@ pub fn convert_with_ffmpeg(
             resize: opts.resize,
             strip: opts.strip_metadata,
             no_audio: opts.no_audio,
+            mono: opts.mono,
+            audio_bps: opts.audio_kbps.map(|k| u64::from(k) * 1000),
             ..Extra::default()
         };
+        x.trim_start = f64::from(opts.trim_start.unwrap_or(0.0));
+        if let Some(end) = opts.trim_end {
+            // an end at or before the start keeps nothing
+            let len = f64::from(end) - x.trim_start;
+            if len <= 0.0 {
+                return Err(ConvertError::Unsupported);
+            }
+            x.trim_len = Some(len);
+        }
         if let Some(max) = opts.max_bytes {
             if target.is_video() || matches!(target, Format::Mp3 | Format::Ogg | Format::Aac) {
                 let p = probe(ffmpeg, &src)?;
-                let d = p.duration_us.ok_or(ConvertError::TargetSize)?;
+                let mut d = p.duration_us.ok_or(ConvertError::TargetSize)?;
+                // only the kept part counts against the size limit
+                d = d
+                    .saturating_sub((x.trim_start * 1e6) as u64)
+                    .min(x.trim_len.map_or(u64::MAX, |l| (l * 1e6) as u64));
                 let b =
                     plan_bitrates(max, d, target, p.has_audio && !opts.no_audio, &opts.quality)?;
                 (x.video_bps, x.audio_bps) = (b.video_bps, b.audio_bps);
@@ -492,7 +522,7 @@ pub fn encode_webp(
             CompressionType::Fast,
             FilterType::NoFilter,
         ))?;
-        let mut a = head_args(&png);
+        let mut a = head_args(&png, &Extra::default());
         a.extend(
             [
                 "-frames:v",
@@ -758,6 +788,44 @@ mod tests {
         )
         .join(" ");
         assert!(a.contains("-b:v 300k") && !a.contains("-crf") && a.ends_with("-b:a 64k"));
+    }
+
+    #[test]
+    fn trim_comes_before_input_and_mono_after() {
+        let x = Extra {
+            mono: true,
+            trim_start: 2.5,
+            trim_len: Some(10.0),
+            ..Extra::default()
+        };
+        let a: Vec<String> = build_args(
+            Path::new("in.mp4"),
+            Path::new("out.mp3"),
+            Format::Mp3,
+            &Quality::default(),
+            &x,
+        )
+        .iter()
+        .map(|s| s.to_string_lossy().into_owned())
+        .collect();
+        let pos = |k: &str| a.iter().position(|s| s == k).unwrap();
+        assert_eq!(
+            (a[pos("-ss") + 1].as_str(), a[pos("-t") + 1].as_str()),
+            ("2.500", "10.000")
+        );
+        assert!(pos("-ss") < pos("-i") && pos("-t") < pos("-i") && pos("-ac") > pos("-i"));
+        // no cut: no seek flags; a GIF stays without -ac
+        let a = build_args(
+            Path::new("in.mp4"),
+            Path::new("out.gif"),
+            Format::Gif,
+            &Quality::default(),
+            &Extra {
+                mono: true,
+                ..Extra::default()
+            },
+        );
+        assert!(!a.iter().any(|s| s == "-ss" || s == "-ac"));
     }
 
     #[test]

@@ -16,7 +16,7 @@ use crate::settings::Settings;
 pub const MAX_FILES: usize = folder::MAX_FILES;
 
 /// What the user picked in the chooser.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Choice {
     Target {

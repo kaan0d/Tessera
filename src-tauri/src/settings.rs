@@ -93,7 +93,7 @@ pub struct Updates {
     pub check_on_start: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     /// Settings file generation; 0 = written before versions existed. Bumped by `load_from`

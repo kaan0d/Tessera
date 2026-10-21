@@ -97,6 +97,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Yerleşik hazır ayarlar değiştirilemez",
     ),
     (
+        "preset.bad_trim",
+        "The cut must end after it starts",
+        "Kesim bitişi başlangıçtan sonra olmalı",
+    ),
+    (
         "preset.bad_kinds",
         "Pick at least one file type for the preset",
         "Hazır ayar için en az bir dosya türü seçin",

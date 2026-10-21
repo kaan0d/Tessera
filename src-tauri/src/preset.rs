@@ -10,7 +10,7 @@ use crate::settings::Settings;
 pub const MAX_CUSTOM: usize = 30;
 const KINDS: [&str; 4] = ["image", "audio", "video", "document"];
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PresetOptions {
     /// `{"max_edge":1920}` | `{"percent":50}` | `{"exact":{"w":..,"h":..,"fit":"contain"}}`
@@ -24,9 +24,19 @@ pub struct PresetOptions {
     pub video_mbps: Option<u8>,
     /// Video outputs get no audio track.
     pub no_audio: bool,
+    /// 8..=512 kbit/s for lossy audio and the sound of a video.
+    pub audio_kbps: Option<u16>,
+    /// One audio channel.
+    pub mono: bool,
+    /// Cut from this second to `trim_end` (seconds; end of file when empty).
+    pub trim_start: Option<f32>,
+    pub trim_end: Option<f32>,
+    /// GIF outputs: frames per second (5..=30) and width in px (120..=1280).
+    pub gif_fps: Option<u8>,
+    pub gif_width: Option<u16>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Preset {
     /// `[a-z0-9_-]{1,32}`; empty on save means "make one".
@@ -164,6 +174,16 @@ impl Preset {
         o.strip_metadata = p.strip_metadata;
         o.max_bytes = p.max_bytes;
         o.no_audio = p.no_audio;
+        o.audio_kbps = p.audio_kbps;
+        o.mono = p.mono;
+        o.trim_start = p.trim_start;
+        o.trim_end = p.trim_end;
+        if let Some(f) = p.gif_fps {
+            o.quality.gif_fps = f;
+        }
+        if let Some(w) = p.gif_width {
+            o.quality.gif_width = w;
+        }
         if let Some(q) = p.jpeg_quality {
             o.quality.jpeg = q;
             o.quality.webp = q;
@@ -243,8 +263,24 @@ impl Preset {
         o.max_bytes = o.max_bytes.map(|n| n.max(1));
         o.jpeg_quality = o.jpeg_quality.map(|q| q.clamp(1, 100));
         o.video_mbps = o.video_mbps.map(|q| q.clamp(1, 30));
-        let transforms =
-            o.resize.is_some() || o.strip_metadata || o.max_bytes.is_some() || o.no_audio;
+        o.audio_kbps = o.audio_kbps.map(|k| k.clamp(8, 512));
+        o.gif_fps = o.gif_fps.map(|f| f.clamp(5, 30));
+        o.gif_width = o.gif_width.map(|w| w.clamp(120, 1280));
+        // NaN, negative and absurd cut points are dropped; an end before the start is refused
+        let ok = |t: f32| t.is_finite() && (0.0..=360_000.0).contains(&t);
+        o.trim_start = o.trim_start.filter(|&t| ok(t));
+        o.trim_end = o.trim_end.filter(|&t| ok(t));
+        if matches!((o.trim_start, o.trim_end), (s, Some(e)) if e <= s.unwrap_or(0.0)) {
+            return bad("preset.bad_trim");
+        }
+        let transforms = o.resize.is_some()
+            || o.strip_metadata
+            || o.max_bytes.is_some()
+            || o.no_audio
+            || o.audio_kbps.is_some()
+            || o.mono
+            || o.trim_start.is_some_and(|t| t > 0.0)
+            || o.trim_end.is_some();
         let keeps = self.target == "same" || self.video_target.as_deref() == Some("same");
         if keeps && !transforms {
             return bad("preset.same_needs_option");
@@ -348,6 +384,44 @@ mod tests {
         p.name_key = Some("preset.web".into());
         p.validate(Lang::Tr).unwrap();
         assert!(p.name_key.is_none());
+    }
+
+    #[test]
+    fn audio_and_cut_options() {
+        let s = Settings::default();
+        let mut p = Preset {
+            id: "cut".into(),
+            custom_name: Some("Cut".into()),
+            kinds: vec!["video".into()],
+            target: "same".into(),
+            options: PresetOptions {
+                trim_start: Some(1.0),
+                trim_end: Some(5.0),
+                audio_kbps: Some(1),
+                gif_fps: Some(99),
+                ..PresetOptions::default()
+            },
+            ..Preset::default()
+        };
+        // a cut alone makes "same format" meaningful; values are clamped
+        p.validate(Lang::En).unwrap();
+        assert_eq!(
+            (p.options.audio_kbps, p.options.gif_fps),
+            (Some(8), Some(30))
+        );
+        let o = p.options_for(&s);
+        assert_eq!(
+            (o.trim_start, o.trim_end, o.quality.gif_fps),
+            (Some(1.0), Some(5.0), 30)
+        );
+        assert!(o.ffmpeg_only(Format::Wav) && !o.ffmpeg_only(Format::Png));
+        // end before start is refused, NaN is dropped
+        p.options.trim_end = Some(0.5);
+        assert!(p.validate(Lang::En).is_err());
+        p.options.trim_end = None;
+        p.options.audio_kbps = None;
+        p.options.trim_start = Some(f32::NAN);
+        assert!(p.validate(Lang::En).is_err()); // nothing left to change for "same"
     }
 
     #[test]

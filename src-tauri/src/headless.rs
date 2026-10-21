@@ -221,7 +221,9 @@ fn convert_one(
         .extension()
         .and_then(|e| e.to_str())
         .and_then(Format::from_ext);
-    let r = if from.is_some_and(|f| uses_ffmpeg(f, target)) || needs_ffmpeg(target) {
+    let r = if from.is_some_and(|f| uses_ffmpeg(f, target) || opts.ffmpeg_only(f))
+        || needs_ffmpeg(target)
+    {
         let exe = ffmpeg::exe_path();
         if !*ffmpeg_ok.get_or_insert_with(|| ffmpeg::is_working(&exe)) {
             return Err(t(lang, "cli.no_ffmpeg").into());
