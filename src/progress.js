@@ -19,6 +19,62 @@ const KIND = {
 const kindOf = (name) => Object.keys(KIND).find((k) => KIND[k].test(name)) || 'doc';
 let uid = 0;
 
+/* ---------- toast-like entrance and exit ---------- */
+const card = document.getElementById('card');
+const timer = document.getElementById('p-timer');
+let shown = false, seconds = 7, leaveTimer = null;
+
+// corner decides the slide direction; refreshed while hidden so the next show is right
+async function loadPanel() {
+  try {
+    const p = (await T.core.invoke('get_settings')).panel;
+    if (p) {
+      document.body.dataset.corner = p.corner;
+      seconds = p.seconds;
+    }
+  } catch { /* keep the last known corner */ }
+}
+
+function restart(cls) {
+  card.classList.remove('entering', 'leaving');
+  void card.offsetWidth;
+  card.classList.add(cls);
+}
+
+function enter() {
+  cancelLeave();
+  if (shown) return;
+  shown = true;
+  restart('entering');
+}
+
+function cancelLeave() {
+  clearTimeout(leaveTimer);
+  leaveTimer = null;
+  timer.classList.remove('run');
+  timer.style.transitionDuration = '';
+}
+
+// the backend hides the window panel.seconds after the last job; slide out just before it does
+function scheduleLeave() {
+  if (leaveTimer) return;
+  timer.style.transitionDuration = seconds + 's';
+  void timer.offsetWidth;
+  timer.classList.add('run');
+  leaveTimer = setTimeout(() => {
+    shown = false;
+    restart('leaving');
+  }, Math.max(0, seconds * 1000 - 360));
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') return enter();
+  cancelLeave();
+  shown = false;
+  card.classList.remove('entering', 'leaving');
+  loadPanel();
+});
+
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -82,6 +138,7 @@ function getJob(id, name) {
   if (j) return j;
   // the window was hidden since the last batch: start clean
   if (![...jobs.values()].some((x) => x.state === 'run')) [...jobs.keys()].forEach((k) => removeJob(k, false));
+  enter();
   const li = el('li', 'job entering');
   const inner = el('div', 'job-in');
   const sheet = sheetFor(name);
@@ -129,6 +186,8 @@ function summary() {
     : err ? `${ok} başarılı, ${err} başarısız` : `${ok} dosya hazır`;
   document.getElementById('p-pct').textContent = Math.round(pct);
   document.getElementById('p-bar').style.setProperty('--p', pct / 100);
+  if (run) cancelLeave();
+  else if (all.length) scheduleLeave();
 }
 
 function progress({ id, name, percent }) {
@@ -168,6 +227,7 @@ function done({ id, name, ok, message, output }) {
   summary();
 }
 
+if (T && T.core) loadPanel();
 if (T && T.event) {
   T.event.listen('job-progress', (e) => progress(e.payload));
   T.event.listen('job-done', (e) => done(e.payload));

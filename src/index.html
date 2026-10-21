@@ -15,16 +15,25 @@
   <symbol id="i-files" viewBox="0 0 24 24"><rect x="8" y="3.5" width="12" height="13" rx="2"/><path d="M16 20.5H6a2 2 0 0 1-2-2V8"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17.5 5-4.5 4 3.5 2.5-2 4.5 3.5"/></symbol>
   <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="m10.5 9.5 4 2.5-4 2.5z"/></symbol>
+  <symbol id="i-audio" viewBox="0 0 24 24"><path d="M9 17.5V6.5l10-2v11"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 18.5 8.5 6l4.5 12.5M5.6 14h5.8"/><path d="M15.5 10.5c.6-.8 1.5-1.2 2.5-1.2 1.7 0 2.5 1 2.5 2.6v6.6M20.5 14.5c-3.5 0-5.5.8-5.5 2.4 0 1 .8 1.6 1.9 1.6 1.9 0 3.6-1.4 3.6-4"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="13" rx="2.5"/><rect x="12.5" y="7.5" width="5.5" height="3.5" rx="1"/><path d="M9 20.5h6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2h-14z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M5 7h9M5 12h6M5 17h3"/><path d="M17.5 5v14m0 0-3-3m3 3 3-3"/></symbol>
+  <symbol id="i-shapes" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><circle cx="16.5" cy="7.5" r="3.5"/><path d="m7.5 13.5 4 6.5h-8z"/><rect x="13" y="13" width="7" height="7" rx="3.5"/></symbol>
   <symbol id="i-pointer" viewBox="0 0 24 24"><path d="M5 4.5 18.5 10l-5.8 1.9-2 5.9z"/><path d="m13 12.2 5 5"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m5.5 12.5 4.2 4.2 8.8-9.2"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.6a2 2 0 0 1 3.4 0l7.2 12.6a2 2 0 0 1-1.7 3H4.8a2 2 0 0 1-1.7-3z"/><path d="M12 9.5v4"/><path d="M12 16.8v.2"/></symbol>
   <symbol id="i-retry" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></symbol>
 </svg>
 
-<main>
-  <header class="top">
+<header class="top">
+  <div class="top-row">
     <!-- placeholder brand mark: swap this svg when the real logo exists -->
     <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
       <defs>
@@ -41,8 +50,20 @@
       <p class="sub">Ayarlar</p>
     </div>
     <span id="saved" class="saved" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span id="saved-text"></span></span>
-  </header>
+  </div>
+  <nav id="tabs" class="tabs seg" role="tablist" aria-label="Ayar bölümleri">
+    <span class="seg-thumb" aria-hidden="true"></span>
+    <button type="button" role="tab" id="t-genel" aria-controls="p-genel" aria-selected="true">Genel</button>
+    <button type="button" role="tab" id="t-bicim" aria-controls="p-bicim" aria-selected="false" tabindex="-1">Biçimler</button>
+    <button type="button" role="tab" id="t-cikti" aria-controls="p-cikti" aria-selected="false" tabindex="-1">Çıktı</button>
+    <button type="button" role="tab" id="t-kalite" aria-controls="p-kalite" aria-selected="false" tabindex="-1">Kalite</button>
+    <button type="button" role="tab" id="t-panel" aria-controls="p-panel" aria-selected="false" tabindex="-1">Panel</button>
+    <button type="button" role="tab" id="t-menu" aria-controls="p-menu" aria-selected="false" tabindex="-1">Menü</button>
+    <button type="button" role="tab" id="t-ileri" aria-controls="p-ileri" aria-selected="false" tabindex="-1">Gelişmiş</button>
+  </nav>
+</header>
 
+<main>
   <p id="error" class="banner err" role="alert" hidden></p>
 
   <section id="ff-notice" class="notice" aria-labelledby="h-notice" hidden>
@@ -54,8 +75,8 @@
     </div>
   </section>
 
-  <section class="group" aria-labelledby="h-genel">
-    <h2 id="h-genel" class="group-title">Genel</h2>
+  <!-- Genel -->
+  <section id="p-genel" class="pane on" role="tabpanel" aria-labelledby="t-genel" tabindex="-1">
     <div class="card">
       <div class="row">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-power"/></svg></span>
@@ -66,10 +87,47 @@
         <input type="checkbox" id="autostart" class="switch" role="switch" aria-describedby="d-autostart">
       </div>
     </div>
+    <p class="aside">Dosyalara sağ tıklayıp <b>Dönüştür</b> menüsünden bir biçim seçin. Hangi biçimlerin görüneceğini <button type="button" class="link" data-goto="t-bicim">Biçimler</button> bölümünden değiştirebilirsiniz.</p>
   </section>
 
-  <section class="group" aria-labelledby="h-cikti">
-    <h2 id="h-cikti" class="group-title">Çıktı</h2>
+  <!-- Biçimler -->
+  <section id="p-bicim" class="pane" role="tabpanel" aria-labelledby="t-bicim" tabindex="-1" hidden>
+    <div class="group">
+      <h2 class="group-title" id="h-targets">Dönüştürülebilecek biçimler</h2>
+      <div class="card">
+        <div id="targets" class="kinds" aria-labelledby="h-targets"></div>
+        <p id="t-hint" class="foot hint" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="group">
+      <h2 class="group-title" id="h-sources">Menüde görünecek dosya türleri</h2>
+      <div class="card">
+        <div id="sources" class="kinds" aria-labelledby="h-sources"></div>
+        <p id="s-hint" class="foot hint" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+    <p id="cat-err" class="banner err" role="alert" hidden></p>
+  </section>
+
+  <!-- Çıktı -->
+  <section id="p-cikti" class="pane" role="tabpanel" aria-labelledby="t-cikti" tabindex="-1" hidden>
+    <div class="card">
+      <div class="row top-align">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-text"/></svg></span>
+        <div class="grow">
+          <label for="tpl" class="label">Dosya adı</label>
+          <p class="desc" id="d-tpl">Uzantı kendiliğinden eklenir. Etikete tıklayınca imlecin olduğu yere girer.</p>
+          <input type="text" id="tpl" class="field" spellcheck="false" autocomplete="off" maxlength="120" aria-describedby="d-tpl tpl-msg tpl-ex">
+          <div class="tokens" role="group" aria-label="Etiketler">
+            <button type="button" class="token" data-token="{name}"><code>{name}</code>ad</button>
+            <button type="button" class="token" data-token="{format}"><code>{format}</code>biçim</button>
+            <button type="button" class="token" data-token="{date}"><code>{date}</code>tarih</button>
+          </div>
+          <p id="tpl-ex" class="example" aria-live="polite"><span class="ex-src">foto.png</span><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg><span id="tpl-out" class="ex-out"></span></p>
+          <p id="tpl-msg" class="field-msg" role="alert"></p>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="row top-align" role="radiogroup" aria-labelledby="l-dir">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg></span>
@@ -103,54 +161,173 @@
     </div>
   </section>
 
-  <section class="group" aria-labelledby="h-kalite">
-    <h2 id="h-kalite" class="group-title">Kalite</h2>
+  <!-- Kalite -->
+  <section id="p-kalite" class="pane" role="tabpanel" aria-labelledby="t-kalite" tabindex="-1" hidden>
+    <div class="group">
+      <h2 class="group-title">Görsel</h2>
+      <div class="card">
+        <div class="row top-align">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span>
+          <div class="grow q">
+            <div class="label-line"><label for="q-jpeg" class="label">JPEG</label><output for="q-jpeg" class="val"><span></span><small></small></output></div>
+            <input type="range" id="q-jpeg" class="slider" data-q="jpeg" min="1" max="100" step="1">
+            <p class="desc scale" aria-hidden="true"><span>Küçük dosya</span><span>Yüksek kalite</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="group">
+      <h2 class="group-title">Ses</h2>
+      <div class="card">
+        <div class="row top-align">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-audio"/></svg></span>
+          <div class="grow">
+            <div class="q">
+              <div class="label-line"><label for="q-mp3" class="label">MP3</label><output for="q-mp3" class="val"><span></span><small></small></output></div>
+              <input type="range" id="q-mp3" class="slider" data-q="mp3_q" min="0" max="9" step="1">
+            </div>
+            <div class="q">
+              <div class="label-line"><label for="q-ogg" class="label">OGG</label><output for="q-ogg" class="val"><span></span><small></small></output></div>
+              <input type="range" id="q-ogg" class="slider" data-q="ogg_q" min="0" max="10" step="1">
+            </div>
+            <p class="desc scale" aria-hidden="true"><span>Küçük dosya</span><span>Yüksek kalite</span></p>
+          </div>
+        </div>
+        <p class="foot">Değerler ortalama bit hızıdır. Sesin içeriğine göre biraz değişir.</p>
+      </div>
+    </div>
+    <div class="group">
+      <h2 class="group-title">Video ve GIF</h2>
+      <div class="card">
+        <div class="row top-align">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-film"/></svg></span>
+          <div class="grow q">
+            <div class="label-line"><label for="q-video" class="label">Video bit hızı</label><output for="q-video" class="val"><span></span><small></small></output></div>
+            <input type="range" id="q-video" class="slider" data-q="video_mbps" min="1" max="30" step="1">
+            <p class="desc scale" aria-hidden="true"><span>Küçük dosya</span><span>Yüksek kalite</span></p>
+          </div>
+        </div>
+        <div class="row top-align">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span>
+          <div class="grow">
+            <div class="q">
+              <div class="label-line"><label for="q-fps" class="label">GIF kare hızı</label><output for="q-fps" class="val"><span></span><small></small></output></div>
+              <input type="range" id="q-fps" class="slider" data-q="gif_fps" min="5" max="30" step="1">
+            </div>
+            <div class="q">
+              <div class="label-line"><label for="q-width" class="label">GIF genişliği</label><output for="q-width" class="val"><span></span><small></small></output></div>
+              <input type="range" id="q-width" class="slider" data-q="gif_width" min="120" max="1280" step="10">
+            </div>
+            <p class="desc">Kare hızı ve genişlik arttıkça GIF akıcılaşır, dosya da hızla büyür.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Panel -->
+  <section id="p-panel" class="pane" role="tabpanel" aria-labelledby="t-panel" tabindex="-1" hidden>
     <div class="card">
+      <div class="stage-wrap">
+        <div class="label-line">
+          <span id="l-corner" class="label">Ekrandaki yeri</span>
+          <button type="button" id="demo-play" class="btn sm play"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>Önizle</button>
+        </div>
+        <p class="desc">Panelin açılacağı köşeye tıklayın.</p>
+        <div id="screen" class="screen" role="radiogroup" aria-labelledby="l-corner">
+          <label class="corner" data-c="top_left"><input type="radio" name="corner" value="top_left" aria-label="Sol üst"><span class="slot"></span></label>
+          <label class="corner" data-c="top_right"><input type="radio" name="corner" value="top_right" aria-label="Sağ üst"><span class="slot"></span></label>
+          <label class="corner" data-c="bottom_left"><input type="radio" name="corner" value="bottom_left" aria-label="Sol alt"><span class="slot"></span></label>
+          <label class="corner" data-c="bottom_right"><input type="radio" name="corner" value="bottom_right" aria-label="Sağ alt"><span class="slot"></span></label>
+          <span class="taskbar" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <div id="demo" class="demo" aria-hidden="true" hidden>
+            <div class="p-card">
+              <div id="demo-head" class="p-head">
+                <svg class="mark" viewBox="0 0 40 40">
+                  <rect width="40" height="40" rx="11" fill="url(#mark-g)"/>
+                  <path class="mark-sheet" d="M14 8.5h9.5l5.5 5.5v16a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2v-19.5a2 2 0 0 1 2-2z"/>
+                  <rect class="mark-ink" x="10" y="20.5" width="22" height="13" clip-path="url(#mark-c)"/>
+                  <path class="mark-fold" d="M23.5 8.5V12a2 2 0 0 0 2 2H29"/>
+                </svg>
+                <div class="grow">
+                  <p id="demo-title" class="p-title">Dönüştürülüyor</p>
+                  <p id="demo-sub" class="p-sub">2 dosya</p>
+                </div>
+                <p class="p-pct"><small>%</small><span id="demo-pct">0</span></p>
+                <div id="demo-bar" class="bar"><span></span></div>
+              </div>
+              <ul class="jobs">
+                <li class="job"><div><div class="job-in">
+                  <svg class="sheet working" viewBox="0 0 25 30">
+                    <defs><clipPath id="dc1"><path d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/></clipPath></defs>
+                    <g clip-path="url(#dc1)"><g class="level"><path class="ink" d="M-24 0q3-2 6 0t6 0t6 0t6 0t6 0t6 0t6 0t6 0V40h-48z"/></g></g>
+                    <path class="outline" d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/>
+                    <path class="fold" d="M15.5 1v5.5a2 2 0 0 0 2 2H23"/>
+                    <path class="pict" d="M6.5 23.5l4.5-5 3.5 3.5 2-2 2.5 3.5M9.5 14.6v.1"/>
+                    <path class="mark-ok" pathLength="1" d="M7.5 18.5l3.2 3.2 6.8-7"/>
+                  </svg>
+                  <div class="grow"><div class="name">Tatil fotoğrafı.heic</div><div class="msg">%0</div></div>
+                </div></div></li>
+                <li class="job"><div><div class="job-in">
+                  <svg class="sheet working" viewBox="0 0 25 30">
+                    <defs><clipPath id="dc2"><path d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/></clipPath></defs>
+                    <g clip-path="url(#dc2)"><g class="level"><path class="ink" d="M-24 0q3-2 6 0t6 0t6 0t6 0t6 0t6 0t6 0t6 0V40h-48z"/></g></g>
+                    <path class="outline" d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/>
+                    <path class="fold" d="M15.5 1v5.5a2 2 0 0 0 2 2H23"/>
+                    <path class="pict" d="M11 23v-8.5l6-1.5v8M11 23a1.7 1.7 0 1 1-1.7-1.7A1.7 1.7 0 0 1 11 23zM17 21a1.7 1.7 0 1 1-1.7-1.7A1.7 1.7 0 0 1 17 21z"/>
+                    <path class="mark-ok" pathLength="1" d="M7.5 18.5l3.2 3.2 6.8-7"/>
+                  </svg>
+                  <div class="grow"><div class="name">Podcast bölüm 12.wav</div><div class="msg">%0</div></div>
+                </div></div></li>
+              </ul>
+              <span id="demo-timer" class="p-timer"></span>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="row top-align">
-        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span>
-        <div class="grow">
-          <div class="label-line">
-            <label for="quality" class="label">JPEG kalitesi</label>
-            <output id="qval" for="quality" class="val">85</output>
-          </div>
-          <input type="range" id="quality" class="slider" min="1" max="100" step="1" aria-describedby="d-quality">
-          <p class="desc scale" id="d-quality"><span>Küçük dosya</span><span>Yüksek kalite</span></p>
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg></span>
+        <div class="grow q">
+          <div class="label-line"><label for="q-secs" class="label">Bitince ekranda kalma</label><output for="q-secs" class="val"><span></span><small></small></output></div>
+          <input type="range" id="q-secs" class="slider" min="2" max="30" step="1">
+          <p class="desc scale" aria-hidden="true"><span>Hemen kapansın</span><span>Uzun kalsın</span></p>
         </div>
+      </div>
+      <div class="row">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg></span>
+        <div class="grow">
+          <label for="toast-sw" class="label">Windows bildirimi</label>
+          <p class="desc" id="d-toast">Dönüştürmeler bitince bildirim merkezine kısa bir özet de gönderilir. Panel kapandıktan sonra da oradan görebilirsiniz.</p>
+        </div>
+        <input type="checkbox" id="toast-sw" class="switch" role="switch" aria-describedby="d-toast">
       </div>
     </div>
   </section>
 
-  <section class="group" aria-labelledby="h-ffmpeg">
-    <h2 id="h-ffmpeg" class="group-title">Video ve ses</h2>
+  <!-- Menü -->
+  <section id="p-menu" class="pane" role="tabpanel" aria-labelledby="t-menu" tabindex="-1" hidden>
     <div class="card">
-      <div id="ff" class="row top-align ff" data-state="checking">
-        <span class="tile ff-tile">
-          <svg id="ff-sheet" class="sheet" viewBox="0 0 25 30" aria-hidden="true">
-            <defs><clipPath id="ff-clip"><path d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/></clipPath></defs>
-            <g clip-path="url(#ff-clip)"><g class="level"><path class="ink" d="M-24 0q3-2 6 0t6 0t6 0t6 0t6 0t6 0t6 0t6 0V40h-48z"/></g></g>
-            <path class="outline" d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/>
-            <path class="fold" d="M15.5 1v5.5a2 2 0 0 0 2 2H23"/>
-            <path class="pict" d="M9 15.5v7l6-3.5z"/>
-            <path class="mark-ok" pathLength="1" d="M7.5 18.5l3.2 3.2 6.8-7"/>
-            <path class="mark-err" pathLength="1" d="M12.5 13.5v5.5M12.5 22.6v.2"/>
-          </svg>
-        </span>
+      <div class="row">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-shapes"/></svg></span>
         <div class="grow">
-          <div class="label-line">
-            <span class="label">ffmpeg</span>
-            <span id="ff-pct" class="val" hidden></span>
-          </div>
-          <p id="ff-status" class="desc ff-status" role="status">Durum denetleniyor…</p>
-          <div id="ff-bar" class="bar" role="progressbar" aria-label="ffmpeg indirme ilerlemesi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span></span></div>
-          <button type="button" id="ff-retry" class="btn sm" hidden><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg>Yeniden dene</button>
+          <label for="icons-sw" class="label">Biçim simgeleri</label>
+          <p class="desc" id="d-icons">Menüde her biçimin yanında türünü gösteren küçük bir simge olur.</p>
+        </div>
+        <input type="checkbox" id="icons-sw" class="switch" role="switch" aria-describedby="d-icons">
+      </div>
+      <div class="row">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-sort"/></svg></span>
+        <div class="grow">
+          <span id="l-sort" class="label">Sıralama</span>
+          <p class="desc">Menüdeki biçimlerin sırası.</p>
+        </div>
+        <div class="seg seg-sm" role="radiogroup" aria-labelledby="l-sort">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <label><input type="radio" name="sort" value="default"><span>Varsayılan</span></label>
+          <label><input type="radio" name="sort" value="alphabetical"><span>A-Z</span></label>
         </div>
       </div>
-      <p class="foot">Ücretsiz ve açık kaynaklı, kendiliğinden indirilir. Resim, WAV ve FLAC onsuz da dönüştürülür.</p>
     </div>
-  </section>
-
-  <section class="group" aria-labelledby="h-menu">
-    <h2 id="h-menu" class="group-title">Sağ tık menüsü</h2>
     <div class="card">
       <div class="row top-align">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-pointer"/></svg></span>
@@ -163,6 +340,38 @@
           </div>
           <p id="toast" class="toast" role="status" aria-live="polite"></p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gelişmiş -->
+  <section id="p-ileri" class="pane" role="tabpanel" aria-labelledby="t-ileri" tabindex="-1" hidden>
+    <div class="group">
+      <h2 class="group-title">Video ve ses</h2>
+      <div class="card">
+        <div id="ff" class="row top-align ff" data-state="checking">
+          <span class="tile ff-tile">
+            <svg id="ff-sheet" class="sheet" viewBox="0 0 25 30" aria-hidden="true">
+              <defs><clipPath id="ff-clip"><path d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/></clipPath></defs>
+              <g clip-path="url(#ff-clip)"><g class="level"><path class="ink" d="M-24 0q3-2 6 0t6 0t6 0t6 0t6 0t6 0t6 0t6 0V40h-48z"/></g></g>
+              <path class="outline" d="M4 1h11.5L23 8.5V27a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/>
+              <path class="fold" d="M15.5 1v5.5a2 2 0 0 0 2 2H23"/>
+              <path class="pict" d="M9 15.5v7l6-3.5z"/>
+              <path class="mark-ok" pathLength="1" d="M7.5 18.5l3.2 3.2 6.8-7"/>
+              <path class="mark-err" pathLength="1" d="M12.5 13.5v5.5M12.5 22.6v.2"/>
+            </svg>
+          </span>
+          <div class="grow">
+            <div class="label-line">
+              <span class="label">ffmpeg</span>
+              <span id="ff-pct" class="val" hidden></span>
+            </div>
+            <p id="ff-status" class="desc ff-status" role="status">Durum denetleniyor…</p>
+            <div id="ff-bar" class="bar" role="progressbar" aria-label="ffmpeg indirme ilerlemesi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span></span></div>
+            <button type="button" id="ff-retry" class="btn sm" hidden><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg>Yeniden dene</button>
+          </div>
+        </div>
+        <p class="foot">Ücretsiz ve açık kaynaklı, kendiliğinden indirilir. Resim, WAV ve FLAC onsuz da dönüştürülür.</p>
       </div>
     </div>
   </section>
