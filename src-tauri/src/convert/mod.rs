@@ -21,6 +21,8 @@ mod svg;
 mod transform;
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
@@ -263,6 +265,9 @@ pub struct Options {
     pub max_bytes: Option<u64>,
     /// PDF source: page to render, 1-based.
     pub page: u32,
+    /// Set from another thread to stop a running job: decode/encode loops, every image of a
+    /// batch and every PDF page check it and return `ConvertError::Cancelled`.
+    pub cancel: Option<Arc<AtomicBool>>,
 }
 
 impl Default for Options {
@@ -275,6 +280,7 @@ impl Default for Options {
             preserve_orientation: true,
             max_bytes: None,
             page: 1,
+            cancel: None,
         }
     }
 }
@@ -308,6 +314,19 @@ impl Options {
     pub fn page(mut self, n: u32) -> Self {
         self.page = n;
         self
+    }
+
+    pub fn cancel(mut self, token: Arc<AtomicBool>) -> Self {
+        self.cancel = Some(token);
+        self
+    }
+
+    /// `Err(Cancelled)` once the cancel token is set.
+    pub fn check_cancel(&self) -> Result<(), ConvertError> {
+        match &self.cancel {
+            Some(c) if c.load(Ordering::Relaxed) => Err(ConvertError::Cancelled),
+            _ => Ok(()),
+        }
     }
 
     /// Every field pinned to its valid range (`convert` does this itself).
@@ -393,6 +412,7 @@ pub fn convert(
         return Err(ConvertError::NeedsFfmpeg);
     }
 
+    opts.check_cancel()?;
     let dest = output::plan(&src, target.ext(), &opts.output)?;
     progress(0.0);
     output::write_atomic(&dest, |w| {
@@ -400,7 +420,7 @@ pub fn convert(
             let photo = matches!(from, Format::Jpg | Format::Raw);
             image::convert(&src, from, target, photo, opts, w)
         } else {
-            audio::convert(&src, ext, target, w, &mut progress)
+            audio::convert(&src, ext, target, w, &mut progress, opts.cancel.as_deref())
         }
     })?;
     // the pure-Rust audio writers (WAV, FLAC) cannot trade quality for size

@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{ErrorKind, Seek, Write};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use flacenc::component::BitRepr;
 use flacenc::error::Verify;
@@ -26,8 +27,9 @@ pub fn convert<W: Write + Seek>(
     target: Format,
     w: &mut W,
     progress: &mut impl FnMut(f32),
+    cancel: Option<&AtomicBool>,
 ) -> Result<(), ConvertError> {
-    encode(target, w, |sink| decode(src, ext, progress, sink))
+    encode(target, w, |sink| decode(src, ext, progress, cancel, sink))
 }
 
 type Sink<'a> = &'a mut dyn FnMut(u32, u16, &[i16]) -> Result<(), ConvertError>;
@@ -39,13 +41,14 @@ pub fn merge<W: Write + Seek>(
     target: Format,
     w: &mut W,
     progress: &mut impl FnMut(f32),
+    cancel: Option<&AtomicBool>,
 ) -> Result<(), ConvertError> {
     let n = srcs.len() as f32;
     let mut spec: Option<(u32, u16)> = None;
     encode(target, w, |sink| {
         for (i, (src, ext)) in srcs.iter().enumerate() {
             let mut p = |f: f32| progress((i as f32 + f) / n);
-            decode(src, ext, &mut p, |rate, ch, samples| {
+            decode(src, ext, &mut p, cancel, |rate, ch, samples| {
                 let (r, c) = *spec.get_or_insert((rate, ch));
                 if (rate, ch) == (r, c) {
                     sink(r, c, samples)
@@ -170,6 +173,7 @@ fn decode(
     src: &Path,
     ext: &str,
     progress: &mut impl FnMut(f32),
+    cancel: Option<&AtomicBool>,
     mut sink: impl FnMut(u32, u16, &[i16]) -> Result<(), ConvertError>,
 ) -> Result<(), ConvertError> {
     let mss = MediaSourceStream::new(Box::new(File::open(src)?), Default::default());
@@ -200,6 +204,9 @@ fn decode(
 
     let (mut bad, mut frames) = (0u32, 0u64);
     loop {
+        if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
+            return Err(ConvertError::Cancelled);
+        }
         let packet = match format.next_packet() {
             Ok(p) => p,
             Err(SymError::IoError(e)) if e.kind() == ErrorKind::UnexpectedEof => break,

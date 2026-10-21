@@ -30,7 +30,9 @@ pub fn convert(
     if let Some(done) = jpeg_into_pdf(src, from, target, opts, w) {
         return done;
     }
+    opts.check_cancel()?;
     let img = load(src, from, opts)?;
+    opts.check_cancel()?;
     let q = opts.quality.jpeg;
     match opts.max_bytes {
         None => encode(&img, target, q, photo, w),
@@ -40,6 +42,7 @@ pub fn convert(
             // ponytail: each attempt is held in memory; uncompressed targets (BMP) of huge
             // images peak around twice the pixel buffer. Cap by MAX_ALLOC upstream.
             let bytes = size::fit(&img, max, lossy, q, |i, q| {
+                opts.check_cancel()?;
                 let mut c = Cursor::new(Vec::new());
                 encode(i, target, q, photo, &mut c)?;
                 Ok(c.into_inner())

@@ -94,11 +94,13 @@ pub fn images_to_pdf(
     if list.iter().any(|(_, f)| !is_merge_image(*f)) {
         return Err(ConvertError::Unsupported);
     }
+    opts.check_cancel()?;
     let dest = plan(&list[0].0, "pdf", opts)?;
     progress(0.0);
     output::write_atomic(&dest, |w| {
         let (mut pages, mut bytes) = (Vec::new(), 0u64);
         for (i, (src, from)) in list.iter().enumerate() {
+            opts.check_cancel()?;
             let page = image::pdf_page(src, *from, opts)?;
             bytes += page.bytes();
             if bytes > super::transform::MAX_ALLOC {
@@ -136,7 +138,9 @@ pub fn audio(
     progress(0.0);
     let mut write = |target: Format| -> Result<PathBuf, ConvertError> {
         let dest = plan(&list[0].0, target.ext(), opts)?;
-        output::write_atomic(&dest, |w| audio::merge(&srcs, target, w, &mut progress))?;
+        output::write_atomic(&dest, |w| {
+            audio::merge(&srcs, target, w, &mut progress, opts.cancel.as_deref())
+        })?;
         Ok(dest)
     };
     let dest = match write(Format::Flac) {

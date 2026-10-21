@@ -364,8 +364,10 @@ fn run(app: &AppHandle, job: &Job) -> Done {
         .extension()
         .and_then(|e| e.to_str())
         .and_then(Format::from_ext);
+    // the pure-Rust engine checks this token in its decode/encode loops (ffmpeg gets it directly)
+    let opts = job.opts.clone().cancel(job.cancel.clone());
     let result = if let Some((kind, files)) = &job.merge {
-        combine::run(*kind, files, &job.opts, on_progress)
+        combine::run(*kind, files, &opts, on_progress)
     } else if from.is_some_and(|f| uses_ffmpeg(f, job.target)) {
         if job.ffmpeg_ready {
             ffmpeg_convert(job, on_progress)
@@ -373,11 +375,9 @@ fn run(app: &AppHandle, job: &Job) -> Done {
             Err(ConvertError::NeedsFfmpeg)
         }
     } else {
-        convert(&job.path, job.target, &job.opts, on_progress)
+        convert(&job.path, job.target, &opts, on_progress)
     };
     match result {
-        // ponytail: the pure-Rust engine has no abort hook (its progress callback returns nothing), so cancel
-        // only stops it while queued; ffmpeg jobs are killed mid-run. Add a bool return to `convert` to fix.
         Ok(out) => Done {
             id: job.id,
             name: job.name.clone(),
@@ -387,6 +387,7 @@ fn run(app: &AppHandle, job: &Job) -> Done {
             history_id: None,
         },
         Err(ConvertError::NeedsFfmpeg) => fail(t(lang, "job.needs_ffmpeg").into()),
+        Err(ConvertError::Cancelled) => fail(t(lang, "job.cancelled").into()),
         Err(e) => fail(e.message(lang)),
     }
 }
