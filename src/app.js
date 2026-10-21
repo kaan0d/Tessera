@@ -19,7 +19,9 @@ function normalize(x) {
   x.language = x.language === 'tr' ? 'tr' : 'en';
   x.quality = { jpeg: 85, mp3_q: 2, ogg_q: 6, video_mbps: 8, gif_fps: 15, gif_width: 480, ...x.quality };
   x.panel = { corner: 'top_right', seconds: 7, windows_toast: false, ...x.panel };
-  x.menu = { icons: true, sort: 'default', ...x.menu };
+  x.menu = { icons: true, sort: 'default', presets_enabled: true, merge: true, ...x.menu };
+  x.updates = { check_on_start: false, ...x.updates };
+  x.history_enabled ??= true;
   x.enabled_targets ||= [];
   x.menu_sources ||= [];
   x.name_template ??= '{name}';
@@ -41,9 +43,18 @@ function icon(id, cls) {
   return i;
 }
 
-/* ---------- tabs ---------- */
+/* ---------- sidebar sections ---------- */
 const tabs = $$('[role=tab]');
 let cur = 0;
+
+// the paper thumb slides to the chosen row; the header names the section
+function paintNav() {
+  const tb = tabs[cur], nav = $('tabs');
+  nav.style.setProperty('--y', tb.offsetTop + 'px');
+  nav.style.setProperty('--h', tb.offsetHeight + 'px');
+  $('pane-title').textContent = tb.textContent;
+  $('pane-desc').textContent = t(tb.dataset.desc);
+}
 
 function select(i, focus) {
   if (focus) tabs[i].focus();
@@ -62,13 +73,14 @@ function select(i, focus) {
   p.classList.remove('in');
   void p.offsetWidth; // restart the slide
   p.classList.add('in');
-  $('tabs').style.setProperty('--i', i);
   cur = i;
-  scrollTo(0, 0);
+  paintNav();
+  $('main').scrollTo(0, 0);
+  if (typeof onSection === 'function') onSection(tabs[i].id);
 }
 
 function tabKeys(e) {
-  const k = { ArrowRight: cur + 1, ArrowLeft: cur - 1, Home: 0, End: tabs.length - 1 }[e.key];
+  const k = { ArrowDown: cur + 1, ArrowRight: cur + 1, ArrowUp: cur - 1, ArrowLeft: cur - 1, Home: 0, End: tabs.length - 1 }[e.key];
   if (k == null) return;
   e.preventDefault();
   select((k + tabs.length) % tabs.length, true);
@@ -134,7 +146,11 @@ function paintSlider(id, v) {
 }
 
 /* ---------- formats ---------- */
-const KINDS = [['image', 'kind.image', 'i-image'], ['audio', 'kind.audio', 'i-audio'], ['video', 'kind.video', 'i-film']];
+const KINDS = [['image', 'kind.image', 'i-image'], ['audio', 'kind.audio', 'i-audio'], ['video', 'kind.video', 'i-film'], ['document', 'kind.document', 'i-doc']];
+// ponytail: the catalog has no needs_ffmpeg flag for sources; these decode through ffmpeg (video too). Drop when get_catalog grows one.
+const FF_SOURCES = ['heic', 'heif', 'avif'];
+const RAW = ['dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf'];
+const srcNeedsFf = (x) => x.kind === 'video' || FF_SOURCES.includes(x.ext);
 
 function buildKinds(box, items, sources) {
   box.replaceChildren();
@@ -180,10 +196,11 @@ function buildKinds(box, items, sources) {
       c.className = 'chip';
       c.dataset.ext = it.ext;
       c.append(it.ext.toUpperCase());
-      if (it.needs_ffmpeg) {
+      if (sources ? srcNeedsFf(it) : it.needs_ffmpeg) {
         c.dataset.ff = '';
         c.append(icon('i-download', 'ic badge'));
       }
+      if (sources) c.title = srcNeedsFf(it) ? t('chip.src_ff') : RAW.includes(it.ext) ? t('chip.raw') : '';
       c.onclick = () => (sources ? toggleSource(it.ext) : toggleTarget(it, c));
       chips.append(c);
     }
@@ -227,8 +244,9 @@ function paintHints(flash) {
   } else hint(th, '', []);
   th.hidden = !th.childNodes.length;
   const n = s.menu_sources.length;
+  const raw = s.menu_sources.some((e) => RAW.includes(e));
   hint($('s-hint'), n ? '' : 'warn', n
-    ? [t('hint.sources', { n })]
+    ? [t('hint.sources', { n }), ' ', icon('i-download', 'ic badge'), t('hint.src_ff'), ...(raw ? [' ' + t('hint.raw')] : [])]
     : [icon('i-alert'), t('hint.none_sources')]);
 }
 
@@ -361,6 +379,11 @@ function render() {
   $('screen').dataset.corner = s.panel.corner;
   $('toast-sw').checked = s.panel.windows_toast;
   $('icons-sw').checked = s.menu.icons;
+  $('presets-sw').checked = s.menu.presets_enabled;
+  $('merge-sw').checked = s.menu.merge;
+  $('hist-sw').checked = s.history_enabled;
+  $('upd-sw').checked = s.updates.check_on_start;
+  $('pr-off').hidden = s.menu.presets_enabled;
   const sorts = $$('input[name=sort]');
   sorts.forEach((r, i) => {
     r.checked = r.value === s.menu.sort;
@@ -386,10 +409,13 @@ async function pickFolder() {
   return false;
 }
 
-// in-page confirm modal; resolves true/false
-function confirmModal() {
+// in-page confirm modal; resolves true/false. `k` names the strings: {title, text, yes} (default: replace-original)
+function confirmModal(k = { title: 'modal.title', text: 'modal.text', yes: 'modal.yes' }, vars) {
   return new Promise((resolve) => {
     const m = $('modal'), yes = $('m-yes'), no = $('m-no');
+    $('m-title').textContent = t(k.title, vars);
+    $('m-text').textContent = t(k.text, vars);
+    yes.textContent = t(k.yes);
     const prev = document.activeElement;
     const done = (v) => {
       m.hidden = true;
@@ -520,6 +546,10 @@ function bind() {
   $('demo-play').onclick = demoPlay;
   $('toast-sw').onchange = (e) => setIn('panel', 'windows_toast', e.target.checked);
   $('icons-sw').onchange = (e) => setIn('menu', 'icons', e.target.checked);
+  $('presets-sw').onchange = (e) => setIn('menu', 'presets_enabled', e.target.checked);
+  $('merge-sw').onchange = (e) => setIn('menu', 'merge', e.target.checked);
+  $('hist-sw').onchange = (e) => change({ history_enabled: e.target.checked });
+  $('upd-sw').onchange = (e) => setIn('updates', 'check_on_start', e.target.checked);
   $$('input[name=sort]').forEach((r) => (r.onchange = () => setIn('menu', 'sort', r.value)));
   $('ff-notice-ok').onclick = () => change({ ffmpeg_notice_seen: true });
   $('ff-retry').onclick = async () => {
@@ -545,6 +575,8 @@ function relabel() {
   }
   tplPaint();
   refreshFfmpeg();
+  paintNav();
+  if (typeof featuresRelabel === 'function') featuresRelabel();
 }
 
 // the backend tells every window when the language changed
@@ -566,8 +598,10 @@ function intro() {
 }
 document.addEventListener('visibilitychange', intro);
 
-(async () => {
+// features.js loads after this file; DOMContentLoaded waits for both
+document.addEventListener('DOMContentLoaded', async () => {
   bind();
+  paintNav();
   intro();
   try {
     s = normalize(await invoke('get_settings'));
@@ -580,6 +614,7 @@ document.addEventListener('visibilitychange', intro);
     $$('main input,main select,main button').forEach((x) => (x.disabled = true));
     return;
   }
-  loadCatalog();
+  await loadCatalog();
   refreshFfmpeg();
-})();
+  if (typeof featuresInit === 'function') featuresInit();
+});

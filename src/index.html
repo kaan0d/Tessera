@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="style.css">
 <script src="i18n.js" defer></script>
 <script src="app.js" defer></script>
+<script src="features.js" defer></script>
 </head>
 <body class="settings">
 <svg class="sprite" aria-hidden="true">
@@ -17,6 +18,7 @@
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17.5 5-4.5 4 3.5 2.5-2 4.5 3.5"/></symbol>
   <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="m10.5 9.5 4 2.5-4 2.5z"/></symbol>
   <symbol id="i-audio" viewBox="0 0 24 24"><path d="M9 17.5V6.5l10-2v11"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3.5h6.5L18 8v11.5a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z"/><path d="M13.5 3.5V8H18M9 13h6M9 16.5h4"/></symbol>
   <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 18.5 8.5 6l4.5 12.5M5.6 14h5.8"/><path d="M15.5 10.5c.6-.8 1.5-1.2 2.5-1.2 1.7 0 2.5 1 2.5 2.6v6.6M20.5 14.5c-3.5 0-5.5.8-5.5 2.4 0 1 .8 1.6 1.9 1.6 1.9 0 3.6-1.4 3.6-4"/></symbol>
   <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="13" rx="2.5"/><rect x="12.5" y="7.5" width="5.5" height="3.5" rx="1"/><path d="M9 20.5h6"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
@@ -32,10 +34,27 @@
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-wand" viewBox="0 0 24 24"><path d="m4.5 19.5 10-10"/><path d="m12.5 7.5 4 4"/><path d="M17.5 3v3M16 4.5h3M20 9.5v2M19 10.5h2M8.5 3.5v2M7.5 4.5h2"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 16a7.5 7.5 0 1 1 15 0"/><path d="m12 16 3.5-4.5"/><path d="M4.5 19.5h15"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/><path d="M12 8v4l2.8 1.8"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3.5V6M12 18v2.5M3.5 12H6M18 12h2.5M6 6l1.8 1.8M16.2 16.2 18 18M6 18l1.8-1.8M16.2 7.8 18 6"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4.5 9.5 9 5"/><path d="M5 9.5h9a5.5 5.5 0 0 1 0 11h-3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l1 12.5h9l1-12.5"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4.5 19.5l1-4 10-10a2 2 0 0 1 3 3l-10 10z"/><path d="m13.5 7.5 3 3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5v-2a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="m7.5 9.5 3 2.5-3 2.5M12.5 15h4"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><path d="M4.5 6.5h4l4 5.5-4 5.5h-4"/><path d="M12.5 12h7m-3-3 3 3-3 3"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13.5 6.5 19 12l-5.5 5.5"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10"/><path d="M19.5 4.5 11 13"/><path d="M17 14v4.5a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1H10"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 5 6v5.5c0 4.3 3 7.8 7 9 4-1.2 7-4.7 7-9V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></symbol>
 </svg>
 
-<header class="top">
-  <div class="top-row">
+<div class="shell">
+<aside class="side">
+  <div class="brand-row">
     <!-- placeholder brand mark: swap this svg when the real logo exists -->
     <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
       <defs>
@@ -51,22 +70,44 @@
       <h1 id="app-title"></h1>
       <p class="sub" data-i18n="app.settings"></p>
     </div>
-    <span id="saved" class="saved" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span id="saved-text" data-i18n="saved"></span></span>
   </div>
-  <nav id="tabs" class="tabs seg" role="tablist" data-i18n-attr="aria-label:tabs.label">
-    <span class="seg-thumb" aria-hidden="true"></span>
-    <button type="button" role="tab" id="t-genel" data-i18n="tab.general" aria-controls="p-genel" aria-selected="true"></button>
-    <button type="button" role="tab" id="t-bicim" data-i18n="tab.formats" aria-controls="p-bicim" aria-selected="false" tabindex="-1"></button>
-    <button type="button" role="tab" id="t-cikti" data-i18n="tab.output" aria-controls="p-cikti" aria-selected="false" tabindex="-1"></button>
-    <button type="button" role="tab" id="t-kalite" data-i18n="tab.quality" aria-controls="p-kalite" aria-selected="false" tabindex="-1"></button>
-    <button type="button" role="tab" id="t-panel" data-i18n="tab.panel" aria-controls="p-panel" aria-selected="false" tabindex="-1"></button>
-    <button type="button" role="tab" id="t-menu" data-i18n="tab.menu" aria-controls="p-menu" aria-selected="false" tabindex="-1"></button>
-    <button type="button" role="tab" id="t-ileri" data-i18n="tab.advanced" aria-controls="p-ileri" aria-selected="false" tabindex="-1"></button>
+  <nav id="tabs" class="nav" role="tablist" aria-orientation="vertical" data-i18n-attr="aria-label:tabs.label">
+    <span class="nav-thumb" aria-hidden="true"></span>
+    <button type="button" role="tab" id="t-genel" aria-controls="p-genel" aria-selected="true" data-desc="desc.general"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg><span data-i18n="tab.general"></span></button>
+    <p class="nav-group" role="presentation" data-i18n="navg.convert"></p>
+    <button type="button" role="tab" id="t-bicim" aria-controls="p-bicim" aria-selected="false" tabindex="-1" data-desc="desc.formats"><svg class="ic" aria-hidden="true"><use href="#i-shapes"/></svg><span data-i18n="tab.formats"></span></button>
+    <button type="button" role="tab" id="t-preset" aria-controls="p-preset" aria-selected="false" tabindex="-1" data-desc="desc.presets"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg><span data-i18n="tab.presets"></span></button>
+    <button type="button" role="tab" id="t-cikti" aria-controls="p-cikti" aria-selected="false" tabindex="-1" data-desc="desc.output"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg><span data-i18n="tab.output"></span></button>
+    <button type="button" role="tab" id="t-kalite" aria-controls="p-kalite" aria-selected="false" tabindex="-1" data-desc="desc.quality"><svg class="ic" aria-hidden="true"><use href="#i-gauge"/></svg><span data-i18n="tab.quality"></span></button>
+    <p class="nav-group" role="presentation" data-i18n="navg.desktop"></p>
+    <button type="button" role="tab" id="t-panel" aria-controls="p-panel" aria-selected="false" tabindex="-1" data-desc="desc.panel"><svg class="ic" aria-hidden="true"><use href="#i-panel"/></svg><span data-i18n="tab.panel"></span></button>
+    <button type="button" role="tab" id="t-menu" aria-controls="p-menu" aria-selected="false" tabindex="-1" data-desc="desc.menu"><svg class="ic" aria-hidden="true"><use href="#i-pointer"/></svg><span data-i18n="tab.menu"></span></button>
+    <p class="nav-group" role="presentation" data-i18n="navg.auto"></p>
+    <button type="button" role="tab" id="t-history" aria-controls="p-history" aria-selected="false" tabindex="-1" data-desc="desc.history"><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg><span data-i18n="tab.history"></span></button>
+    <button type="button" role="tab" id="t-watch" aria-controls="p-watch" aria-selected="false" tabindex="-1" data-desc="desc.watch"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg><span data-i18n="tab.watch"></span></button>
+    <p class="nav-group" role="presentation" data-i18n="navg.system"></p>
+    <button type="button" role="tab" id="t-ileri" aria-controls="p-ileri" aria-selected="false" tabindex="-1" data-desc="desc.advanced"><svg class="ic" aria-hidden="true"><use href="#i-cog"/></svg><span data-i18n="tab.advanced"></span></button>
   </nav>
-</header>
+</aside>
 
-<main>
+<main id="main">
+  <header class="top">
+    <div class="grow">
+      <h2 id="pane-title" class="pane-title"></h2>
+      <p id="pane-desc" class="pane-desc"></p>
+    </div>
+    <span id="saved" class="saved" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span id="saved-text" data-i18n="saved"></span></span>
+  </header>
+
+  <div class="content">
   <p id="error" class="banner err" role="alert" hidden></p>
+
+  <section id="upd-banner" class="upd-banner" role="status" hidden>
+    <span class="tile accent"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg></span>
+    <p id="upd-banner-text" class="grow"></p>
+    <button type="button" id="upd-banner-get" class="btn primary sm"><span data-i18n="upd.get"></span><svg class="ic" aria-hidden="true"><use href="#i-external"/></svg></button>
+    <button type="button" id="upd-banner-x" class="iconbtn" data-i18n-attr="aria-label:upd.dismiss;title:upd.dismiss"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </section>
 
   <section id="ff-notice" class="notice" aria-labelledby="h-notice" hidden>
     <span class="tile accent"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg></span>
@@ -101,6 +142,28 @@
         <input type="checkbox" id="autostart" class="switch" role="switch" aria-describedby="d-autostart">
       </div>
     </div>
+    <div class="group">
+      <h2 class="group-title" data-i18n="upd.title"></h2>
+      <div class="card">
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg></span>
+          <div class="grow">
+            <label for="upd-sw" class="label" data-i18n="upd.auto"></label>
+            <p class="desc" id="d-upd" data-i18n="upd.auto_desc"></p>
+          </div>
+          <input type="checkbox" id="upd-sw" class="switch" role="switch" aria-describedby="d-upd">
+        </div>
+        <div class="row">
+          <span class="tile upd-tile" id="upd-tile"><svg class="ic" aria-hidden="true"><use id="upd-ic" href="#i-retry"/></svg></span>
+          <div class="grow">
+            <span class="label" data-i18n="upd.now_label"></span>
+            <p id="upd-result" class="desc upd-result" role="status" aria-live="polite" data-i18n="upd.never"></p>
+          </div>
+          <button type="button" id="upd-open" class="btn primary sm" hidden><span data-i18n="upd.get"></span><svg class="ic" aria-hidden="true"><use href="#i-external"/></svg></button>
+          <button type="button" id="upd-check" class="btn sm" data-i18n="upd.check"></button>
+        </div>
+      </div>
+    </div>
     <p class="aside" data-i18n-html="general.aside"></p>
   </section>
 
@@ -121,6 +184,27 @@
       </div>
     </div>
     <p id="cat-err" class="banner err" role="alert" hidden></p>
+  </section>
+
+  <!-- Presets -->
+  <section id="p-preset" class="pane" role="tabpanel" aria-labelledby="t-preset" tabindex="-1" hidden>
+    <div class="lead-row">
+      <p class="aside" data-i18n="pr.intro"></p>
+      <button type="button" id="pr-new" class="btn primary sm"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="pr.new"></span></button>
+    </div>
+    <p id="pr-off" class="banner warn" role="note" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><span data-i18n="pr.menu_off"></span> <button type="button" class="link" data-goto="t-menu" data-i18n="pr.menu_off_link"></button></span></p>
+    <p id="pr-err" class="banner err" role="alert" hidden></p>
+    <div class="group">
+      <h2 class="group-title" data-i18n="pr.builtin"></h2>
+      <div id="pr-builtin" class="plist"></div>
+    </div>
+    <div class="group">
+      <h2 class="group-title" data-i18n="pr.custom"></h2>
+      <div id="pr-custom" class="plist"></div>
+      <div id="pr-empty" class="empty sm" hidden>
+        <p data-i18n="pr.empty"></p>
+      </div>
+    </div>
   </section>
 
   <!-- Output -->
@@ -299,6 +383,27 @@
         </div>
       </div>
     </div>
+    <div class="group">
+      <h2 class="group-title" data-i18n="mn.extra"></h2>
+      <div class="card">
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg></span>
+          <div class="grow">
+            <label for="presets-sw" class="label" data-i18n="mn.presets"></label>
+            <p class="desc" id="d-presets-sw"><span data-i18n="mn.presets_desc"></span> <button type="button" class="link inline" data-goto="t-preset" data-i18n="mn.presets_link"></button></p>
+          </div>
+          <input type="checkbox" id="presets-sw" class="switch" role="switch" aria-describedby="d-presets-sw">
+        </div>
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-merge"/></svg></span>
+          <div class="grow">
+            <label for="merge-sw" class="label" data-i18n="mn.merge"></label>
+            <p class="desc" id="d-merge" data-i18n="mn.merge_desc"></p>
+          </div>
+          <input type="checkbox" id="merge-sw" class="switch" role="switch" aria-describedby="d-merge">
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="row top-align">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-pointer"/></svg></span>
@@ -311,6 +416,76 @@
           </div>
           <p id="toast" class="toast" role="status" aria-live="polite"></p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- History -->
+  <section id="p-history" class="pane" role="tabpanel" aria-labelledby="t-history" tabindex="-1" hidden>
+    <div class="card">
+      <div class="row">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg></span>
+        <div class="grow">
+          <label for="hist-sw" class="label" data-i18n="hi.keep"></label>
+          <p class="desc" id="d-hist" data-i18n="hi.keep_desc"></p>
+        </div>
+        <input type="checkbox" id="hist-sw" class="switch" role="switch" aria-describedby="d-hist">
+      </div>
+    </div>
+    <div class="group">
+      <div class="group-head">
+        <h2 class="group-title" id="h-hist" data-i18n="hi.recent"></h2>
+        <span id="hist-count" class="count"></span>
+        <button type="button" id="hist-clear" class="btn sm ghost"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg><span data-i18n="hi.clear"></span></button>
+      </div>
+      <p id="hist-err" class="banner err" role="alert" hidden></p>
+      <ul id="hist" class="card hlist" aria-labelledby="h-hist"></ul>
+      <div id="hist-empty" class="empty" hidden>
+        <svg class="empty-art" viewBox="0 0 120 84" aria-hidden="true">
+          <path class="e-sheet back" d="M38 14h26l12 12v42a3 3 0 0 1-3 3H38a3 3 0 0 1-3-3V17a3 3 0 0 1 3-3z"/>
+          <path class="e-sheet" d="M48 8h26l12 12v46a3 3 0 0 1-3 3H48a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3z"/>
+          <path class="e-fold" d="M74 8v9a3 3 0 0 0 3 3h9"/>
+          <path class="e-line" d="M53 36h22M53 44h22M53 52h14"/>
+          <circle class="e-badge" cx="86" cy="62" r="13"/>
+          <path class="e-hand" d="M86 55v7l4.5 3"/>
+        </svg>
+        <p class="empty-title" id="hist-empty-title"></p>
+        <p class="empty-text" id="hist-empty-text"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Watch folders -->
+  <section id="p-watch" class="pane" role="tabpanel" aria-labelledby="t-watch" tabindex="-1" hidden>
+    <div class="card">
+      <div class="row top-align">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></span>
+        <div class="grow">
+          <label for="watch-sw" class="label" data-i18n="wa.master"></label>
+          <p class="desc" id="d-watch" data-i18n="wa.master_desc"></p>
+        </div>
+        <input type="checkbox" id="watch-sw" class="switch" role="switch" aria-describedby="d-watch">
+      </div>
+      <p class="foot safe"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span data-i18n="wa.safety"></span></p>
+    </div>
+    <p id="wa-err" class="banner err" role="alert" hidden></p>
+    <div class="group">
+      <div class="group-head">
+        <h2 class="group-title" id="h-rules" data-i18n="wa.rules"></h2>
+        <span id="wa-count" class="count"></span>
+        <button type="button" id="wa-add" class="btn primary sm"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="wa.add"></span></button>
+      </div>
+      <div id="wa-off" class="banner warn" role="note" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span data-i18n="wa.off_note"></span></div>
+      <ul id="rules" class="plist" aria-labelledby="h-rules"></ul>
+      <div id="wa-empty" class="empty" hidden>
+        <svg class="empty-art" viewBox="0 0 120 84" aria-hidden="true">
+          <path class="e-folder" d="M22 34a4 4 0 0 1 4-4h20l6 6h42a4 4 0 0 1 4 4v30a4 4 0 0 1-4 4H26a4 4 0 0 1-4-4z"/>
+          <path class="e-sheet drop" d="M52 6h16l8 8v26a2 2 0 0 1-2 2H52a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/>
+          <path class="e-fold" d="M68 6v6a2 2 0 0 0 2 2h6"/>
+          <path class="e-line" d="M60 46v10m-4-4 4 4 4-4"/>
+        </svg>
+        <p class="empty-title" data-i18n="wa.empty_title"></p>
+        <p class="empty-text" data-i18n="wa.empty_text"></p>
       </div>
     </div>
   </section>
@@ -345,8 +520,24 @@
         <p class="foot" data-i18n="ff.foot"></p>
       </div>
     </div>
+    <div class="group">
+      <h2 class="group-title" data-i18n="cli.title"></h2>
+      <div class="card">
+        <div class="row top-align">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-terminal"/></svg></span>
+          <div class="grow">
+            <span class="label" data-i18n="cli.label"></span>
+            <p class="desc" data-i18n="cli.desc"></p>
+          </div>
+        </div>
+        <ul id="cli" class="cli"></ul>
+        <p class="foot" data-i18n="cli.foot"></p>
+      </div>
+    </div>
   </section>
+  </div>
 </main>
+</div>
 
 <div id="modal" class="backdrop" hidden>
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="m-title" aria-describedby="m-text">
@@ -358,6 +549,183 @@
       <button type="button" id="m-yes" class="btn danger" data-i18n="modal.yes"></button>
     </div>
   </div>
+</div>
+
+<!-- preset editor -->
+<div id="pd" class="backdrop" hidden>
+  <form id="pd-form" class="dialog sheet-dlg" role="dialog" aria-modal="true" aria-labelledby="pd-title" novalidate>
+    <header class="dlg-head">
+      <span class="tile accent"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg></span>
+      <h2 id="pd-title" class="grow"></h2>
+      <button type="button" class="iconbtn" data-close data-i18n-attr="aria-label:dlg.close;title:dlg.close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="dlg-body">
+      <div class="f">
+        <label for="pd-name" class="f-label" data-i18n="pd.name"></label>
+        <input type="text" id="pd-name" class="field plain" maxlength="40" autocomplete="off" aria-describedby="pd-name-msg" data-i18n-attr="placeholder:pd.name_ph">
+        <p id="pd-name-msg" class="field-msg" role="alert"></p>
+      </div>
+      <div class="f">
+        <span id="l-pd-kinds" class="f-label" data-i18n="pd.kinds"></span>
+        <div id="pd-kinds" class="chips kind-chips" role="group" aria-labelledby="l-pd-kinds" aria-describedby="pd-kinds-msg"></div>
+        <p id="pd-kinds-msg" class="field-msg" role="alert"></p>
+      </div>
+      <div class="f two">
+        <div>
+          <label for="pd-target" class="f-label" data-i18n="pd.target"></label>
+          <span class="select full"><select id="pd-target"></select><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </div>
+        <div id="pd-vt-wrap">
+          <label for="pd-vtarget" class="f-label" data-i18n="pd.vtarget"></label>
+          <span class="select full"><select id="pd-vtarget"></select><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </div>
+      </div>
+      <div class="f">
+        <span id="l-pd-resize" class="f-label" data-i18n="pd.resize"></span>
+        <div class="seg seg-4" role="radiogroup" aria-labelledby="l-pd-resize">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <label><input type="radio" name="pd-resize" value="none"><span data-i18n="pd.rs_none"></span></label>
+          <label><input type="radio" name="pd-resize" value="max_edge"><span data-i18n="pd.rs_edge"></span></label>
+          <label><input type="radio" name="pd-resize" value="percent"><span data-i18n="pd.rs_pct"></span></label>
+          <label><input type="radio" name="pd-resize" value="exact"><span data-i18n="pd.rs_exact"></span></label>
+        </div>
+        <div id="pd-rs-edge" class="inline-f" hidden>
+          <label for="pd-edge" data-i18n="pd.edge"></label>
+          <span class="num"><input type="number" id="pd-edge" class="field plain" min="1" max="16384" step="1"><span>px</span></span>
+        </div>
+        <div id="pd-rs-pct" class="inline-f" hidden>
+          <label for="pd-pct" data-i18n="pd.pct"></label>
+          <span class="num"><input type="number" id="pd-pct" class="field plain" min="1" max="400" step="1"><span>%</span></span>
+        </div>
+        <div id="pd-rs-exact" class="inline-f" hidden>
+          <span class="num"><input type="number" id="pd-w" class="field plain" min="1" max="16384" step="1" data-i18n-attr="aria-label:pd.w"><span>px</span></span>
+          <span class="times" aria-hidden="true">×</span>
+          <span class="num"><input type="number" id="pd-h" class="field plain" min="1" max="16384" step="1" data-i18n-attr="aria-label:pd.h"><span>px</span></span>
+          <span class="select"><select id="pd-fit" data-i18n-attr="aria-label:pd.fit">
+            <option value="contain" data-i18n="fit.contain"></option>
+            <option value="cover" data-i18n="fit.cover"></option>
+            <option value="stretch" data-i18n="fit.stretch"></option>
+          </select><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </div>
+        <p id="pd-rs-msg" class="field-msg" role="alert"></p>
+      </div>
+      <div class="opts card">
+        <div class="row">
+          <div class="grow">
+            <label for="pd-strip" class="label" data-i18n="pd.strip"></label>
+            <p class="desc" data-i18n="pd.strip_desc"></p>
+          </div>
+          <input type="checkbox" id="pd-strip" class="switch" role="switch">
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label for="pd-max-on" class="label" data-i18n="pd.max"></label>
+            <p class="desc" data-i18n="pd.max_desc"></p>
+          </div>
+          <span id="pd-max-wrap" class="num-unit" hidden>
+            <input type="number" id="pd-max" class="field plain" min="1" step="any" data-i18n-attr="aria-label:pd.max">
+            <span class="select"><select id="pd-unit" data-i18n-attr="aria-label:pd.unit"><option value="1000">KB</option><option value="1000000">MB</option></select><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+          </span>
+          <input type="checkbox" id="pd-max-on" class="switch" role="switch">
+        </div>
+        <div class="row top-align">
+          <div class="grow q">
+            <div class="label-line"><label for="pd-q-on" class="label" data-i18n="pd.q"></label><output for="pd-q" class="val" id="pd-q-val"></output></div>
+            <input type="range" id="pd-q" class="slider" min="1" max="100" step="1" data-i18n-attr="aria-label:pd.q" hidden>
+          </div>
+          <input type="checkbox" id="pd-q-on" class="switch" role="switch">
+        </div>
+        <div class="row top-align">
+          <div class="grow q">
+            <div class="label-line"><label for="pd-v-on" class="label" data-i18n="pd.v"></label><output for="pd-v" class="val" id="pd-v-val"></output></div>
+            <input type="range" id="pd-v" class="slider" min="1" max="30" step="1" data-i18n-attr="aria-label:pd.v" hidden>
+          </div>
+          <input type="checkbox" id="pd-v-on" class="switch" role="switch">
+        </div>
+      </div>
+      <p id="pd-opt-msg" class="field-msg" role="alert"></p>
+    </div>
+    <footer class="dlg-foot">
+      <p class="summary"><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg><span id="pd-sum"></span></p>
+      <p id="pd-err" class="field-msg" role="alert"></p>
+      <div class="actions end">
+        <button type="button" class="btn" data-close data-i18n="dlg.cancel"></button>
+        <button type="submit" id="pd-save" class="btn primary" data-i18n="dlg.save"></button>
+      </div>
+    </footer>
+  </form>
+</div>
+
+<!-- watch rule editor -->
+<div id="wd" class="backdrop" hidden>
+  <form id="wd-form" class="dialog sheet-dlg" role="dialog" aria-modal="true" aria-labelledby="wd-title" novalidate>
+    <header class="dlg-head">
+      <span class="tile accent"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></span>
+      <h2 id="wd-title" class="grow"></h2>
+      <button type="button" class="iconbtn" data-close data-i18n-attr="aria-label:dlg.close;title:dlg.close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="dlg-body">
+      <div class="f">
+        <span id="l-wd-folder" class="f-label" data-i18n="wd.folder"></span>
+        <div class="pick-line">
+          <p id="wd-folder" class="path grow" aria-labelledby="l-wd-folder"></p>
+          <button type="button" id="wd-pick" class="btn sm"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg><span data-i18n="out.pick"></span></button>
+        </div>
+        <p id="wd-folder-msg" class="field-msg" role="alert"></p>
+      </div>
+      <div class="opts card">
+        <div class="row">
+          <div class="grow">
+            <label for="wd-rec" class="label" data-i18n="wd.recursive"></label>
+            <p class="desc" data-i18n="wd.recursive_desc"></p>
+          </div>
+          <input type="checkbox" id="wd-rec" class="switch" role="switch">
+        </div>
+        <div class="row top-align">
+          <div class="grow">
+            <label for="wd-all" class="label" data-i18n="wd.all"></label>
+            <p class="desc" data-i18n="wd.all_desc"></p>
+            <div id="wd-exts" class="chips small" role="group" data-i18n-attr="aria-label:wd.types" hidden></div>
+            <p id="wd-exts-msg" class="field-msg" role="alert"></p>
+          </div>
+          <input type="checkbox" id="wd-all" class="switch" role="switch">
+        </div>
+      </div>
+      <div class="f">
+        <span id="l-wd-act" class="f-label" data-i18n="wd.action"></span>
+        <div class="seg seg-sm wide" role="radiogroup" aria-labelledby="l-wd-act">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <label><input type="radio" name="wd-act" value="preset"><span data-i18n="wd.act_preset"></span></label>
+          <label><input type="radio" name="wd-act" value="target"><span data-i18n="wd.act_target"></span></label>
+        </div>
+        <span class="select full mt"><select id="wd-preset" data-i18n-attr="aria-label:wd.act_preset"></select><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        <span class="select full mt"><select id="wd-target" data-i18n-attr="aria-label:wd.act_target"></select><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+      </div>
+      <div class="f" role="radiogroup" aria-labelledby="l-wd-out">
+        <span id="l-wd-out" class="f-label" data-i18n="wd.out"></span>
+        <div class="choices tight">
+          <label class="choice"><input type="radio" name="wd-out" value="same"><span data-i18n="wd.out_same"></span></label>
+          <div class="choice">
+            <label><input type="radio" name="wd-out" value="sub"><span data-i18n="wd.out_sub"></span></label>
+            <input type="text" id="wd-sub" class="field plain short" maxlength="60" spellcheck="false" autocomplete="off" data-i18n-attr="aria-label:wd.out_sub_name">
+          </div>
+          <div class="choice">
+            <label><input type="radio" name="wd-out" value="fixed"><span data-i18n="wd.out_fixed"></span></label>
+            <button type="button" id="wd-opick" class="btn sm" data-i18n="out.pick"></button>
+          </div>
+        </div>
+        <p id="wd-opath" class="path" hidden></p>
+        <p id="wd-out-msg" class="field-msg" role="alert"></p>
+      </div>
+    </div>
+    <footer class="dlg-foot">
+      <p id="wd-err" class="field-msg" role="alert"></p>
+      <div class="actions end">
+        <button type="button" class="btn" data-close data-i18n="dlg.cancel"></button>
+        <button type="submit" id="wd-save" class="btn primary" data-i18n="dlg.save"></button>
+      </div>
+    </footer>
+  </form>
 </div>
 </body>
 </html>
