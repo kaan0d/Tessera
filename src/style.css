@@ -770,3 +770,19 @@ html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 ::-webkit-scrollbar-thumb:active{background:var(--accent);background-clip:content-box}
 ::-webkit-scrollbar-button{display:none;width:0;height:0}
 ::-webkit-scrollbar-corner{background:transparent}
+
+/* chooser: custom settings page */
+.dr-custom{display:flex;flex-direction:column;gap:18px;padding:12px 0 4px}
+.dr-custom[hidden],#dr-main[hidden]{display:none}
+.cu-group{display:flex;flex-direction:column;gap:6px}
+.cu-label{font-size:var(--t-sm);font-weight:600;color:var(--muted)}
+.cu-chips{margin-top:2px}
+.cu-line{display:flex;align-items:center;gap:10px}
+.cu-line .slider{margin:0;flex:1}
+.cu-val{min-width:7ch;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--t-sm);font-weight:600;color:var(--ink)}
+.cu-numline{margin-top:2px}
+.cu-num.field{width:110px;margin:0;height:34px}
+.cu-unit{font-size:var(--t-sm);color:var(--muted)}
+.cu-hint{font-size:var(--t-xs);color:var(--muted)}
+.cu-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--t-sm);font-weight:500;cursor:pointer}
+.cu-need{margin:0;padding:8px 10px;border-radius:var(--r-md);background:var(--warn-bg);color:var(--warn-ink)}

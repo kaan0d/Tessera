@@ -9,6 +9,7 @@
 <script src="i18n.js" defer></script>
 <script src="summary.js" defer></script>
 <script src="drop.js" defer></script>
+<script src="custom.js" defer></script>
 </head>
 <body class="drop">
 <svg class="sprite" aria-hidden="true">
@@ -20,6 +21,7 @@
   <symbol id="i-wand" viewBox="0 0 24 24"><path d="m4.5 19.5 10-10"/><path d="m12.5 7.5 4 4"/><path d="M17.5 3v3M16 4.5h3M20 9.5v2M19 10.5h2M8.5 3.5v2M7.5 4.5h2"/></symbol>
   <symbol id="i-merge" viewBox="0 0 24 24"><path d="M4.5 6.5h4l4 5.5-4 5.5h-4"/><path d="M12.5 12h7m-3-3 3 3-3 3"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.6a2 2 0 0 1 3.4 0l7.2 12.6a2 2 0 0 1-1.7 3H4.8a2 2 0 0 1-1.7-3z"/><path d="M12 9.5v4"/><path d="M12 16.8v.2"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13.5 6.5 19 12l-5.5 5.5"/></symbol>
 </svg>
 
@@ -34,6 +36,7 @@
   <p id="dr-skip" class="dr-skip" role="note" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span id="dr-skip-text"></span></p>
 
   <div id="dr-body" class="dr-body">
+    <div id="dr-main">
     <h2 class="dr-q" data-i18n="dr.question"></h2>
     <section id="sec-convert" class="dr-sec" aria-labelledby="h-convert" hidden>
       <h3 id="h-convert" class="dr-sec-title" data-i18n="dr.convert"></h3>
@@ -48,11 +51,21 @@
       <h3 id="h-merge" class="dr-sec-title" data-i18n="dr.merge"></h3>
       <div id="dr-merge" class="dr-cards"></div>
     </section>
+    <section id="sec-custom" class="dr-sec" aria-labelledby="h-custom" hidden>
+      <h3 id="h-custom" class="dr-sec-title" data-i18n="dr.custom"></h3>
+      <div id="dr-customcard" class="dr-cards"></div>
+    </section>
     <p id="dr-empty" class="dr-note" hidden></p>
+    </div>
+    <form id="dr-custom" class="dr-custom" hidden autocomplete="off"></form>
   </div>
 
   <footer class="dr-foot">
     <p id="dr-status" class="dr-status" role="status" aria-live="polite"></p>
+    <button type="button" id="dr-back" class="btn sm ghost" hidden><span data-i18n="dr.back"></span></button>
+    <button type="button" id="dr-run" class="btn sm primary" hidden><span data-i18n="dr.run"></span></button>
+    <button type="button" id="dr-back" class="btn sm ghost" hidden><span data-i18n="dr.back"></span></button>
+    <button type="button" id="dr-run" class="btn sm primary" hidden><span data-i18n="dr.run"></span></button>
     <button type="button" id="dr-cancel" class="btn sm ghost"><span data-i18n="dr.cancel"></span><kbd data-i18n="dr.esc"></kbd></button>
   </footer>
 </main>

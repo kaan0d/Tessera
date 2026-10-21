@@ -176,6 +176,9 @@ function render() {
   buildTargets();
   buildPresets();
   buildMerge();
+  buildCustomCard();
+  if (customOpen && !customAvailable()) showCustom(false);
+  if (customOpen) (buildCustom(), syncCustom());
   const none = !opts.count;
   $('dr-empty').hidden = !none;
   $('dr-empty').textContent = none ? t('dr.none') : '';
@@ -209,6 +212,8 @@ async function load(payload) {
   busy = false;
   document.body.classList.remove('busy');
   opts = null;
+  cs = null;
+  if (customOpen) showCustom(false);
   status('');
   paintStack(payload.kinds || [], files.length);
   render();
@@ -217,7 +222,7 @@ async function load(payload) {
     const [o, s] = await Promise.all([invoke('get_drop_options', { files }), invoke('get_settings').catch(() => null)]);
     if (my !== seq) return;
     opts = o;
-    if (s) ffReady = !!s.ffmpeg_ready;
+    if (s) (ffReady = !!s.ffmpeg_ready), (st = s);
   } catch (e) {
     if (my !== seq) return;
     return status(t('dr.err_options', { err: e }), true);
@@ -238,17 +243,25 @@ async function choose(b) {
     b.classList.add('nudge');
     return status(b.title);
   }
+  const choice = JSON.parse(b.dataset.choice);
+  if (choice.kind === 'custom_open') return showCustom(true);
+  go(choice, b);
+}
+
+async function go(choice, b) {
   busy = true;
   document.body.classList.add('busy');
   b.classList.add('chosen');
+  if (customOpen) $('dr-run').disabled = true;
   status(t('dr.starting'));
   try {
     // the backend queues the jobs and hides this window; the panel takes over from here
-    await invoke('run_drop', { files, choice: JSON.parse(b.dataset.choice) });
+    await invoke('run_drop', { files, choice });
   } catch (e) {
     busy = false;
     document.body.classList.remove('busy');
     b.classList.remove('chosen');
+    if (customOpen) syncCustom();
     status(String(e), true);
     b.focus();
   }
@@ -316,7 +329,7 @@ function dragDrop() {
 }
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') return e.preventDefault(), close();
+  if (e.key === 'Escape') return e.preventDefault(), customOpen && !busy ? showCustom(false) : close();
   if (e.target.closest && e.target.closest('.dr-choice')) arrows(e);
 });
 document.addEventListener('click', (e) => {
