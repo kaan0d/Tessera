@@ -1008,11 +1008,8 @@ pub fn run() {
                 !first_run && settings::stored_version(&path) < settings::SETTINGS_VERSION;
             let s = settings::load_from(&path);
             i18n::set_lang(s.language);
-            if first_run || upgraded {
-                // best effort: the UI can retry through install_context_menu
-                let _ = shell::install(&s);
-                let _ = settings::save_to(&path, &s);
-            }
+            // state first: the config windows start loading pages that invoke commands right away
+            let first_run_settings = (first_run || upgraded).then(|| s.clone());
             if let Some(w) = app.get_webview_window("progress") {
                 panel::init(&w);
             }
@@ -1024,6 +1021,11 @@ pub fn run() {
                 watcher: Mutex::new(None),
                 dropped: Mutex::new(vec![]),
             });
+            if let Some(s) = first_run_settings {
+                // best effort: the UI can retry through install_context_menu
+                let _ = shell::install(&s);
+                let _ = settings::save_to(&path, &s);
+            }
             ensure_ffmpeg(app.handle());
             restart_watch(app.handle());
             if app
