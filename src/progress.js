@@ -54,7 +54,7 @@ function done({ id, name, ok, message, output }) {
   if (ok && output) {
     const open = el('button', 'btn', 'Klasörü aç');
     open.type = 'button';
-    open.onclick = () => T.core.invoke('open_folder', { path: output.replace(/[\/][^\/]*$/, '') }).catch((e) => {
+    open.onclick = () => T.core.invoke('open_folder', { path: output.replace(/[\\/][^\\/]*$/, '') }).catch((e) => {
       j.msg.className = 'msg err';
       j.msg.textContent = 'Klasör açılamadı: ' + e;
     });
