@@ -324,20 +324,26 @@ document.addEventListener('click', (e) => {
   if (b) choose(b);
 });
 $('dr-cancel').onclick = close;
-document.addEventListener('DOMContentLoaded', async () => {
+// The window is created at startup and can load before the backend answers commands, and a
+// `drop-files` sent while the page was still loading is lost: ask for the files, retrying briefly.
+async function fetchFiles(tries) {
   try {
-    const s = await invoke('get_settings');
-    setLang(s.language);
+    const [p, s] = await Promise.all([invoke('get_drop_files'), invoke('get_settings')]);
+    if (s.language !== LANG) setLang(s.language), relabel();
     ffReady = !!s.ffmpeg_ready;
-  } catch { /* English until told otherwise */ }
+    if (!opts || JSON.stringify(p.files) !== JSON.stringify(files)) load(p);
+  } catch (e) {
+    if (tries > 0) return setTimeout(() => fetchFiles(tries - 1), 250);
+    status(t('dr.err_options', { err: e }), true);
+  }
+}
+
+document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && fetchFiles(4));
+document.addEventListener('DOMContentLoaded', () => {
   if (T && T.event) {
     T.event.listen('drop-files', (e) => load(e.payload));
     T.event.listen('language-changed', (e) => (setLang(e.payload), relabel()));
   }
   dragDrop();
-  try {
-    load(await invoke('get_drop_files'));
-  } catch (e) {
-    status(t('dr.err_options', { err: e }), true);
-  }
+  fetchFiles(20);
 });
