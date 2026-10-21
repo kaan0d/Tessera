@@ -410,6 +410,8 @@ struct CatalogTarget {
     ext: &'static str,
     kind: &'static str,
     needs_ffmpeg: bool,
+    /// Works without ffmpeg, but is lossy (better and smaller) once it is installed: WebP.
+    better_with_ffmpeg: bool,
 }
 
 #[derive(Serialize)]
@@ -437,6 +439,7 @@ fn get_catalog() -> Catalog {
                 ext: f.ext(),
                 kind: f.kind(),
                 needs_ffmpeg: convert::needs_ffmpeg(*f),
+                better_with_ffmpeg: *f == convert::Format::Webp,
             })
             .collect(),
     }

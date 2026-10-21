@@ -206,6 +206,10 @@ impl Format {
 pub struct Quality {
     /// 1..=100 (JPEG; also the AVIF quality and the JPEG quality inside PDFs)
     pub jpeg: u8,
+    /// 1..=100, WebP quality when the installed ffmpeg encodes it (lossy)
+    pub webp: u8,
+    /// WebP stays lossless (the pure-Rust encoder, no ffmpeg needed)
+    pub webp_lossless: bool,
     /// lame VBR `-q:a`, 0 (best) ..= 9
     pub mp3_q: u8,
     /// vorbis `-q:a`, 0 ..= 10
@@ -222,6 +226,8 @@ impl Default for Quality {
     fn default() -> Self {
         Quality {
             jpeg: 85,
+            webp: 80,
+            webp_lossless: false,
             mp3_q: 2,
             ogg_q: 5,
             video_mbps: 6,
@@ -235,6 +241,8 @@ impl Quality {
     pub fn clamped(self) -> Self {
         Quality {
             jpeg: self.jpeg.clamp(1, 100),
+            webp: self.webp.clamp(1, 100),
+            webp_lossless: self.webp_lossless,
             mp3_q: self.mp3_q.min(9),
             ogg_q: self.ogg_q.min(10),
             video_mbps: self.video_mbps.clamp(1, 30),
@@ -268,6 +276,9 @@ pub struct Options {
     /// Set from another thread to stop a running job: decode/encode loops, every image of a
     /// batch and every PDF page check it and return `ConvertError::Cancelled`.
     pub cancel: Option<Arc<AtomicBool>>,
+    /// A working ffmpeg.exe, when there is one. Only enhances the pure-Rust paths: lossy
+    /// WebP goes through its libwebp. `None` (or `quality.webp_lossless`) keeps WebP lossless.
+    pub ffmpeg: Option<PathBuf>,
 }
 
 impl Default for Options {
@@ -281,6 +292,7 @@ impl Default for Options {
             max_bytes: None,
             page: 1,
             cancel: None,
+            ffmpeg: None,
         }
     }
 }
@@ -321,6 +333,18 @@ impl Options {
         self
     }
 
+    pub fn ffmpeg(mut self, exe: PathBuf) -> Self {
+        self.ffmpeg = Some(exe);
+        self
+    }
+
+    /// The ffmpeg that should encode a WebP target (lossy), if any.
+    pub fn lossy_webp(&self) -> Option<&Path> {
+        self.ffmpeg
+            .as_deref()
+            .filter(|_| !self.quality.webp_lossless)
+    }
+
     /// `Err(Cancelled)` once the cancel token is set.
     pub fn check_cancel(&self) -> Result<(), ConvertError> {
         match &self.cancel {
@@ -352,9 +376,10 @@ pub fn needs_ffmpeg(target: Format) -> bool {
     target.is_video() || matches!(target, Format::Mp3 | Format::Ogg | Format::Aac)
 }
 
-/// True when the conversion runs through ffmpeg: a video source (even for WAV/FLAC/GIF
+/// True when the conversion has to run through ffmpeg: a video source (even for WAV/FLAC/GIF
 /// output), a HEIC/AVIF source (decoded by ffmpeg) or a target the pure-Rust engine
-/// cannot write.
+/// cannot write. WebP is never in this list: without ffmpeg it is written lossless by the
+/// pure-Rust encoder, with a ready ffmpeg (`Options::ffmpeg`) it is lossy through libwebp.
 pub fn uses_ffmpeg(src: Format, target: Format) -> bool {
     src.is_video() || matches!(src, Format::Heic | Format::Avif) || needs_ffmpeg(target)
 }

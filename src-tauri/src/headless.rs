@@ -149,6 +149,7 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
     };
     if let Some(q) = a.quality {
         opts.quality.jpeg = q;
+        opts.quality.webp = q;
     }
     opts.output.conflict = a.conflict;
     if let Some(d) = a.out {
@@ -233,6 +234,16 @@ fn convert_one(
             &AtomicBool::new(false),
             progress,
         )
+    } else if target == Format::Webp && opts.ffmpeg.is_none() {
+        // lossy WebP wants libwebp from the installed ffmpeg; without it the file stays lossless
+        let exe = ffmpeg::exe_path();
+        let ok = *ffmpeg_ok.get_or_insert_with(|| ffmpeg::is_working(&exe));
+        let o = if ok {
+            opts.clone().ffmpeg(exe)
+        } else {
+            opts.clone()
+        };
+        convert(path, target, &o, progress)
     } else {
         convert(path, target, opts, progress)
     };

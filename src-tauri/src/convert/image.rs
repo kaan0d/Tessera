@@ -33,18 +33,24 @@ pub fn convert(
     opts.check_cancel()?;
     let img = load(src, from, opts)?;
     opts.check_cancel()?;
-    let q = opts.quality.jpeg;
+    let lossy_webp = target == Format::Webp && opts.lossy_webp().is_some();
+    let q = if target == Format::Webp {
+        opts.quality.webp
+    } else {
+        opts.quality.jpeg
+    };
     match opts.max_bytes {
-        None => encode(&img, target, q, photo, w),
+        None => encode_job(&img, target, q, photo, opts, w),
         Some(max) => {
-            let lossy =
-                matches!(target, Format::Jpg | Format::Avif) || (target == Format::Pdf && photo);
+            let lossy = matches!(target, Format::Jpg | Format::Avif)
+                || (target == Format::Pdf && photo)
+                || lossy_webp;
             // ponytail: each attempt is held in memory; uncompressed targets (BMP) of huge
             // images peak around twice the pixel buffer. Cap by MAX_ALLOC upstream.
             let bytes = size::fit(&img, max, lossy, q, |i, q| {
                 opts.check_cancel()?;
                 let mut c = Cursor::new(Vec::new());
-                encode(i, target, q, photo, &mut c)?;
+                encode_job(i, target, q, photo, opts, &mut c)?;
                 Ok(c.into_inner())
             })?;
             w.write_all(&bytes)?;
@@ -98,6 +104,26 @@ fn decode_raster(src: &Path) -> Result<DynamicImage, ConvertError> {
     limits.max_alloc = Some(MAX_ALLOC);
     reader.limits(limits);
     Ok(reader.decode()?)
+}
+
+/// `encode`, except lossy WebP goes through ffmpeg's libwebp when the job has one. If that
+/// fails (not for a cancel) the pure-Rust lossless encoder writes the file instead.
+fn encode_job(
+    img: &DynamicImage,
+    target: Format,
+    q: u8,
+    photo: bool,
+    opts: &Options,
+    w: &mut (impl Write + Seek),
+) -> Result<(), ConvertError> {
+    if let (Format::Webp, Some(ff)) = (target, opts.lossy_webp()) {
+        match super::ffmpeg::encode_webp(ff, img, q, opts.cancel.as_deref()) {
+            Ok(bytes) => return Ok(w.write_all(&bytes)?),
+            Err(ConvertError::Cancelled) => return Err(ConvertError::Cancelled),
+            Err(_) => {}
+        }
+    }
+    encode(img, target, q, photo, w)
 }
 
 /// Encodes `img` as `target`; `q` is the JPEG/AVIF quality.

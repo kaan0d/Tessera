@@ -163,6 +163,7 @@ impl Preset {
         o.max_bytes = p.max_bytes;
         if let Some(q) = p.jpeg_quality {
             o.quality.jpeg = q;
+            o.quality.webp = q;
         }
         if let Some(m) = p.video_mbps {
             o.quality.video_mbps = m;

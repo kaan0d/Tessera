@@ -454,6 +454,57 @@ pub fn convert_with_ffmpeg(
     Ok(dest)
 }
 
+/// Lossy WebP of `img` (already oriented/resized, no metadata) through libwebp, as bytes.
+/// The picture goes in as a fast-compressed temporary PNG; both temp files are removed.
+pub fn encode_webp(
+    ffmpeg: &Path,
+    img: &image::DynamicImage,
+    quality: u8,
+    cancel: Option<&AtomicBool>,
+) -> Result<Vec<u8>, ConvertError> {
+    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let base = std::env::temp_dir().join(format!("new-app-webp-{}-{nanos}", std::process::id()));
+    let (png, webp) = (base.with_extension("png"), base.with_extension("webp"));
+    let run = || -> Result<Vec<u8>, ConvertError> {
+        let file = std::fs::File::create(&png)?;
+        img.write_with_encoder(PngEncoder::new_with_quality(
+            std::io::BufWriter::new(file),
+            CompressionType::Fast,
+            FilterType::NoFilter,
+        ))?;
+        let mut a = head_args(&png);
+        a.extend(
+            [
+                "-frames:v",
+                "1",
+                "-map_metadata",
+                "-1",
+                "-c:v",
+                "libwebp",
+                "-quality",
+            ]
+            .map(OsString::from),
+        );
+        a.push(quality.clamp(1, 100).to_string().into());
+        a.extend(["-f", "webp"].map(OsString::from));
+        a.push(webp.clone().into());
+        let never = AtomicBool::new(false);
+        run_child(ffmpeg, a, cancel.unwrap_or(&never), &mut |_| {})?;
+        let bytes = std::fs::read(&webp)?;
+        if bytes.is_empty() {
+            return Err(ConvertError::EmptyOutput);
+        }
+        Ok(bytes)
+    };
+    let r = run();
+    let _ = std::fs::remove_file(&png);
+    let _ = std::fs::remove_file(&webp);
+    r
+}
+
 fn run_child(
     ffmpeg: &Path,
     args: Vec<OsString>,

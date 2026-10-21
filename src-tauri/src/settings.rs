@@ -220,6 +220,7 @@ impl Settings {
     pub fn to_options(&self) -> Options {
         Options {
             quality: self.quality.clamped(),
+            ffmpeg: self.ffmpeg_ready.then(crate::ffmpeg::exe_path),
             output: OutputParams {
                 dir: match &self.output_dir {
                     OutputDir::SameAsSource => OutDir::SameAsSource,
@@ -290,6 +291,32 @@ mod tests {
         assert_eq!(load_from(&p), Settings::default());
         fs::write(&p, b"{not json").unwrap();
         assert_eq!(load_from(&p), Settings::default());
+    }
+
+    #[test]
+    fn webp_quality_defaults_and_clamps() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("s.json");
+        fs::write(&p, br#"{"quality":{"jpeg":70}}"#).unwrap();
+        let q = load_from(&p).quality;
+        assert_eq!((q.jpeg, q.webp, q.webp_lossless), (70, 80, false));
+        fs::write(&p, br#"{"quality":{"webp":0,"webp_lossless":true}}"#).unwrap();
+        let q = load_from(&p).quality;
+        assert_eq!((q.webp, q.webp_lossless), (1, true));
+        assert!(Settings::default().to_options().ffmpeg.is_none());
+        let ready = Settings {
+            ffmpeg_ready: true,
+            ..Settings::default()
+        };
+        assert!(ready.to_options().lossy_webp().is_some());
+        let ll = Settings {
+            quality: Quality {
+                webp_lossless: true,
+                ..Quality::default()
+            },
+            ..ready
+        };
+        assert!(ll.to_options().lossy_webp().is_none());
     }
 
     #[test]
