@@ -18,6 +18,7 @@ const KIND = {
 };
 const kindOf = (name) => Object.keys(KIND).find((k) => KIND[k].test(name)) || 'doc';
 let uid = 0;
+setLang('en'); // until settings say otherwise
 
 /* ---------- toast-like entrance and exit ---------- */
 const card = document.getElementById('card');
@@ -27,7 +28,9 @@ let shown = false, seconds = 7, leaveTimer = null;
 // corner decides the slide direction; refreshed while hidden so the next show is right
 async function loadPanel() {
   try {
-    const p = (await T.core.invoke('get_settings')).panel;
+    const st = await T.core.invoke('get_settings');
+    if (st.language !== LANG) langChanged(st.language);
+    const p = st.panel;
     if (p) {
       document.body.dataset.corner = p.corner;
       seconds = p.seconds;
@@ -111,11 +114,15 @@ function sheetFor(name) {
   return s;
 }
 
+function setLabel(b, label) {
+  b.setAttribute('aria-label', label);
+  b.title = label;
+}
+
 function iconBtn(icon, label, cls) {
   const b = el('button', 'iconbtn' + (cls ? ' ' + cls : ''));
   b.type = 'button';
-  b.setAttribute('aria-label', label);
-  b.title = label;
+  setLabel(b, label);
   const i = svg('svg', { class: 'ic', 'aria-hidden': 'true' });
   i.append(svg('use', { href: '#i-' + icon }));
   b.append(i);
@@ -145,13 +152,14 @@ function getJob(id, name) {
   const wrap = el('div', 'grow');
   const nm = el('div', 'name', name);
   nm.title = name;
-  const msg = el('div', 'msg', '%0');
+  const msg = el('div', 'msg', t('pct', { n: 0 }));
   wrap.append(nm, msg);
   const actions = el('div', 'job-actions');
-  const cancel = iconBtn('x', 'İptal et: ' + name, 'cancel');
+  const cancel = iconBtn('x', t('p.cancel', { name }), 'cancel');
   cancel.onclick = () => {
     cancel.disabled = true;
-    msg.textContent = 'İptal ediliyor…';
+    j.cancelling = true;
+    msg.textContent = t('p.cancelling');
     T.core.invoke('cancel_job', { id }).catch(() => (cancel.disabled = false));
   };
   actions.append(cancel);
@@ -162,7 +170,7 @@ function getJob(id, name) {
   li.setAttribute('aria-label', name);
   root.append(li);
   li.addEventListener('animationend', () => li.classList.remove('entering'), { once: true });
-  j = { li, sheet, msg, actions, name, percent: 0, state: 'run' };
+  j = { li, sheet, msg, actions, name, percent: 0, state: 'run', btns: { cancel }, mk: null, cancelling: false };
   jobs.set(id, j);
   return j;
 }
@@ -172,7 +180,8 @@ function setLevel(j, p) {
   j.sheet.style.setProperty('--p', p / 100);
 }
 
-function summary() {
+// text of the header card; state and timers are left alone
+function paintSummary() {
   const all = [...jobs.values()];
   const run = all.filter((j) => j.state === 'run').length;
   const ok = all.filter((j) => j.state === 'ok').length;
@@ -180,14 +189,19 @@ function summary() {
   const pct = all.length ? all.reduce((a, j) => a + (j.state === 'run' ? j.percent : 100), 0) / all.length : 0;
   const head = document.getElementById('head');
   head.classList.toggle('done', !run && all.length > 0);
-  document.getElementById('p-title').textContent = run ? 'Dönüştürülüyor' : err ? 'Bazı dosyalar dönüştürülemedi' : 'Tamamlandı';
+  document.getElementById('p-title').textContent = run ? t('p.running') : err ? t('p.some_failed') : t('p.done');
   document.getElementById('p-sub').textContent = run
-    ? all.length === 1 ? '1 dosya' : `${all.length - run}/${all.length} dosya bitti`
-    : err ? `${ok} başarılı, ${err} başarısız` : `${ok} dosya hazır`;
+    ? all.length === 1 ? t('p.sub_one') : t('p.sub_run', { done: all.length - run, total: all.length })
+    : err ? t('p.sub_fail', { ok, err }) : t('p.sub_ok', { n: ok });
   document.getElementById('p-pct').textContent = Math.round(pct);
   document.getElementById('p-bar').style.setProperty('--p', pct / 100);
+  return { run, any: all.length > 0 };
+}
+
+function summary() {
+  const { run, any } = paintSummary();
   if (run) cancelLeave();
-  else if (all.length) scheduleLeave();
+  else if (any) scheduleLeave();
 }
 
 function progress({ id, name, percent }) {
@@ -195,7 +209,7 @@ function progress({ id, name, percent }) {
   if (j.state !== 'run') return;
   const p = Math.max(0, Math.min(100, percent || 0));
   setLevel(j, p);
-  if (!j.msg.textContent.startsWith('İptal')) j.msg.textContent = `%${Math.round(p)}`;
+  if (!j.cancelling) j.msg.textContent = t('pct', { n: Math.round(p) });
   summary();
 }
 
@@ -206,25 +220,46 @@ function done({ id, name, ok, message, output }) {
   j.sheet.classList.remove('working');
   j.sheet.classList.add(ok ? 'ok' : 'err');
   if (ok) setLevel(j, 100);
-  j.msg.textContent = ok ? 'Tamamlandı' : message || 'Dönüştürme başarısız oldu.';
+  // a backend message was composed in the language of the moment and stays as it is
+  j.mk = ok ? ['p.done'] : message ? null : ['p.fail_default'];
+  j.msg.textContent = j.mk ? t(...j.mk) : message;
   j.msg.title = j.msg.textContent;
   j.actions.replaceChildren();
   if (ok && output) {
-    const open = iconBtn('folder', 'Klasörü aç');
+    const open = iconBtn('folder', t('p.open'));
+    j.btns.open = open;
     open.onclick = () => T.core.invoke('open_folder', { path: output.replace(/[\\/][^\\/]*$/, '') }).catch((e) => {
       j.li.classList.add('is-err');
-      j.msg.textContent = 'Klasör açılamadı: ' + e;
+      j.mk = ['p.open_err', { err: e }];
+      j.msg.textContent = t(...j.mk);
       clearTimeout(j.timer);
     });
     j.actions.append(open);
   }
-  const close = iconBtn('x', 'Kapat');
+  const close = iconBtn('x', t('p.close'));
+  j.btns = { ...j.btns, close };
+  delete j.btns.cancel;
   close.onclick = () => removeJob(id, true);
   j.actions.append(close);
   // successes fold away on their own; failures wait to be read
   if (ok) j.timer = setTimeout(() => removeJob(id, true), 6000);
-  document.getElementById('announce').textContent = ok ? `${name} dönüştürüldü.` : `${name} dönüştürülemedi.`;
+  document.getElementById('announce').textContent = t(ok ? 'p.ann_ok' : 'p.ann_err', { name });
   summary();
+}
+
+// rewrites everything already on screen after a language switch
+function langChanged(code) {
+  setLang(code);
+  for (const j of jobs.values()) {
+    const b = j.btns;
+    if (b.cancel) setLabel(b.cancel, t('p.cancel', { name: j.name }));
+    if (b.open) setLabel(b.open, t('p.open'));
+    if (b.close) setLabel(b.close, t('p.close'));
+    if (j.state === 'run') j.msg.textContent = j.cancelling ? t('p.cancelling') : t('pct', { n: Math.round(j.percent) });
+    else if (j.mk) j.msg.textContent = t(...j.mk);
+    j.msg.title = j.state === 'run' ? '' : j.msg.textContent;
+  }
+  paintSummary();
 }
 
 if (T && T.core) loadPanel();
@@ -234,6 +269,7 @@ if (T && T.event) {
     document.body.dataset.corner = e.payload.corner;
     seconds = e.payload.seconds;
   });
+  T.event.listen('language-changed', (e) => langChanged(e.payload));
   T.event.listen('job-progress', (e) => progress(e.payload));
   T.event.listen('job-done', (e) => done(e.payload));
 }

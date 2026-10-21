@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>new-app</title>
 <link rel="stylesheet" href="style.css">
+<script src="i18n.js" defer></script>
 <script src="app.js" defer></script>
 </head>
 <body class="settings">
@@ -29,6 +30,7 @@
   <symbol id="i-retry" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></symbol>
 </svg>
 
@@ -47,19 +49,19 @@
     </svg>
     <div class="brand">
       <h1 id="app-title"></h1>
-      <p class="sub">Ayarlar</p>
+      <p class="sub" data-i18n="app.settings"></p>
     </div>
-    <span id="saved" class="saved" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span id="saved-text"></span></span>
+    <span id="saved" class="saved" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span id="saved-text" data-i18n="saved"></span></span>
   </div>
-  <nav id="tabs" class="tabs seg" role="tablist" aria-label="Ayar bölümleri">
+  <nav id="tabs" class="tabs seg" role="tablist" data-i18n-attr="aria-label:tabs.label">
     <span class="seg-thumb" aria-hidden="true"></span>
-    <button type="button" role="tab" id="t-genel" aria-controls="p-genel" aria-selected="true">Genel</button>
-    <button type="button" role="tab" id="t-bicim" aria-controls="p-bicim" aria-selected="false" tabindex="-1">Biçimler</button>
-    <button type="button" role="tab" id="t-cikti" aria-controls="p-cikti" aria-selected="false" tabindex="-1">Çıktı</button>
-    <button type="button" role="tab" id="t-kalite" aria-controls="p-kalite" aria-selected="false" tabindex="-1">Kalite</button>
-    <button type="button" role="tab" id="t-panel" aria-controls="p-panel" aria-selected="false" tabindex="-1">Panel</button>
-    <button type="button" role="tab" id="t-menu" aria-controls="p-menu" aria-selected="false" tabindex="-1">Menü</button>
-    <button type="button" role="tab" id="t-ileri" aria-controls="p-ileri" aria-selected="false" tabindex="-1">Gelişmiş</button>
+    <button type="button" role="tab" id="t-genel" data-i18n="tab.general" aria-controls="p-genel" aria-selected="true"></button>
+    <button type="button" role="tab" id="t-bicim" data-i18n="tab.formats" aria-controls="p-bicim" aria-selected="false" tabindex="-1"></button>
+    <button type="button" role="tab" id="t-cikti" data-i18n="tab.output" aria-controls="p-cikti" aria-selected="false" tabindex="-1"></button>
+    <button type="button" role="tab" id="t-kalite" data-i18n="tab.quality" aria-controls="p-kalite" aria-selected="false" tabindex="-1"></button>
+    <button type="button" role="tab" id="t-panel" data-i18n="tab.panel" aria-controls="p-panel" aria-selected="false" tabindex="-1"></button>
+    <button type="button" role="tab" id="t-menu" data-i18n="tab.menu" aria-controls="p-menu" aria-selected="false" tabindex="-1"></button>
+    <button type="button" role="tab" id="t-ileri" data-i18n="tab.advanced" aria-controls="p-ileri" aria-selected="false" tabindex="-1"></button>
   </nav>
 </header>
 
@@ -69,38 +71,50 @@
   <section id="ff-notice" class="notice" aria-labelledby="h-notice" hidden>
     <span class="tile accent"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg></span>
     <div class="grow">
-      <h2 id="h-notice">Video ve ses desteği hazırlanıyor</h2>
-      <p>Video, MP3, OGG ve AAC için ücretsiz ve açık kaynaklı ffmpeg bir kez indirilir (yaklaşık 170 MB). Beklerken resim, WAV ve FLAC dönüştürmeye devam edebilirsiniz.</p>
-      <button type="button" id="ff-notice-ok" class="btn primary sm">Anladım</button>
+      <h2 id="h-notice" data-i18n="ffn.title"></h2>
+      <p data-i18n="ffn.body"></p>
+      <button type="button" id="ff-notice-ok" class="btn primary sm" data-i18n="ffn.ok"></button>
     </div>
   </section>
 
-  <!-- Genel -->
+  <!-- General -->
   <section id="p-genel" class="pane on" role="tabpanel" aria-labelledby="t-genel" tabindex="-1">
     <div class="card">
       <div class="row">
+        <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg></span>
+        <div class="grow">
+          <span id="l-lang" class="label" data-i18n="lang.label"></span>
+          <p class="desc" data-i18n="lang.desc"></p>
+        </div>
+        <div class="seg seg-sm" role="radiogroup" aria-labelledby="l-lang">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <label><input type="radio" name="lang" value="en"><span lang="en">English</span></label>
+          <label><input type="radio" name="lang" value="tr"><span lang="tr">Türkçe</span></label>
+        </div>
+      </div>
+      <div class="row">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-power"/></svg></span>
         <div class="grow">
-          <label for="autostart" class="label">Windows ile başlat</label>
-          <p class="desc" id="d-autostart">Oturum açıldığında simge tepsisinde hazır bekler.</p>
+          <label for="autostart" class="label" data-i18n="autostart.label"></label>
+          <p class="desc" id="d-autostart" data-i18n="autostart.desc"></p>
         </div>
         <input type="checkbox" id="autostart" class="switch" role="switch" aria-describedby="d-autostart">
       </div>
     </div>
-    <p class="aside">Dosyalara sağ tıklayıp <b>Dönüştür</b> menüsünden bir biçim seçin. Hangi biçimlerin görüneceğini <button type="button" class="link" data-goto="t-bicim">Biçimler</button> bölümünden değiştirebilirsiniz.</p>
+    <p class="aside" data-i18n-html="general.aside"></p>
   </section>
 
-  <!-- Biçimler -->
+  <!-- Formats -->
   <section id="p-bicim" class="pane" role="tabpanel" aria-labelledby="t-bicim" tabindex="-1" hidden>
     <div class="group">
-      <h2 class="group-title" id="h-targets">Dönüştürülebilecek biçimler</h2>
+      <h2 class="group-title" id="h-targets" data-i18n="fmt.targets"></h2>
       <div class="card">
         <div id="targets" class="kinds" aria-labelledby="h-targets"></div>
         <p id="t-hint" class="foot hint" role="status" aria-live="polite"></p>
       </div>
     </div>
     <div class="group">
-      <h2 class="group-title" id="h-sources">Menüde görünecek dosya türleri</h2>
+      <h2 class="group-title" id="h-sources" data-i18n="fmt.sources"></h2>
       <div class="card">
         <div id="sources" class="kinds" aria-labelledby="h-sources"></div>
         <p id="s-hint" class="foot hint" role="status" aria-live="polite"></p>
@@ -109,21 +123,21 @@
     <p id="cat-err" class="banner err" role="alert" hidden></p>
   </section>
 
-  <!-- Çıktı -->
+  <!-- Output -->
   <section id="p-cikti" class="pane" role="tabpanel" aria-labelledby="t-cikti" tabindex="-1" hidden>
     <div class="card">
       <div class="row top-align">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-text"/></svg></span>
         <div class="grow">
-          <label for="tpl" class="label">Dosya adı</label>
-          <p class="desc" id="d-tpl">Uzantı kendiliğinden eklenir. Etikete tıklayınca imlecin olduğu yere girer.</p>
+          <label for="tpl" class="label" data-i18n="out.name"></label>
+          <p class="desc" id="d-tpl" data-i18n="out.name_desc"></p>
           <input type="text" id="tpl" class="field" spellcheck="false" autocomplete="off" maxlength="100" aria-describedby="d-tpl tpl-msg tpl-ex">
-          <div class="tokens" role="group" aria-label="Etiketler">
-            <button type="button" class="token" data-token="{name}"><code>{name}</code>ad</button>
-            <button type="button" class="token" data-token="{format}"><code>{format}</code>biçim</button>
-            <button type="button" class="token" data-token="{date}"><code>{date}</code>tarih</button>
+          <div class="tokens" role="group" data-i18n-attr="aria-label:out.tags">
+            <button type="button" class="token" data-token="{name}"><code>{name}</code><span data-i18n="tok.name"></span></button>
+            <button type="button" class="token" data-token="{format}"><code>{format}</code><span data-i18n="tok.format"></span></button>
+            <button type="button" class="token" data-token="{date}"><code>{date}</code><span data-i18n="tok.date"></span></button>
           </div>
-          <p id="tpl-ex" class="example" aria-live="polite"><span class="ex-src">foto.png</span><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg><span id="tpl-out" class="ex-out"></span></p>
+          <p id="tpl-ex" class="example" aria-live="polite"><span class="ex-src" data-i18n="tpl.example_src"></span><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg><span id="tpl-out" class="ex-out"></span></p>
           <p id="tpl-msg" class="field-msg" role="alert"></p>
         </div>
       </div>
@@ -132,12 +146,12 @@
       <div class="row top-align" role="radiogroup" aria-labelledby="l-dir">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg></span>
         <div class="grow">
-          <span id="l-dir" class="label">Kayıt konumu</span>
+          <span id="l-dir" class="label" data-i18n="out.where"></span>
           <div class="choices">
-            <label class="choice"><input type="radio" name="dir" value="same_as_source"><span>Kaynak dosyanın yanına</span></label>
+            <label class="choice"><input type="radio" name="dir" value="same_as_source"><span data-i18n="out.same"></span></label>
             <div class="choice">
-              <label><input type="radio" name="dir" value="fixed"><span>Sabit bir klasöre</span></label>
-              <button type="button" id="pick" class="btn sm">Klasör seç</button>
+              <label><input type="radio" name="dir" value="fixed"><span data-i18n="out.fixed"></span></label>
+              <button type="button" id="pick" class="btn sm" data-i18n="out.pick"></button>
             </div>
           </div>
           <p id="path" class="path" hidden></p>
@@ -146,38 +160,38 @@
       <div class="row">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-files"/></svg></span>
         <div class="grow">
-          <label for="conflict" class="label">Aynı adlı dosya varsa</label>
+          <label for="conflict" class="label" data-i18n="out.conflict"></label>
         </div>
         <span class="select">
           <select id="conflict">
-            <option value="auto_rename">Numara ekle: dosya (1)</option>
-            <option value="overwrite">Üzerine yaz</option>
-            <option value="replace_original">Orijinalin yerine koy</option>
+            <option value="auto_rename" data-i18n="out.opt_rename"></option>
+            <option value="overwrite" data-i18n="out.opt_overwrite"></option>
+            <option value="replace_original" data-i18n="out.opt_replace"></option>
           </select>
           <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
         </span>
       </div>
-      <p id="warn" class="banner warn inset" role="note" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span>Dönüştürme bitince orijinal dosya Geri Dönüşüm Kutusu'na taşınır, yerine yenisi konur.</span></p>
+      <p id="warn" class="banner warn inset" role="note" hidden><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span data-i18n="out.warn"></span></p>
     </div>
   </section>
 
-  <!-- Kalite -->
+  <!-- Quality -->
   <section id="p-kalite" class="pane" role="tabpanel" aria-labelledby="t-kalite" tabindex="-1" hidden>
     <div class="group">
-      <h2 class="group-title">Görsel</h2>
+      <h2 class="group-title" data-i18n="kind.image"></h2>
       <div class="card">
         <div class="row top-align">
           <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span>
           <div class="grow q">
             <div class="label-line"><label for="q-jpeg" class="label">JPEG</label><output for="q-jpeg" class="val"><span></span><small></small></output></div>
             <input type="range" id="q-jpeg" class="slider" data-q="jpeg" min="1" max="100" step="1">
-            <p class="desc scale" aria-hidden="true"><span>Küçük dosya</span><span>Yüksek kalite</span></p>
+            <p class="desc scale" aria-hidden="true"><span data-i18n="q.small"></span><span data-i18n="q.high"></span></p>
           </div>
         </div>
       </div>
     </div>
     <div class="group">
-      <h2 class="group-title">Ses</h2>
+      <h2 class="group-title" data-i18n="kind.audio"></h2>
       <div class="card">
         <div class="row top-align">
           <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-audio"/></svg></span>
@@ -190,35 +204,35 @@
               <div class="label-line"><label for="q-ogg" class="label">OGG</label><output for="q-ogg" class="val"><span></span><small></small></output></div>
               <input type="range" id="q-ogg" class="slider" data-q="ogg_q" min="0" max="10" step="1">
             </div>
-            <p class="desc scale" aria-hidden="true"><span>Küçük dosya</span><span>Yüksek kalite</span></p>
+            <p class="desc scale" aria-hidden="true"><span data-i18n="q.small"></span><span data-i18n="q.high"></span></p>
           </div>
         </div>
-        <p class="foot">Değerler ortalama bit hızıdır. Sesin içeriğine göre biraz değişir.</p>
+        <p class="foot" data-i18n="q.audio_foot"></p>
       </div>
     </div>
     <div class="group">
-      <h2 class="group-title">Video ve GIF</h2>
+      <h2 class="group-title" data-i18n="q.videogif"></h2>
       <div class="card">
         <div class="row top-align">
           <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-film"/></svg></span>
           <div class="grow q">
-            <div class="label-line"><label for="q-video" class="label">Video bit hızı</label><output for="q-video" class="val"><span></span><small></small></output></div>
+            <div class="label-line"><label for="q-video" class="label" data-i18n="q.video_rate"></label><output for="q-video" class="val"><span></span><small></small></output></div>
             <input type="range" id="q-video" class="slider" data-q="video_mbps" min="1" max="30" step="1">
-            <p class="desc scale" aria-hidden="true"><span>Küçük dosya</span><span>Yüksek kalite</span></p>
+            <p class="desc scale" aria-hidden="true"><span data-i18n="q.small"></span><span data-i18n="q.high"></span></p>
           </div>
         </div>
         <div class="row top-align">
           <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span>
           <div class="grow">
             <div class="q">
-              <div class="label-line"><label for="q-fps" class="label">GIF kare hızı</label><output for="q-fps" class="val"><span></span><small></small></output></div>
+              <div class="label-line"><label for="q-fps" class="label" data-i18n="q.gif_fps"></label><output for="q-fps" class="val"><span></span><small></small></output></div>
               <input type="range" id="q-fps" class="slider" data-q="gif_fps" min="5" max="30" step="1">
             </div>
             <div class="q">
-              <div class="label-line"><label for="q-width" class="label">GIF genişliği</label><output for="q-width" class="val"><span></span><small></small></output></div>
+              <div class="label-line"><label for="q-width" class="label" data-i18n="q.gif_width"></label><output for="q-width" class="val"><span></span><small></small></output></div>
               <input type="range" id="q-width" class="slider" data-q="gif_width" min="120" max="1280" step="10">
             </div>
-            <p class="desc">Kare hızı ve genişlik arttıkça GIF akıcılaşır, dosya da hızla büyür.</p>
+            <p class="desc" data-i18n="q.gif_desc"></p>
           </div>
         </div>
       </div>
@@ -230,57 +244,57 @@
     <div class="card">
       <div class="stage-wrap">
         <div class="label-line">
-          <span id="l-corner" class="label">Ekrandaki yeri</span>
-          <button type="button" id="demo-play" class="btn sm play"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>Önizle</button>
+          <span id="l-corner" class="label" data-i18n="pn.pos"></span>
+          <button type="button" id="demo-play" class="btn sm play"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg><span data-i18n="pn.preview"></span></button>
         </div>
-        <p class="desc">Panelin açılacağı köşeye tıklayın. Önizle, gerçek paneli masaüstünde gösterir.</p>
+        <p class="desc" data-i18n="pn.pos_desc"></p>
         <div id="screen" class="screen" role="radiogroup" aria-labelledby="l-corner">
-          <label class="corner" data-c="top_left"><input type="radio" name="corner" value="top_left" aria-label="Sol üst"><span class="slot"></span></label>
-          <label class="corner" data-c="top_right"><input type="radio" name="corner" value="top_right" aria-label="Sağ üst"><span class="slot"></span></label>
-          <label class="corner" data-c="bottom_left"><input type="radio" name="corner" value="bottom_left" aria-label="Sol alt"><span class="slot"></span></label>
-          <label class="corner" data-c="bottom_right"><input type="radio" name="corner" value="bottom_right" aria-label="Sağ alt"><span class="slot"></span></label>
+          <label class="corner" data-c="top_left"><input type="radio" name="corner" value="top_left" data-i18n-attr="aria-label:pn.top_left"><span class="slot"></span></label>
+          <label class="corner" data-c="top_right"><input type="radio" name="corner" value="top_right" data-i18n-attr="aria-label:pn.top_right"><span class="slot"></span></label>
+          <label class="corner" data-c="bottom_left"><input type="radio" name="corner" value="bottom_left" data-i18n-attr="aria-label:pn.bottom_left"><span class="slot"></span></label>
+          <label class="corner" data-c="bottom_right"><input type="radio" name="corner" value="bottom_right" data-i18n-attr="aria-label:pn.bottom_right"><span class="slot"></span></label>
           <span class="taskbar" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         </div>
       </div>
       <div class="row top-align">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg></span>
         <div class="grow q">
-          <div class="label-line"><label for="q-secs" class="label">Bitince ekranda kalma</label><output for="q-secs" class="val"><span></span><small></small></output></div>
+          <div class="label-line"><label for="q-secs" class="label" data-i18n="pn.stay"></label><output for="q-secs" class="val"><span></span><small></small></output></div>
           <input type="range" id="q-secs" class="slider" min="2" max="30" step="1">
-          <p class="desc scale" aria-hidden="true"><span>Hemen kapansın</span><span>Uzun kalsın</span></p>
+          <p class="desc scale" aria-hidden="true"><span data-i18n="pn.stay_lo"></span><span data-i18n="pn.stay_hi"></span></p>
         </div>
       </div>
       <div class="row">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg></span>
         <div class="grow">
-          <label for="toast-sw" class="label">Windows bildirimi</label>
-          <p class="desc" id="d-toast">Dönüştürmeler bitince bildirim merkezine kısa bir özet de gönderilir. Panel kapandıktan sonra da oradan görebilirsiniz.</p>
+          <label for="toast-sw" class="label" data-i18n="pn.toast"></label>
+          <p class="desc" id="d-toast" data-i18n="pn.toast_desc"></p>
         </div>
         <input type="checkbox" id="toast-sw" class="switch" role="switch" aria-describedby="d-toast">
       </div>
     </div>
   </section>
 
-  <!-- Menü -->
+  <!-- Menu -->
   <section id="p-menu" class="pane" role="tabpanel" aria-labelledby="t-menu" tabindex="-1" hidden>
     <div class="card">
       <div class="row">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-shapes"/></svg></span>
         <div class="grow">
-          <label for="icons-sw" class="label">Biçim simgeleri</label>
-          <p class="desc" id="d-icons">Menüde her biçimin yanında türünü gösteren küçük bir simge olur.</p>
+          <label for="icons-sw" class="label" data-i18n="mn.icons"></label>
+          <p class="desc" id="d-icons" data-i18n="mn.icons_desc"></p>
         </div>
         <input type="checkbox" id="icons-sw" class="switch" role="switch" aria-describedby="d-icons">
       </div>
       <div class="row">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-sort"/></svg></span>
         <div class="grow">
-          <span id="l-sort" class="label">Sıralama</span>
-          <p class="desc">Menüdeki biçimlerin sırası.</p>
+          <span id="l-sort" class="label" data-i18n="mn.sort"></span>
+          <p class="desc" data-i18n="mn.sort_desc"></p>
         </div>
         <div class="seg seg-sm" role="radiogroup" aria-labelledby="l-sort">
           <span class="seg-thumb" aria-hidden="true"></span>
-          <label><input type="radio" name="sort" value="default"><span>Varsayılan</span></label>
+          <label><input type="radio" name="sort" value="default"><span data-i18n="mn.default"></span></label>
           <label><input type="radio" name="sort" value="alphabetical"><span>A-Z</span></label>
         </div>
       </div>
@@ -289,11 +303,11 @@
       <div class="row top-align">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-pointer"/></svg></span>
         <div class="grow">
-          <span class="label">Explorer menüsü</span>
-          <p class="desc">Windows 11'de "Daha fazla seçenek göster" altında görünür.</p>
+          <span class="label" data-i18n="mn.explorer"></span>
+          <p class="desc" data-i18n="mn.explorer_desc"></p>
           <div class="actions">
-            <button type="button" id="menu-add" class="btn primary sm">Yeniden kaydet</button>
-            <button type="button" id="menu-del" class="btn sm">Kaldır</button>
+            <button type="button" id="menu-add" class="btn primary sm" data-i18n="mn.reinstall"></button>
+            <button type="button" id="menu-del" class="btn sm" data-i18n="mn.remove"></button>
           </div>
           <p id="toast" class="toast" role="status" aria-live="polite"></p>
         </div>
@@ -301,10 +315,10 @@
     </div>
   </section>
 
-  <!-- Gelişmiş -->
+  <!-- Advanced -->
   <section id="p-ileri" class="pane" role="tabpanel" aria-labelledby="t-ileri" tabindex="-1" hidden>
     <div class="group">
-      <h2 class="group-title">Video ve ses</h2>
+      <h2 class="group-title" data-i18n="adv.videoaudio"></h2>
       <div class="card">
         <div id="ff" class="row top-align ff" data-state="checking">
           <span class="tile ff-tile">
@@ -323,12 +337,12 @@
               <span class="label">ffmpeg</span>
               <span id="ff-pct" class="val" hidden></span>
             </div>
-            <p id="ff-status" class="desc ff-status" role="status">Durum denetleniyor…</p>
-            <div id="ff-bar" class="bar" role="progressbar" aria-label="ffmpeg indirme ilerlemesi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span></span></div>
-            <button type="button" id="ff-retry" class="btn sm" hidden><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg>Yeniden dene</button>
+            <p id="ff-status" class="desc ff-status" role="status" data-i18n="ff.initial"></p>
+            <div id="ff-bar" class="bar" role="progressbar" data-i18n-attr="aria-label:ff.bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span></span></div>
+            <button type="button" id="ff-retry" class="btn sm" hidden><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg><span data-i18n="ff.retry"></span></button>
           </div>
         </div>
-        <p class="foot">Ücretsiz ve açık kaynaklı, kendiliğinden indirilir. Resim, WAV ve FLAC onsuz da dönüştürülür.</p>
+        <p class="foot" data-i18n="ff.foot"></p>
       </div>
     </div>
   </section>
@@ -337,11 +351,11 @@
 <div id="modal" class="backdrop" hidden>
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="m-title" aria-describedby="m-text">
     <span class="tile danger"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg></span>
-    <h2 id="m-title">Orijinal dosya silinsin mi?</h2>
-    <p id="m-text">Her dönüştürmeden sonra orijinal dosya Geri Dönüşüm Kutusu'na taşınır ve yerine yeni dosya konur.</p>
+    <h2 id="m-title" data-i18n="modal.title"></h2>
+    <p id="m-text" data-i18n="modal.text"></p>
     <div class="actions end">
-      <button type="button" id="m-no" class="btn">Vazgeç</button>
-      <button type="button" id="m-yes" class="btn danger">Evet, aç</button>
+      <button type="button" id="m-no" class="btn" data-i18n="modal.no"></button>
+      <button type="button" id="m-yes" class="btn danger" data-i18n="modal.yes"></button>
     </div>
   </div>
 </div>

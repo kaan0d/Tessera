@@ -1,10 +1,11 @@
 <!doctype html>
-<html lang="tr" class="prog-root">
+<html lang="en" class="prog-root">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>new-app</title>
 <link rel="stylesheet" href="style.css">
+<script src="i18n.js" defer></script>
 <script src="progress.js" defer></script>
 </head>
 <body class="prog" data-corner="top_right">
@@ -26,13 +27,13 @@
       <path class="mark-fold" d="M23.5 8.5V12a2 2 0 0 0 2 2H29"/>
     </svg>
     <div class="grow">
-      <h1 id="p-title" class="p-title">Dönüştürülüyor</h1>
+      <h1 id="p-title" class="p-title" data-i18n="p.running"></h1>
       <p id="p-sub" class="p-sub"></p>
     </div>
-    <p class="p-pct" aria-hidden="true"><small>%</small><span id="p-pct">0</span></p>
+    <p class="p-pct" aria-hidden="true"><small class="pre">%</small><span id="p-pct">0</span><small class="post">%</small></p>
     <div id="p-bar" class="bar" aria-hidden="true"><span></span></div>
   </header>
-  <ul id="jobs" class="jobs" aria-label="Dönüştürmeler"></ul>
+  <ul id="jobs" class="jobs" data-i18n-attr="aria-label:p.list"></ul>
   <span id="p-timer" class="p-timer" aria-hidden="true"></span>
 </div>
 <p id="announce" class="sprite" role="status" aria-live="polite"></p>

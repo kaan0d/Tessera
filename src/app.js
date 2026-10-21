@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const SVG = 'http://www.w3.org/2000/svg';
 const invoke = (cmd, args) =>
-  T && T.core ? T.core.invoke(cmd, args) : Promise.reject('Uygulama arka ucuna bağlanamadı.');
+  T && T.core ? T.core.invoke(cmd, args) : Promise.reject(t('err.backend'));
 
 let s = null; // current settings object
 let catalog = null; // {sources, targets}
@@ -12,9 +12,11 @@ let ffReady = false;
 let saveTimer, savedTimer, toastTimer, ffTimer, hintTimer, lastField, goodTpl;
 
 $('app-title').textContent = document.title;
+setLang('en'); // until settings say otherwise
 
 // ponytail: fills only what an older settings.json may lack; the backend owns the real defaults
 function normalize(x) {
+  x.language = x.language === 'tr' ? 'tr' : 'en';
   x.quality = { jpeg: 85, mp3_q: 2, ogg_q: 6, video_mbps: 8, gif_fps: 15, gif_width: 480, ...x.quality };
   x.panel = { corner: 'top_right', seconds: 7, windows_toast: false, ...x.panel };
   x.menu = { icons: true, sort: 'default', ...x.menu };
@@ -83,14 +85,13 @@ function save(field) {
       goodTpl = s.name_template;
       showError('');
       if (f === 'tpl') tplMsg('');
-      $('saved-text').textContent = 'Kaydedildi';
       $('saved').classList.add('on');
       clearTimeout(savedTimer);
       savedTimer = setTimeout(() => $('saved').classList.remove('on'), 1600);
     } catch (e) {
       // a rejected template must not ride along with the next unrelated save
       if (f === 'tpl') tplMsg(String(e)), (s.name_template = goodTpl);
-      else showError('Ayarlar kaydedilemedi: ' + e);
+      else showError(t('err.save', { err: e }));
     }
   }, 300);
 }
@@ -118,7 +119,7 @@ const SLIDERS = {
   'q-video': { get: () => s.quality.video_mbps, set: (v) => setIn('quality', 'video_mbps', v), show: (v) => [v, 'Mb/s'] },
   'q-fps': { get: () => s.quality.gif_fps, set: (v) => setIn('quality', 'gif_fps', v), show: (v) => [v, 'fps'] },
   'q-width': { get: () => s.quality.gif_width, set: (v) => setIn('quality', 'gif_width', v), show: (v) => [v, 'px'] },
-  'q-secs': { get: () => s.panel.seconds, set: (v) => setIn('panel', 'seconds', v), show: (v) => [v, 'sn'] },
+  'q-secs': { get: () => s.panel.seconds, set: (v) => setIn('panel', 'seconds', v), show: (v) => [v, t('unit.sec')] },
 };
 
 function paintSlider(id, v) {
@@ -133,11 +134,12 @@ function paintSlider(id, v) {
 }
 
 /* ---------- formats ---------- */
-const KINDS = [['image', 'Görsel', 'i-image'], ['audio', 'Ses', 'i-audio'], ['video', 'Video', 'i-film']];
+const KINDS = [['image', 'kind.image', 'i-image'], ['audio', 'kind.audio', 'i-audio'], ['video', 'kind.video', 'i-film']];
 
 function buildKinds(box, items, sources) {
   box.replaceChildren();
-  for (const [kind, title, ic] of KINDS) {
+  for (const [kind, titleKey, ic] of KINDS) {
+    const title = t(titleKey);
     const list = items.filter((x) => x.kind === kind);
     if (!list.length) continue;
     const row = document.createElement('div');
@@ -157,12 +159,12 @@ function buildKinds(box, items, sources) {
     if (sources) {
       const acts = document.createElement('span');
       acts.className = 'mini';
-      for (const [txt, all] of [['Tümü', true], ['Hiçbiri', false]]) {
+      for (const [txt, all] of [[t('all.btn'), true], [t('none.btn'), false]]) {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'link';
         b.textContent = txt;
-        b.setAttribute('aria-label', `${title}: ${txt.toLowerCase()}`);
+        b.setAttribute('aria-label', t(all ? 'all.aria' : 'none.aria', { kind: title }));
         b.onclick = () => groupSources(kind, all);
         acts.append(b);
       }
@@ -198,7 +200,7 @@ function paintChips() {
     const locked = 'ff' in c.dataset && !ffReady;
     c.setAttribute('aria-pressed', on);
     c.setAttribute('aria-disabled', locked);
-    c.title = locked ? 'ffmpeg indirilince kullanılabilir' : 'ff' in c.dataset ? 'ffmpeg ile dönüştürülür' : '';
+    c.title = locked ? t('chip.locked') : 'ff' in c.dataset ? t('chip.ff') : '';
   }
   for (const c of $$('#sources .chip')) c.setAttribute('aria-pressed', s.menu_sources.includes(c.dataset.ext));
   paintHints();
@@ -217,17 +219,17 @@ function paintHints(flash) {
     clearTimeout(hintTimer);
     hintTimer = setTimeout(() => paintHints(), 3200);
   } else if (!s.enabled_targets.length) {
-    hint(th, 'warn', [icon('i-alert'), 'Hiçbir biçim seçili değil. Sağ tık menüsünde dönüştürme seçeneği görünmez.']);
+    hint(th, 'warn', [icon('i-alert'), t('hint.none_targets')]);
   } else if (anyFf && !ffReady) {
-    hint(th, '', [icon('i-download', 'ic badge'), ' işaretli biçimler ffmpeg ister. İndirme bitince kendiliğinden açılır. ', gotoLink('Durumu gör', 't-ileri')]);
+    hint(th, '', [icon('i-download', 'ic badge'), t('hint.ff_wait'), gotoLink(t('hint.see_status'), 't-ileri')]);
   } else if (anyFf) {
-    hint(th, '', [icon('i-download', 'ic badge'), ' işaretli biçimler ffmpeg ile dönüştürülür.']);
+    hint(th, '', [icon('i-download', 'ic badge'), t('hint.ff_ready')]);
   } else hint(th, '', []);
   th.hidden = !th.childNodes.length;
   const n = s.menu_sources.length;
   hint($('s-hint'), n ? '' : 'warn', n
-    ? [`Menü ${n} dosya türünde görünür.`]
-    : [icon('i-alert'), 'Hiçbir tür seçili değil. Sağ tık menüsü hiçbir dosyada görünmez.']);
+    ? [t('hint.sources', { n })]
+    : [icon('i-alert'), t('hint.none_sources')]);
 }
 
 function gotoLink(text, tab) {
@@ -240,13 +242,13 @@ function gotoLink(text, tab) {
 }
 
 function toggleTarget(it, chip) {
-  if (!ffReady && it.needs_ffmpeg) return paintHints(`${it.ext.toUpperCase()} için ffmpeg gerekiyor. İndirme bitince açılır.`);
+  if (!ffReady && it.needs_ffmpeg) return paintHints(t('flash.ff_needed', { fmt: it.ext.toUpperCase() }));
   const on = s.enabled_targets.includes(it.ext);
   if (on && s.enabled_targets.length === 1) {
     chip.classList.remove('nudge');
     void chip.offsetWidth;
     chip.classList.add('nudge');
-    return paintHints('En az bir biçim açık kalmalı.');
+    return paintHints(t('flash.last'));
   }
   const set = new Set(s.enabled_targets);
   on ? set.delete(it.ext) : set.add(it.ext);
@@ -274,20 +276,20 @@ async function loadCatalog() {
     tplPaint();
   } catch (e) {
     $('cat-err').hidden = false;
-    $('cat-err').textContent = 'Biçim listesi alınamadı: ' + e;
+    $('cat-err').textContent = t('err.catalog', { err: e });
   }
 }
 
 /* ---------- name template ---------- */
 const TOKENS = ['{name}', '{format}', '{date}'];
 
-function tplError(t) {
-  if (!t.trim()) return 'Dosya adı boş olamaz.';
-  if (/[\\/:*?"<>|]/.test(t)) return 'Şu karakterler kullanılamaz: \\ / : * ? " < > |';
-  const bad = (t.match(/\{[^{}]*\}/g) || []).find((x) => !TOKENS.includes(x));
-  if (bad) return `Bilinmeyen etiket: ${bad}. Kullanılabilenler: {name}, {format}, {date}.`;
-  if (/[{}]/.test(t.replace(/\{[^{}]*\}/g, ''))) return 'Süslü parantezler eşleşmiyor.';
-  if (/[. ]$/.test(t)) return 'Dosya adı nokta veya boşlukla bitemez.';
+function tplError(x) {
+  if (!x.trim()) return t('tpl.empty');
+  if (/[\\/:*?"<>|]/.test(x)) return t('tpl.chars');
+  const bad = (x.match(/\{[^{}]*\}/g) || []).find((k) => !TOKENS.includes(k));
+  if (bad) return t('tpl.unknown', { tag: bad });
+  if (/[{}]/.test(x.replace(/\{[^{}]*\}/g, ''))) return t('tpl.braces');
+  if (/[. ]$/.test(x)) return t('tpl.trailing');
   return ''; // reserved names (CON, NUL...) are left to the backend's message
 }
 
@@ -298,22 +300,22 @@ function tplMsg(msg) {
 }
 
 function tplPaint() {
-  const t = $('tpl').value;
-  const err = tplError(t);
+  const v = $('tpl').value;
+  const err = tplError(v);
   tplMsg(err);
   if (err) return;
   const img = catalog ? catalog.targets.find((x) => x.kind === 'image' && x.ext !== 'png' && s.enabled_targets.includes(x.ext)) : null;
   const ext = img ? img.ext : 'jpg';
   const d = new Date();
   const date = [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((x) => String(x).padStart(2, '0')).join('-');
-  $('tpl-out').textContent = t.replaceAll('{name}', 'foto').replaceAll('{format}', ext).replaceAll('{date}', date) + '.' + ext;
+  $('tpl-out').textContent = v.replaceAll('{name}', t('tpl.sample')).replaceAll('{format}', ext).replaceAll('{date}', date) + '.' + ext;
 }
 
 function tplInput() {
   tplPaint();
-  const t = $('tpl').value;
-  if (!tplError(t) && t !== s.name_template) {
-    s.name_template = t;
+  const v = $('tpl').value;
+  if (!tplError(v) && v !== s.name_template) {
+    s.name_template = v;
     save('tpl');
   }
 }
@@ -331,7 +333,7 @@ async function demoPlay() {
   try {
     await invoke('panel_preview', { corner: s.panel.corner, seconds: s.panel.seconds });
   } catch (e) {
-    showError('Önizleme açılamadı: ' + e);
+    showError(t('err.preview', { err: e }));
   }
 }
 
@@ -364,18 +366,22 @@ function render() {
     r.checked = r.value === s.menu.sort;
     if (r.checked) seg(r.closest('.seg'), i);
   });
+  document.querySelectorAll('input[name=lang]').forEach((r, i) => {
+    r.checked = r.value === s.language;
+    if (r.checked) seg(r.closest('.seg'), i);
+  });
   paintChips();
 }
 
 /* ---------- existing pieces ---------- */
 async function pickFolder() {
   const d = T && T.dialog;
-  if (!d) return showError('Klasör seçme penceresi kullanılamıyor.');
+  if (!d) return showError(t('err.no_dialog'));
   try {
     const p = await d.open({ directory: true, multiple: false });
     if (p) return change({ output_dir: { kind: 'fixed', path: String(p) } }), true;
   } catch (e) {
-    showError('Klasör seçilemedi: ' + e);
+    showError(t('err.pick', { err: e }));
   }
   return false;
 }
@@ -423,14 +429,14 @@ function toast(msg, isErr) {
   }, 5000);
 }
 
-async function menuAction(cmd, okMsg, btn) {
+async function menuAction(cmd, okKey, btn) {
   btn.disabled = true;
   btn.classList.add('busy');
   try {
     await invoke(cmd);
-    toast(okMsg);
+    toast(t(okKey));
   } catch (e) {
-    toast('İşlem başarısız: ' + e, true);
+    toast(t('err.action', { err: e }), true);
   }
   btn.disabled = false;
   btn.classList.remove('busy');
@@ -449,7 +455,7 @@ function ffView(state, text, pct) {
   bar.style.setProperty('--p', p / 100);
   bar.setAttribute('aria-valuenow', Math.round(p));
   $('ff-pct').hidden = state !== 'downloading';
-  $('ff-pct').textContent = `%${Math.round(p)}`;
+  $('ff-pct').textContent = t('pct', { n: Math.round(p) });
   $('ff-retry').hidden = state !== 'error';
   if (ffReady !== (state === 'ready')) {
     ffReady = state === 'ready';
@@ -462,13 +468,13 @@ async function refreshFfmpeg() {
   try {
     const f = await invoke('ffmpeg_status');
     const pct = f.percent || 0;
-    if (f.ready) ffView('ready', 'Hazır. Video ve ses dosyaları dönüştürülebilir.');
-    else if (f.downloading) ffView('downloading', 'İndiriliyor, arka planda sürüyor.', pct);
-    else if (f.error) ffView('error', `İndirilemedi: ${f.error}`);
-    else ffView('checking', 'Denetleniyor, indirme birazdan başlar.');
+    if (f.ready) ffView('ready', t('ff.ready'));
+    else if (f.downloading) ffView('downloading', t('ff.downloading'), pct);
+    else if (f.error) ffView('error', t('ff.failed', { err: f.error }));
+    else ffView('checking', t('ff.checking'));
     if (!f.ready) ffTimer = setTimeout(refreshFfmpeg, f.downloading ? 1000 : 3000);
   } catch (e) {
-    ffView('error', 'ffmpeg durumu alınamadı: ' + e);
+    ffView('error', t('ff.status_err', { err: e }));
     $('ff-retry').hidden = true;
   }
 }
@@ -481,6 +487,7 @@ function bind() {
     if (g) select(tabs.indexOf($(g.dataset.goto)), true);
   });
   $('autostart').onchange = (e) => change({ autostart: e.target.checked });
+  $$('input[name=lang]').forEach((r) => (r.onchange = () => { setLang(r.value); change({ language: r.value }); relabel(); }));
   $$('input[name=dir]').forEach((r) => {
     r.onchange = async () => {
       if (r.value === 'same_as_source') return change({ output_dir: { kind: 'same_as_source' } });
@@ -519,12 +526,35 @@ function bind() {
     try {
       await invoke('retry_ffmpeg_download');
     } catch (e) {
-      showError('İndirme başlatılamadı: ' + e);
+      showError(t('err.dl_start', { err: e }));
     }
     refreshFfmpeg();
   };
-  $('menu-add').onclick = (e) => menuAction('install_context_menu', 'Menü kaydedildi.', e.currentTarget);
-  $('menu-del').onclick = (e) => menuAction('remove_context_menu', 'Menü kaldırıldı.', e.currentTarget);
+  $('menu-add').onclick = (e) => menuAction('install_context_menu', 'mn.added', e.currentTarget);
+  $('menu-del').onclick = (e) => menuAction('remove_context_menu', 'mn.removed', e.currentTarget);
+}
+
+// Rewrites what the static markup does not cover after a language switch.
+function relabel() {
+  if (!s) return;
+  render();
+  if (catalog) {
+    buildKinds($('targets'), catalog.targets, false);
+    buildKinds($('sources'), catalog.sources, true);
+    paintChips();
+  }
+  tplPaint();
+  refreshFfmpeg();
+}
+
+// the backend tells every window when the language changed
+if (T && T.event) {
+  T.event.listen('language-changed', (e) => {
+    if (!s || e.payload === s.language) return;
+    s.language = e.payload === 'tr' ? 'tr' : 'en';
+    setLang(s.language);
+    relabel();
+  });
 }
 
 // sections settle in each time the window comes back from the tray
@@ -541,11 +571,12 @@ document.addEventListener('visibilitychange', intro);
   intro();
   try {
     s = normalize(await invoke('get_settings'));
+    setLang(s.language);
     ffReady = !!s.ffmpeg_ready;
     goodTpl = s.name_template;
     render();
   } catch (e) {
-    showError('Ayarlar yüklenemedi: ' + e);
+    showError(t('err.load', { err: e }));
     $$('main input,main select,main button').forEach((x) => (x.disabled = true));
     return;
   }
