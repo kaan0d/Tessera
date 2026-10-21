@@ -2,6 +2,7 @@ pub mod app_info;
 pub mod cli;
 pub mod convert;
 pub mod ffmpeg;
+pub mod i18n;
 pub mod panel;
 pub mod queue;
 pub mod settings;
@@ -13,13 +14,16 @@ use std::sync::{Arc, Mutex};
 use serde::Serialize;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 
 use cli::Cli;
 use ffmpeg::{Download, FfmpegStatus};
+use i18n::{fmt, t, Lang};
 use queue::Queue;
 use settings::Settings;
+
+const TRAY_ID: &str = "main";
 
 struct AppState {
     settings: Mutex<Settings>,
@@ -46,20 +50,18 @@ fn start_ffmpeg_download(app: &AppHandle) {
     if !download.begin() {
         return;
     }
-    notify(
-        app,
-        "ffmpeg indiriliyor",
-        "Video ve MP3/OGG dönüştürme için ücretsiz, açık kaynaklı ffmpeg aracı bir kez indirilecek (yaklaşık 170 MB).",
-    );
+    let lang = i18n::lang();
+    notify(app, t(lang, "notify.dl_title"), t(lang, "notify.dl_body"));
     let app = app.clone();
     std::thread::spawn(move || {
         let result = ffmpeg::install_with_retries(&download);
         if result.is_ok() {
             set_ffmpeg_ready(&app, true);
+            let lang = i18n::lang();
             notify(
                 &app,
-                "ffmpeg hazır",
-                "Video ve ses dönüştürme kullanıma hazır.",
+                t(lang, "notify.ready_title"),
+                t(lang, "notify.ready_body"),
             );
         }
         download.finish(result.err());
@@ -95,18 +97,30 @@ fn get_settings(state: State<AppState>) -> Settings {
 }
 
 #[tauri::command]
-fn set_settings(settings: Settings, state: State<AppState>) -> Result<Settings, String> {
+fn set_settings(
+    settings: Settings,
+    app: AppHandle,
+    state: State<AppState>,
+) -> Result<Settings, String> {
     settings.validate()?;
     let mut cur = state.settings.lock().unwrap();
     let mut new = settings.normalized();
     new.ffmpeg_ready = cur.ffmpeg_ready;
-    shell::set_autostart(new.autostart)
-        .map_err(|e| format!("Otomatik başlatma ayarlanamadı: {e}"))?;
-    shell::install(&new).map_err(|e| format!("Sağ tık menüsü kaydedilemedi: {e}"))?;
-    settings::save_to(&settings::settings_path(), &new)
-        .map_err(|e| format!("Ayarlar kaydedilemedi: {e}"))?;
+    let lang = new.language;
+    let msg = |key, e: std::io::Error| fmt(lang, key, &[("err", &e.to_string())]);
+    shell::set_autostart(new.autostart).map_err(|e| msg("cmd.autostart", e))?;
+    // also re-registers the menu with labels in the new language
+    shell::install(&new).map_err(|e| msg("cmd.menu_save", e))?;
+    settings::save_to(&settings::settings_path(), &new).map_err(|e| msg("cmd.save", e))?;
     *state.queue.panel.lock().unwrap() = new.panel;
+    let changed = cur.language != lang;
     *cur = new.clone();
+    drop(cur);
+    if changed {
+        i18n::set_lang(lang);
+        let _ = set_tray_menu(&app, lang);
+        let _ = app.emit("language-changed", lang.code());
+    }
     Ok(new)
 }
 
@@ -156,12 +170,12 @@ fn get_catalog() -> Catalog {
 #[tauri::command]
 fn install_context_menu(state: State<AppState>) -> Result<(), String> {
     let s = state.settings.lock().unwrap().clone();
-    shell::install(&s).map_err(|e| format!("Sağ tık menüsü kaydedilemedi: {e}"))
+    shell::install(&s).map_err(|e| fmt(s.language, "cmd.menu_save", &[("err", &e.to_string())]))
 }
 
 #[tauri::command]
 fn remove_context_menu() -> Result<(), String> {
-    shell::remove().map_err(|e| format!("Sağ tık menüsü kaldırılamadı: {e}"))
+    shell::remove().map_err(|e| fmt(i18n::lang(), "cmd.menu_remove", &[("err", &e.to_string())]))
 }
 
 #[tauri::command]
@@ -172,7 +186,7 @@ fn cancel_job(id: u64, state: State<AppState>) {
 #[tauri::command]
 fn ffmpeg_status(state: State<AppState>) -> FfmpegStatus {
     let ready = state.settings.lock().unwrap().ffmpeg_ready;
-    state.download.status(ready)
+    state.download.status(ready, i18n::lang())
 }
 
 #[tauri::command]
@@ -190,11 +204,12 @@ fn panel_preview(
 ) -> Result<(), String> {
     let mut p = *state.queue.panel.lock().unwrap();
     if let Some(c) = corner {
-        p.corner = serde_json::from_value(c.into()).map_err(|_| "Geçersiz köşe".to_string())?;
+        p.corner = serde_json::from_value(c.into())
+            .map_err(|_| t(i18n::lang(), "cmd.bad_corner").to_string())?;
     }
     if let Some(s) = seconds {
         if !(2..=30).contains(&s) {
-            return Err("Geçersiz süre".into());
+            return Err(t(i18n::lang(), "cmd.bad_seconds").into());
         }
         p.seconds = s;
     }
@@ -207,11 +222,11 @@ fn panel_preview(
 fn open_folder(path: String) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     if path.contains('"') || path.starts_with(r"\\") || path.starts_with("//") {
-        return Err("Geçersiz yol".into());
+        return Err(t(i18n::lang(), "cmd.bad_path").into());
     }
     let p = Path::new(&path);
     if !p.exists() {
-        return Err("Yol bulunamadı".into());
+        return Err(t(i18n::lang(), "cmd.no_path").into());
     }
     let arg = if p.is_dir() {
         format!("\"{path}\"")
@@ -223,6 +238,20 @@ fn open_folder(path: String) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|e| e.to_string())
+}
+
+fn tray_menu(app: &AppHandle, lang: Lang) -> tauri::Result<Menu<tauri::Wry>> {
+    let open = MenuItem::with_id(app, "open", t(lang, "tray.open"), true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", t(lang, "tray.quit"), true, None::<&str>)?;
+    Menu::with_items(app, &[&open, &quit])
+}
+
+/// Swaps the tray menu for one in `lang`.
+fn set_tray_menu(app: &AppHandle, lang: Lang) -> tauri::Result<()> {
+    match app.tray_by_id(TRAY_ID) {
+        Some(tray) => tray.set_menu(Some(tray_menu(app, lang)?)),
+        None => Ok(()),
+    }
 }
 
 fn show_window(app: &AppHandle) {
@@ -237,12 +266,14 @@ fn start_convert(app: &AppHandle, target: convert::Format, files: Vec<PathBuf>) 
     let state = app.state::<AppState>();
     let s = state.settings.lock().unwrap().clone();
     if !s.target_enabled(target) {
+        let lang = s.language;
         notify(
             app,
-            "Dönüştürme başarısız",
-            &format!(
-                "{} biçimi ayarlardan kapatılmış",
-                target.ext().to_uppercase()
+            t(lang, "notify.failed_title"),
+            &fmt(
+                lang,
+                "notify.target_off",
+                &[("fmt", &target.ext().to_uppercase())],
             ),
         );
         return;
@@ -309,6 +340,7 @@ pub fn run() {
             let path = settings::settings_path();
             let first_run = !path.exists();
             let s = settings::load_from(&path);
+            i18n::set_lang(s.language);
             if first_run {
                 // best effort: the UI can retry through install_context_menu
                 let _ = shell::install(&s);
@@ -324,11 +356,9 @@ pub fn run() {
             });
             ensure_ffmpeg(app.handle());
 
-            let open = MenuItem::with_id(app, "open", "Ayarlar", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Çıkış", true, None::<&str>)?;
-            let mut tray = TrayIconBuilder::new()
+            let mut tray = TrayIconBuilder::with_id(TRAY_ID)
                 .tooltip(app_info::APP_NAME)
-                .menu(&Menu::with_items(app, &[&open, &quit])?)
+                .menu(&tray_menu(app.handle(), i18n::lang())?)
                 .on_menu_event(|app, e| match e.id.as_ref() {
                     "open" => show_window(app),
                     "quit" => app.exit(0),
@@ -360,5 +390,5 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("uygulama başlatılamadı");
+        .expect("failed to start the application");
 }

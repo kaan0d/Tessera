@@ -8,6 +8,7 @@ use winreg::RegKey;
 
 use crate::app_info::APP_NAME;
 use crate::convert::{supported_targets, uses_ffmpeg, Format};
+use crate::i18n::{self, Lang};
 use crate::settings::{MenuSort, Settings};
 
 /// Real registry root for file associations.
@@ -20,8 +21,8 @@ pub const EXTS: [&str; 21] = [
     "oga", "aac", "m4a", "mp4", "mkv", "avi", "webm", "mov",
 ];
 
-fn label(t: Format) -> String {
-    format!("{}'ye dönüştür", t.ext().to_uppercase())
+fn label(t: Format, lang: Lang) -> String {
+    i18n::fmt(lang, "menu.convert_to", &[("fmt", &t.ext().to_uppercase())])
 }
 
 fn menu_key(root: &str, ext: &str) -> String {
@@ -68,7 +69,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
         }
         for (i, t) in targets.into_iter().enumerate() {
             let (verb, _) = menu.create_subkey(format!(r"shell\{i:02}_{}", t.ext()))?;
-            verb.set_value("MUIVerb", &label(t))?;
+            verb.set_value("MUIVerb", &label(t, s.language))?;
             if s.menu.icons {
                 verb.set_value("Icon", &icon)?;
             }
@@ -247,6 +248,26 @@ mod tests {
             .get_value::<String, _>("Icon")
             .is_err());
         assert!(hkcu.open_subkey(menu_key(&root, "jpg")).is_err());
+        remove_at(&root).unwrap();
+        cleanup(&root);
+    }
+
+    #[test]
+    fn labels_follow_the_language() {
+        assert_eq!(label(Format::Jpg, Lang::En), "Convert to JPG");
+        assert_eq!(label(Format::Jpg, Lang::Tr), "JPG'ye dönüştür");
+        let root = test_root("d");
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        for (lang, want) in [(Lang::En, "Convert to JPG"), (Lang::Tr, "JPG'ye dönüştür")] {
+            let s = Settings {
+                language: lang,
+                ..ready(false)
+            };
+            install_at(&root, Path::new(r"C:\x.exe"), &s).unwrap();
+            let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
+            let verb = png.open_subkey(r"shell\00_jpg").unwrap();
+            assert_eq!(verb.get_value::<String, _>("MUIVerb").unwrap(), want);
+        }
         remove_at(&root).unwrap();
         cleanup(&root);
     }

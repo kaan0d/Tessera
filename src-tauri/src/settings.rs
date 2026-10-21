@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::app_info::APP_NAME;
 use crate::convert::output::validate_template;
 use crate::convert::{Conflict, Format, Options, OutDir, OutputParams, Quality};
+use crate::i18n::Lang;
 use crate::panel::Corner;
 use crate::shell::EXTS;
 
@@ -70,6 +71,8 @@ impl Default for MenuOpts {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    /// UI and message language; anything unknown reads as English.
+    pub language: Lang,
     pub autostart: bool,
     pub output_dir: OutputDir,
     pub conflict: ConflictMode,
@@ -93,6 +96,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
+            language: Lang::En,
             autostart: false,
             output_dir: OutputDir::SameAsSource,
             conflict: ConflictMode::AutoRename,
@@ -129,7 +133,7 @@ impl Settings {
             Format::ALL.iter().any(|f| f.ext() == e)
         });
         clean_list(&mut self.menu_sources, |e| EXTS.contains(&e));
-        if validate_template(&self.name_template).is_err() {
+        if validate_template(&self.name_template, self.language).is_err() {
             self.name_template = "{name}".into();
         }
         self
@@ -137,7 +141,7 @@ impl Settings {
 
     /// Errors the UI shows; call on the raw input, `normalized` would hide them.
     pub fn validate(&self) -> Result<(), String> {
-        validate_template(&self.name_template)
+        validate_template(&self.name_template, self.language)
     }
 
     pub fn target_enabled(&self, t: Format) -> bool {
@@ -289,6 +293,35 @@ mod tests {
         assert_eq!(v["output_dir"]["kind"], "same_as_source");
         assert_eq!(v["panel"]["corner"], "top_right");
         assert_eq!(v["quality"]["gif_width"], 480);
+    }
+
+    #[test]
+    fn language_defaults_to_english_and_survives_roundtrip() {
+        assert_eq!(Settings::default().language, Lang::En);
+        let load = |j: &str| serde_json::from_str::<Settings>(j).unwrap().normalized();
+        assert_eq!(load("{}").language, Lang::En);
+        assert_eq!(load(r#"{"language":"tr"}"#).language, Lang::Tr);
+        assert_eq!(load(r#"{"language":"xx"}"#).language, Lang::En);
+        assert_eq!(load(r#"{"language":5}"#).language, Lang::En);
+        let v = serde_json::to_value(Settings::default()).unwrap();
+        assert_eq!(v["language"], "en");
+        let tr = Settings {
+            language: Lang::Tr,
+            ..Settings::default()
+        };
+        assert_eq!(serde_json::to_value(&tr).unwrap()["language"], "tr");
+    }
+
+    #[test]
+    fn validate_speaks_the_settings_language() {
+        let mut s = Settings {
+            name_template: "a/b".into(),
+            ..Settings::default()
+        };
+        let en = s.validate().unwrap_err();
+        s.language = Lang::Tr;
+        assert_ne!(en, s.validate().unwrap_err());
+        assert!(en.starts_with("The file name"));
     }
 
     #[test]

@@ -3,7 +3,8 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{security, ConvertError};
+use super::{security, ConvertError, PathIssue};
+use crate::i18n::{fmt, t, Lang};
 
 #[derive(Debug, Clone, Default)]
 pub enum OutDir {
@@ -52,29 +53,28 @@ fn expand(template: &str, name: &str, format: &str, date: &str) -> String {
         .replace("{date}", date)
 }
 
-/// Checks a template; the error is shown to the user as is.
-pub fn validate_template(t: &str) -> Result<(), String> {
-    if t.is_empty() || t.chars().count() > MAX_TEMPLATE_LEN {
-        return Err(format!(
-            "Ad şablonu 1 ile {MAX_TEMPLATE_LEN} karakter arasında olmalı"
-        ));
+/// Checks a template; the error is in `lang` and shown to the user as is.
+pub fn validate_template(tpl: &str, lang: Lang) -> Result<(), String> {
+    if tpl.is_empty() || tpl.chars().count() > MAX_TEMPLATE_LEN {
+        let max = MAX_TEMPLATE_LEN.to_string();
+        return Err(fmt(lang, "tpl.length", &[("max", &max)]));
     }
-    let out = expand(t, "x", "x", "0000-00-00");
+    let out = expand(tpl, "x", "x", "0000-00-00");
     if out.contains(['{', '}']) {
-        return Err("Ad şablonunda bilinmeyen simge var; yalnızca {name}, {format} ve {date} kullanılabilir".into());
+        return Err(t(lang, "tpl.unknown_token").into());
     }
     if let Some(c) = out
         .chars()
         .find(|c| c.is_control() || "<>:\"/\\|?*".contains(*c))
     {
-        return Err(format!("Ad şablonunda geçersiz karakter var: {c:?}"));
+        return Err(fmt(lang, "tpl.bad_char", &[("c", &format!("{c:?}"))]));
     }
     if out.ends_with(['.', ' ']) {
-        return Err("Ad şablonu nokta veya boşlukla bitemez".into());
+        return Err(t(lang, "tpl.trailing").into());
     }
     let base = out.split('.').next().unwrap_or("").trim_end();
     if RESERVED.iter().any(|r| r.eq_ignore_ascii_case(base)) {
-        return Err("Ad şablonu Windows'ta ayrılmış bir ad üretiyor".into());
+        return Err(t(lang, "tpl.reserved").into());
     }
     Ok(())
 }
@@ -91,8 +91,8 @@ pub fn plan(source: &Path, ext: &str, p: &OutputParams) -> Result<PathBuf, Conve
     let stem = source
         .file_stem()
         .and_then(|s| s.to_str())
-        .ok_or_else(|| ConvertError::InvalidPath("dosya adı geçersiz".into()))?;
-    let stem = &if p.template.is_empty() || validate_template(&p.template).is_err() {
+        .ok_or(ConvertError::InvalidPath(PathIssue::BadName))?;
+    let stem = &if p.template.is_empty() || validate_template(&p.template, Lang::En).is_err() {
         stem.to_string()
     } else {
         expand(&p.template, stem, ext, &local_date())
@@ -105,7 +105,7 @@ pub fn plan(source: &Path, ext: &str, p: &OutputParams) -> Result<PathBuf, Conve
     (1u32..)
         .map(|n| dir.join(format!("{stem} ({n}).{ext}")))
         .find(|c| !c.exists())
-        .ok_or_else(|| ConvertError::InvalidPath("uygun ad bulunamadı".into()))
+        .ok_or(ConvertError::InvalidPath(PathIssue::NoFreeName))
 }
 
 /// Writes to a temp file next to `dest`, checks it is non-empty, then renames it
@@ -139,7 +139,7 @@ pub fn write_via_temp(
     let result = (|| {
         produce(&tmp)?;
         if fs::metadata(&tmp)?.len() == 0 {
-            return Err(ConvertError::Encode("boş çıktı".into()));
+            return Err(ConvertError::EmptyOutput);
         }
         fs::rename(&tmp, dest)?;
         Ok(())
@@ -152,7 +152,7 @@ pub fn write_via_temp(
 
 /// Moves a file to the Recycle Bin.
 pub fn recycle(path: &Path) -> Result<(), ConvertError> {
-    trash::delete(path).map_err(|e| ConvertError::Io(format!("orijinal dosya silinemedi: {e}")))
+    trash::delete(path).map_err(|e| ConvertError::Recycle(e.to_string()))
 }
 
 #[cfg(test)]
@@ -228,16 +228,16 @@ mod tests {
     #[test]
     fn template_validation() {
         for ok in ["{name}", "{name} ({format})", "{date} {name}", "a.b{name}"] {
-            assert!(validate_template(ok).is_ok(), "{ok}");
+            assert!(validate_template(ok, Lang::En).is_ok(), "{ok}");
         }
         for bad in [
             "", "a/b", "a\\b", "x:y", "a?", "a*", "a\"b", "<x>", "a|b", "{nam}", "{", "con",
             "NUL.txt", "{name}.", "{name} ", "a	b",
         ] {
-            assert!(validate_template(bad).is_err(), "{bad:?}");
+            assert!(validate_template(bad, Lang::En).is_err(), "{bad:?}");
         }
-        assert!(validate_template(&"a".repeat(100)).is_ok());
-        assert!(validate_template(&"a".repeat(101)).is_err());
+        assert!(validate_template(&"a".repeat(100), Lang::En).is_ok());
+        assert!(validate_template(&"a".repeat(101), Lang::En).is_err());
     }
 
     #[test]

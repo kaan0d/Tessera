@@ -23,7 +23,6 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 symphonia = { version = "0.5", default-features = false, features = ["mp3", "flac", "ogg", "vorbis", "wav", "pcm", "aac", "isomp4"] }
 hound = "3"
 flacenc = "0.5"
-thiserror = "2"
 trash = "5"
 ureq = "3"
 sha2 = "0.10"

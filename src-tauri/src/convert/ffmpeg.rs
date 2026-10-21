@@ -237,7 +237,7 @@ fn run_child(
         .stderr(Stdio::piped())
         .creation_flags(CREATE_NO_WINDOW)
         .spawn()
-        .map_err(|e| ConvertError::Io(format!("ffmpeg başlatılamadı: {e}")))?;
+        .map_err(|e| ConvertError::FfmpegStart(e.to_string()))?;
 
     // both pipes are drained on their own threads, otherwise a full pipe stalls ffmpeg
     let duration = Arc::new(AtomicU64::new(0));
@@ -288,7 +288,7 @@ fn run_child(
     }
     let status = child
         .wait()
-        .map_err(|e| ConvertError::Io(format!("ffmpeg beklenemedi: {e}")))?;
+        .map_err(|e| ConvertError::FfmpegWait(e.to_string()))?;
     let _ = out_thread.join();
     let tail = err_thread.join().unwrap_or_default();
 
@@ -298,11 +298,10 @@ fn run_child(
     if status.success() {
         return Ok(());
     }
-    let last = tail.last().map_or("bilinmeyen hata", String::as_str);
     Err(if tail.iter().any(|l| l.contains("matches no streams")) {
-        ConvertError::Encode("dosyada bu dönüşüm için gereken akış yok".into())
+        ConvertError::NoStream
     } else {
-        ConvertError::Encode(last.to_string())
+        ConvertError::Encode(tail.last().cloned().unwrap_or_default())
     })
 }
 

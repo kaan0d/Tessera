@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-pub use error::ConvertError;
+pub use error::{ConvertError, PathIssue};
 pub use output::{Conflict, OutDir, OutputParams};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

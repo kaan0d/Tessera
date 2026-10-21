@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::{ConvertError, Format};
+use super::{ConvertError, Format, PathIssue};
 
 /// Canonicalizes and checks an input path: no UNC/device paths, a real
 /// non-empty file, extension on the allowlist.
@@ -9,7 +9,7 @@ pub fn validate_input(path: &Path) -> Result<(PathBuf, Format), ConvertError> {
     let canon = canonical(path)?;
     let meta = fs::metadata(&canon)?;
     if !meta.is_file() {
-        return Err(ConvertError::InvalidPath("dosya değil".into()));
+        return Err(ConvertError::InvalidPath(PathIssue::NotFile));
     }
     if meta.len() == 0 {
         return Err(ConvertError::Corrupt);
@@ -25,7 +25,7 @@ pub fn validate_output_dir(dir: &Path) -> Result<PathBuf, ConvertError> {
     fs::create_dir_all(dir)?;
     let canon = canonical(dir)?;
     if !canon.is_dir() {
-        return Err(ConvertError::InvalidPath("klasör değil".into()));
+        return Err(ConvertError::InvalidPath(PathIssue::NotDir));
     }
     Ok(canon)
 }
@@ -33,7 +33,7 @@ pub fn validate_output_dir(dir: &Path) -> Result<PathBuf, ConvertError> {
 fn reject_device(path: &Path) -> Result<(), ConvertError> {
     let s = path.to_string_lossy();
     if s.starts_with(r"\\") || s.starts_with("//") {
-        return Err(ConvertError::InvalidPath("ağ veya aygıt yolu".into()));
+        return Err(ConvertError::InvalidPath(PathIssue::Network));
     }
     Ok(())
 }

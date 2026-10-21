@@ -2,6 +2,7 @@
 //! extracted, only `bin/ffmpeg.exe` kept. Lives in %APPDATA%\<app>\ffmpeg\.
 //! Pure functions plus a small shared status; the app wiring is in lib.rs.
 
+use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::os::windows::process::CommandExt;
@@ -14,6 +15,7 @@ use std::time::Duration;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+use crate::i18n::{fmt as tf, Lang};
 use crate::settings::settings_path;
 
 /// BtbN/FFmpeg-Builds, release `autobuild-2026-10-20-13-08`, ffmpeg n8.1.3, LGPL (no x264/x265/fdk).
@@ -35,6 +37,44 @@ pub fn exe_path() -> PathBuf {
     ffmpeg_dir().join("ffmpeg.exe")
 }
 
+/// A download failure: message key plus optional detail, rendered in whatever language is
+/// active when the UI asks, so a language switch also translates an old error.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FfError {
+    key: &'static str,
+    detail: String,
+}
+
+impl FfError {
+    fn new(key: &'static str) -> Self {
+        Self::with(key, "")
+    }
+
+    fn with(key: &'static str, detail: impl fmt::Display) -> Self {
+        FfError {
+            key,
+            detail: detail.to_string(),
+        }
+    }
+
+    pub fn key(&self) -> &'static str {
+        self.key
+    }
+
+    pub fn message(&self, lang: Lang) -> String {
+        tf(lang, self.key, &[("detail", &self.detail)])
+    }
+}
+
+/// English, for logs and test output.
+impl fmt::Display for FfError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.message(Lang::En))
+    }
+}
+
+impl std::error::Error for FfError {}
+
 #[derive(Serialize)]
 pub struct FfmpegStatus {
     pub ready: bool,
@@ -48,7 +88,7 @@ pub struct FfmpegStatus {
 pub struct Download {
     active: AtomicBool,
     permille: AtomicU32,
-    error: Mutex<Option<String>>,
+    error: Mutex<Option<FfError>>,
 }
 
 impl Download {
@@ -67,17 +107,17 @@ impl Download {
             .store((p.clamp(0.0, 100.0) * 10.0) as u32, Ordering::Relaxed);
     }
 
-    pub fn finish(&self, error: Option<String>) {
+    pub fn finish(&self, error: Option<FfError>) {
         *self.error.lock().unwrap() = error;
         self.active.store(false, Ordering::SeqCst);
     }
 
-    pub fn status(&self, ready: bool) -> FfmpegStatus {
+    pub fn status(&self, ready: bool, lang: Lang) -> FfmpegStatus {
         FfmpegStatus {
             ready,
             downloading: self.active.load(Ordering::SeqCst),
             percent: self.permille.load(Ordering::Relaxed) as f32 / 10.0,
-            error: self.error.lock().unwrap().clone(),
+            error: self.error.lock().unwrap().as_ref().map(|e| e.message(lang)),
         }
     }
 }
@@ -108,17 +148,17 @@ pub fn sha256_file(path: &Path) -> io::Result<String> {
     Ok(h.finalize().iter().map(|b| format!("{b:02x}")).collect())
 }
 
-pub fn verify_sha256(path: &Path, expected: &str) -> Result<(), String> {
-    let got = sha256_file(path).map_err(|e| format!("Dosya okunamadı: {e}"))?;
+pub fn verify_sha256(path: &Path, expected: &str) -> Result<(), FfError> {
+    let got = sha256_file(path).map_err(|e| FfError::with("ff.read", e))?;
     if got.eq_ignore_ascii_case(expected) {
         Ok(())
     } else {
-        Err("İndirilen dosya doğrulanamadı (SHA-256 uyuşmuyor)".into())
+        Err(FfError::new("ff.hash"))
     }
 }
 
 /// Streams `url` into `dest`, reporting 0.0..=1.0.
-fn download(url: &str, dest: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), String> {
+fn download(url: &str, dest: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), FfError> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_connect(Some(Duration::from_secs(15)))
         .timeout_recv_response(Some(Duration::from_secs(30)))
@@ -128,43 +168,43 @@ fn download(url: &str, dest: &Path, progress: &mut dyn FnMut(f32)) -> Result<(),
     let resp = agent
         .get(url)
         .call()
-        .map_err(|e| format!("İndirme başlatılamadı: {e}"))?;
+        .map_err(|e| FfError::with("ff.start", e))?;
     let total = resp
         .body()
         .content_length()
         .filter(|&n| n > 0)
         .unwrap_or(EXPECTED_SIZE);
     if total > MAX_ZIP {
-        return Err("İndirilecek dosya beklenenden büyük".into());
+        return Err(FfError::new("ff.too_big"));
     }
     let mut body = resp.into_body().into_with_config().limit(MAX_ZIP).reader();
-    let mut out = File::create(dest).map_err(|e| format!("Geçici dosya oluşturulamadı: {e}"))?;
+    let mut out = File::create(dest).map_err(|e| FfError::with("ff.tmp", e))?;
     let mut buf = vec![0u8; 256 * 1024];
     let mut done = 0u64;
     loop {
         let n = body
             .read(&mut buf)
-            .map_err(|e| format!("İndirme kesildi: {e}"))?;
+            .map_err(|e| FfError::with("ff.cut", e))?;
         if n == 0 {
             break;
         }
-        io::Write::write_all(&mut out, &buf[..n]).map_err(|e| format!("Diske yazılamadı: {e}"))?;
+        io::Write::write_all(&mut out, &buf[..n]).map_err(|e| FfError::with("ff.write", e))?;
         done += n as u64;
         progress((done as f32 / total as f32).min(1.0));
     }
-    out.sync_all().map_err(|e| format!("Diske yazılamadı: {e}"))
+    out.sync_all().map_err(|e| FfError::with("ff.write", e))
 }
 
 /// Extracts only `*/bin/ffmpeg.exe` from the zip into `dir/ffmpeg.exe` (atomic rename).
 /// Any entry with a traversal or absolute path rejects the whole archive.
-pub fn extract_exe(zip_path: &Path, dir: &Path) -> Result<(), String> {
-    let bad = |e: &dyn std::fmt::Display| format!("Arşiv açılamadı: {e}");
+pub fn extract_exe(zip_path: &Path, dir: &Path) -> Result<(), FfError> {
+    let bad = |e: &dyn fmt::Display| FfError::with("ff.archive", e);
     let mut z =
         zip::ZipArchive::new(File::open(zip_path).map_err(|e| bad(&e))?).map_err(|e| bad(&e))?;
     let mut found = None;
     for i in 0..z.len() {
         let e = z.by_index(i).map_err(|e| bad(&e))?;
-        let name = e.enclosed_name().ok_or("Arşivde güvensiz dosya yolu var")?;
+        let name = e.enclosed_name().ok_or_else(|| FfError::new("ff.unsafe"))?;
         let in_bin = name
             .parent()
             .and_then(Path::file_name)
@@ -173,15 +213,15 @@ pub fn extract_exe(zip_path: &Path, dir: &Path) -> Result<(), String> {
             found = Some(i);
         }
     }
-    let i = found.ok_or("Arşivde ffmpeg.exe bulunamadı")?;
+    let i = found.ok_or_else(|| FfError::new("ff.no_exe"))?;
     let mut entry = z.by_index(i).map_err(|e| bad(&e))?;
     fs::create_dir_all(dir).map_err(|e| bad(&e))?;
     let part = dir.join("ffmpeg.exe.part");
-    let result = (|| -> Result<(), String> {
+    let result = (|| -> Result<(), FfError> {
         let mut out = File::create(&part).map_err(|e| bad(&e))?;
         let n = io::copy(&mut (&mut entry).take(MAX_EXE + 1), &mut out).map_err(|e| bad(&e))?;
         if n > MAX_EXE {
-            return Err("ffmpeg.exe beklenenden büyük".into());
+            return Err(FfError::new("ff.exe_big"));
         }
         out.sync_all().map_err(|e| bad(&e))?;
         drop(out);
@@ -199,8 +239,8 @@ pub fn install_once(
     sha256: &str,
     dir: &Path,
     progress: &mut dyn FnMut(f32),
-) -> Result<(), String> {
-    fs::create_dir_all(dir).map_err(|e| format!("Klasör oluşturulamadı: {e}"))?;
+) -> Result<(), FfError> {
+    fs::create_dir_all(dir).map_err(|e| FfError::with("ff.mkdir", e))?;
     let tmp = dir.join("ffmpeg.zip.part");
     let result = (|| {
         download(url, &tmp, &mut |f| progress(f * 97.0))?;
@@ -208,7 +248,7 @@ pub fn install_once(
         verify_sha256(&tmp, sha256)?;
         extract_exe(&tmp, dir)?;
         if !is_working(&dir.join("ffmpeg.exe")) {
-            return Err("ffmpeg çalıştırılamadı".into());
+            return Err(FfError::new("ff.run"));
         }
         progress(100.0);
         Ok(())
@@ -218,8 +258,8 @@ pub fn install_once(
 }
 
 /// The pinned build, up to three attempts with a growing pause. Updates `dl` as it goes.
-pub fn install_with_retries(dl: &Download) -> Result<(), String> {
-    let mut last = String::new();
+pub fn install_with_retries(dl: &Download) -> Result<(), FfError> {
+    let mut last = FfError::new("ff.run");
     for pause in [0u64, 3, 10] {
         std::thread::sleep(Duration::from_secs(pause));
         dl.set_percent(0.0);
@@ -297,12 +337,12 @@ mod tests {
             &[("x/bin/ffmpeg.exe", b"MZ"), ("../../evil.txt", b"pwn")],
         );
         let out = d.path().join("out");
-        assert!(extract_exe(&z, &out).unwrap_err().contains("güvensiz"));
+        assert_eq!(extract_exe(&z, &out).unwrap_err().key(), "ff.unsafe");
         assert!(!out.join("ffmpeg.exe").exists());
         fake_zip(&z, &[(r"..\evil.txt", b"x"), ("x/bin/ffmpeg.exe", b"MZ")]);
         assert!(extract_exe(&z, &out).is_err());
         fake_zip(&z, &[("x/ffmpeg.exe", b"MZ")]); // not under bin/
-        assert!(extract_exe(&z, &out).unwrap_err().contains("bulunamadı"));
+        assert_eq!(extract_exe(&z, &out).unwrap_err().key(), "ff.no_exe");
     }
 
     #[test]
@@ -310,11 +350,17 @@ mod tests {
         let dl = Download::default();
         assert!(dl.begin() && !dl.begin());
         dl.set_percent(42.5);
-        let s = dl.status(false);
+        let s = dl.status(false, Lang::En);
         assert!(s.downloading && (s.percent - 42.5).abs() < 0.11 && s.error.is_none());
-        dl.finish(Some("hata".into()));
-        let s = dl.status(false);
-        assert!(!s.downloading && s.error.as_deref() == Some("hata"));
-        assert!(dl.begin() && dl.status(false).error.is_none());
+        dl.finish(Some(FfError::new("ff.hash")));
+        let s = dl.status(false, Lang::En);
+        assert!(!s.downloading && s.error.unwrap().contains("SHA-256"));
+        // the stored error is rendered in the language asked for
+        assert!(dl
+            .status(false, Lang::Tr)
+            .error
+            .unwrap()
+            .contains("doğrulanamadı"));
+        assert!(dl.begin() && dl.status(false, Lang::En).error.is_none());
     }
 }

@@ -9,6 +9,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::convert::{self, convert, uses_ffmpeg, ConvertError, Format, Options};
+use crate::i18n::{self, t};
 use crate::panel;
 use crate::settings::Panel;
 
@@ -158,7 +159,7 @@ impl Queue {
         let (app, active) = (app.clone(), self.active.clone());
         let id = SEQ.fetch_add(1, Ordering::Relaxed);
         std::thread::spawn(move || {
-            let name = String::from("ornek-foto.png");
+            let name = t(i18n::lang(), "panel.demo_name").to_string();
             let ev = |percent: f32| {
                 let _ = app.emit(
                     "job-progress",
@@ -187,7 +188,7 @@ impl Queue {
                     id,
                     name: name.clone(),
                     ok: true,
-                    message: "Tamamlandı".into(),
+                    message: t(i18n::lang(), "job.done").into(),
                     output: None,
                 },
             );
@@ -219,11 +220,12 @@ fn worker(
         };
         let done = run(&app, &job);
         cancels.lock().unwrap().remove(&job.id);
+        let lang = i18n::lang();
         let (title, body) = if done.ok {
-            ("Dönüştürüldü", done.name.clone())
+            (t(lang, "notify.done_title"), done.name.clone())
         } else {
             (
-                "Dönüştürme başarısız",
+                t(lang, "notify.failed_title"),
                 format!("{}: {}", done.name, done.message),
             )
         };
@@ -240,6 +242,7 @@ fn worker(
 }
 
 fn run(app: &AppHandle, job: &Job) -> Done {
+    let lang = i18n::lang();
     let fail = |message: String| Done {
         id: job.id,
         name: job.name.clone(),
@@ -248,7 +251,7 @@ fn run(app: &AppHandle, job: &Job) -> Done {
         output: None,
     };
     if job.cancel.load(Ordering::Relaxed) {
-        return fail("İptal edildi".into());
+        return fail(t(lang, "job.cancelled").into());
     }
     let mut last = -1.0f32;
     let on_progress = |p: f32| {
@@ -286,13 +289,11 @@ fn run(app: &AppHandle, job: &Job) -> Done {
             id: job.id,
             name: job.name.clone(),
             ok: true,
-            message: "Tamamlandı".into(),
+            message: t(lang, "job.done").into(),
             output: Some(out.display().to_string()),
         },
-        Err(ConvertError::NeedsFfmpeg) => {
-            fail("Bu dönüşüm için ffmpeg gerekiyor, henüz hazır değil".into())
-        }
-        Err(e) => fail(e.to_string()),
+        Err(ConvertError::NeedsFfmpeg) => fail(t(lang, "job.needs_ffmpeg").into()),
+        Err(e) => fail(e.message(lang)),
     }
 }
 
