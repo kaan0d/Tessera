@@ -28,6 +28,16 @@ target\release\tessera.exe
 
 The menu registers on first run. `tessera.exe --remove-menu` takes it out again.
 
+Per-user installer (no admin, installs to `%LOCALAPPDATA%\Tessera`, uninstall removes the menu, autostart entry and app data):
+
+```
+npm install
+npx tauri build --bundles nsis
+```
+
+Output: `src-tauri	argeteleaseundle
+sis\Tessera_<version>_x64-setup.exe`.
+
 ## Usage
 
 ```
