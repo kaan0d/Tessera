@@ -1,11 +1,11 @@
 [package]
-name = "new-app"
+name = "tessera"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
 
 [lib]
-name = "new_app_lib"
+name = "tessera_lib"
 crate-type = ["rlib"]
 
 [build-dependencies]

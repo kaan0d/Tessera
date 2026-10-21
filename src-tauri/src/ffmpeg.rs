@@ -24,7 +24,7 @@ use crate::settings::settings_path;
 pub const URL: &str = "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-20-13-08/ffmpeg-n8.1.3-18-g46d899d7a0-win64-lgpl-8.1.zip";
 /// Same file on the project's own release, tried first; a 404 there (not published yet, or
 /// removed) falls through to BtbN without a word. The SHA-256 is the same for both.
-pub const MIRROR_URL: &str = "https://github.com/kaan0d/new-app/releases/download/ffmpeg-8.1.3/ffmpeg-n8.1.3-18-g46d899d7a0-win64-lgpl-8.1.zip";
+pub const MIRROR_URL: &str = "https://github.com/kaan0d/Tessera/releases/download/ffmpeg-8.1.3/ffmpeg-n8.1.3-18-g46d899d7a0-win64-lgpl-8.1.zip";
 /// Download sources in the order they are tried.
 pub const SOURCES: [&str; 2] = [MIRROR_URL, URL];
 pub const SHA256: &str = "26634a5e06429c4f51ed08ba518923f928c5e4a49ed0ee62f701e035227b91a7";
@@ -347,7 +347,7 @@ mod tests {
         assert_eq!(SOURCES[1], URL);
         let asset = |u: &str| u.rsplit('/').next().unwrap().to_string();
         assert_eq!(asset(MIRROR_URL), asset(URL));
-        assert!(MIRROR_URL.starts_with("https://github.com/kaan0d/new-app/releases/download/"));
+        assert!(MIRROR_URL.starts_with("https://github.com/kaan0d/Tessera/releases/download/"));
     }
 
     /// A zip holding a "working" ffmpeg is impossible offline, so the fake fetcher serves a

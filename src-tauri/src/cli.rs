@@ -37,7 +37,7 @@ pub enum Cli {
     Normal,
 }
 
-/// Arguments of `new-app convert`.
+/// Arguments of `tessera convert`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct ConvertArgs {
     pub target: Format,

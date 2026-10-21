@@ -2865,37 +2865,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "new-app"
-version = "0.1.0"
-dependencies = [
- "flacenc",
- "hayro",
- "hound",
- "image",
- "kamadak-exif",
- "miniz_oxide 0.8.9",
- "notify",
- "pdf-writer",
- "resvg",
- "semver",
- "serde",
- "serde_json",
- "sha2",
- "symphonia",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-notification",
- "tauri-plugin-single-instance",
- "tempfile",
- "trash",
- "ureq",
- "windows",
- "winreg 0.55.0",
- "zip",
-]
-
-[[package]]
 name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5185,6 +5154,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fed54709c5b3a53d09bb1c113ea4f5ceafd1e772ddcb0030a82e1d56c087b08"
 dependencies = [
  "new_debug_unreachable",
+]
+
+[[package]]
+name = "tessera"
+version = "0.1.0"
+dependencies = [
+ "flacenc",
+ "hayro",
+ "hound",
+ "image",
+ "kamadak-exif",
+ "miniz_oxide 0.8.9",
+ "notify",
+ "pdf-writer",
+ "resvg",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2",
+ "symphonia",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-notification",
+ "tauri-plugin-single-instance",
+ "tempfile",
+ "trash",
+ "ureq",
+ "windows",
+ "winreg 0.55.0",
+ "zip",
 ]
 
 [[package]]

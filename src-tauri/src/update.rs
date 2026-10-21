@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::i18n::{fmt, t, Lang};
 
 /// The only place that names the repository.
-pub const REPO: &str = "kaan0d/new-app";
+pub const REPO: &str = "kaan0d/Tessera";
 const MAX_BODY: u64 = 256 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -166,7 +166,7 @@ mod tests {
     use super::*;
 
     const FIXTURE: &str = r#"{"url":"https://api.github.com/x","tag_name":"v0.2.0","name":"Second",
-        "html_url":"https://github.com/kaan0d/new-app/releases/tag/v0.2.0","draft":false,
+        "html_url":"https://github.com/kaan0d/Tessera/releases/tag/v0.2.0","draft":false,
         "assets":[{"name":"setup.exe"}]}"#;
 
     #[test]
@@ -200,7 +200,7 @@ mod tests {
         }
         let evil = r#"{"tag_name":"v9.0.0","html_url":"https://evil.example/x"}"#;
         let i = parse_release(evil, "0.1.0", REPO, Lang::En).unwrap();
-        assert_eq!(i.url, "https://github.com/kaan0d/new-app/releases");
+        assert_eq!(i.url, "https://github.com/kaan0d/Tessera/releases");
     }
 
     #[test]
@@ -213,13 +213,13 @@ mod tests {
     #[test]
     fn open_url_allowlist() {
         let ok = |u| allowed_url(u, REPO);
-        assert!(ok("https://github.com/kaan0d/new-app"));
-        assert!(ok("https://github.com/kaan0d/new-app/releases/tag/v1"));
-        assert!(!ok("http://github.com/kaan0d/new-app/releases"));
-        assert!(!ok("https://github.com/kaan0d/new-app-evil/x"));
+        assert!(ok("https://github.com/kaan0d/Tessera"));
+        assert!(ok("https://github.com/kaan0d/Tessera/releases/tag/v1"));
+        assert!(!ok("http://github.com/kaan0d/Tessera/releases"));
+        assert!(!ok("https://github.com/kaan0d/Tessera-evil/x"));
         assert!(!ok("https://github.com/kaan0d/other"));
-        assert!(!ok("https://github.com.evil.com/kaan0d/new-app/"));
-        assert!(!ok("https://github.com/kaan0d/new-app/\" & calc"));
+        assert!(!ok("https://github.com.evil.com/kaan0d/Tessera/"));
+        assert!(!ok("https://github.com/kaan0d/Tessera/\" & calc"));
         assert!(!ok("file:///C:/Windows/notepad.exe"));
         assert!(open_url("https://example.com", Lang::En).is_err());
     }

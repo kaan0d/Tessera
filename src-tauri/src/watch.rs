@@ -820,7 +820,7 @@ mod tests {
 
     #[test]
     fn folder_rules() {
-        let sys = vec![p(r"C:\Windows"), p(r"C:\Users\u\AppData\Roaming\new-app")];
+        let sys = vec![p(r"C:\Windows"), p(r"C:\Users\u\AppData\Roaming\Tessera")];
         let ok = |f: &str, rec| check_folder(Path::new(f), rec, &sys);
         assert_eq!(ok(r"D:\Photos", false), Ok(()));
         assert_eq!(ok(r"D:\Photos\", true), Ok(()));
@@ -835,7 +835,7 @@ mod tests {
             Err(FolderIssue::Forbidden)
         );
         assert_eq!(
-            ok(r"C:\Users\u\AppData\Roaming\new-app\sub", false),
+            ok(r"C:\Users\u\AppData\Roaming\Tessera\sub", false),
             Err(FolderIssue::Forbidden)
         );
         // a recursive watch over a parent would include the app data folder

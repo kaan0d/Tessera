@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>new-app</title>
+<title>Tessera</title>
 <link rel="stylesheet" href="style.css">
 <script src="i18n.js" defer></script>
 <script src="progress.js" defer></script>
@@ -16,17 +16,8 @@
 </svg>
 <div id="card" class="p-card">
   <header id="head" class="p-head">
-    <!-- placeholder brand mark: keep in sync with index.html -->
-    <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
-      <defs>
-        <linearGradient id="mark-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="mark-a"/><stop offset="1" class="mark-b"/></linearGradient>
-        <clipPath id="mark-c"><path d="M14 8.5h9.5l5.5 5.5v16a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2v-19.5a2 2 0 0 1 2-2z"/></clipPath>
-      </defs>
-      <rect width="40" height="40" rx="11" fill="url(#mark-g)"/>
-      <path class="mark-sheet" d="M14 8.5h9.5l5.5 5.5v16a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2v-19.5a2 2 0 0 1 2-2z"/>
-      <rect class="mark-ink" x="10" y="20.5" width="22" height="13" clip-path="url(#mark-c)"/>
-      <path class="mark-fold" d="M23.5 8.5V12a2 2 0 0 0 2 2H29"/>
-    </svg>
+    <!-- brand mark: same logo as index.html -->
+    <img class="mark" src="logo.svg" alt="" width="36" height="36">
     <div class="grow">
       <h1 id="p-title" class="p-title" data-i18n="p.running"></h1>
       <p id="p-sub" class="p-sub"></p>

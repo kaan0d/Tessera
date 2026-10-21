@@ -466,7 +466,7 @@ pub fn encode_webp(
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_nanos());
-    let base = std::env::temp_dir().join(format!("new-app-webp-{}-{nanos}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("tessera-webp-{}-{nanos}", std::process::id()));
     let (png, webp) = (base.with_extension("png"), base.with_extension("webp"));
     let run = || -> Result<Vec<u8>, ConvertError> {
         let file = std::fs::File::create(&png)?;

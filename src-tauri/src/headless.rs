@@ -18,11 +18,11 @@ pub const EXIT_USAGE: i32 = 2;
 
 pub const HELP: &str = "\
 Usage:
-  new-app convert <files...> --to <ext> [options]
-  new-app preset <id> <files...>
-  new-app list-presets
-  new-app formats <ext>
-  new-app --version | --help
+  tessera convert <files...> --to <ext> [options]
+  tessera preset <id> <files...>
+  tessera list-presets
+  tessera formats <ext>
+  tessera --version | --help
 
 Convert options:
   --to <ext>          target format (png, jpg, webp, pdf, mp3, mp4, ...)
@@ -86,7 +86,7 @@ pub fn run(cmd: Command) -> i32 {
         }
         Command::Usage(msg) => {
             err(&format!("error: {msg}"));
-            err("Run `new-app --help` for usage.");
+            err("Run `tessera --help` for usage.");
             EXIT_USAGE
         }
         Command::ListPresets => list_presets(),
@@ -162,7 +162,7 @@ fn preset_cmd(id: &str, files: &[PathBuf]) -> i32 {
     let s = settings::load_from(&settings::settings_path());
     let Some(p) = preset::find(&s, id) else {
         err(&format!(
-            "unknown preset: {id} (see `new-app list-presets`)"
+            "unknown preset: {id} (see `tessera list-presets`)"
         ));
         return EXIT_FAILED;
     };
