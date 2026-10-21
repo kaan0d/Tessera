@@ -10,6 +10,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "new-app",
         "width": 760,
         "height": 640,
@@ -19,6 +20,7 @@
       },
       {
         "label": "drop",
+        "create": false,
         "title": "new-app",
         "url": "drop.html",
         "width": 420,
@@ -32,6 +34,7 @@
       },
       {
         "label": "progress",
+        "create": false,
         "title": "new-app",
         "url": "progress.html",
         "width": 384,

@@ -1010,9 +1010,6 @@ pub fn run() {
             i18n::set_lang(s.language);
             // state first: the config windows start loading pages that invoke commands right away
             let first_run_settings = (first_run || upgraded).then(|| s.clone());
-            if let Some(w) = app.get_webview_window("progress") {
-                panel::init(&w);
-            }
             app.manage(AppState {
                 queue: Queue::new(app.handle().clone(), s.panel, s.history_enabled),
                 settings: Mutex::new(s),
@@ -1021,6 +1018,13 @@ pub fn run() {
                 watcher: Mutex::new(None),
                 dropped: Mutex::new(vec![]),
             });
+            // windows are built only now so their pages never invoke a command before the state exists
+            for cfg in &app.config().app.windows {
+                tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?.build()?;
+            }
+            if let Some(w) = app.get_webview_window("progress") {
+                panel::init(&w);
+            }
             if let Some(s) = first_run_settings {
                 // best effort: the UI can retry through install_context_menu
                 let _ = shell::install(&s);
