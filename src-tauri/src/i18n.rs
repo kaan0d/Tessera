@@ -61,7 +61,7 @@ pub fn set_lang(l: Lang) {
 /// (key, English, Turkish)
 pub const MSGS: &[(&str, &str, &str)] = &[
     // context menu
-    ("menu.convert_to", "Convert to {fmt}", "{fmt}'ye dönüştür"),
+    ("menu.convert_to", "Convert to {fmt}", "{fmt} olarak dönüştür"),
     // tray
     ("tray.open", "Settings", "Ayarlar"),
     ("tray.quit", "Quit", "Çıkış"),
@@ -330,7 +330,7 @@ mod tests {
         assert_eq!(t(Lang::En, "no.such.key"), "no.such.key");
         let v = [("fmt", "JPG")];
         assert_eq!(fmt(Lang::En, "menu.convert_to", &v), "Convert to JPG");
-        assert_eq!(fmt(Lang::Tr, "menu.convert_to", &v), "JPG'ye dönüştür");
+        assert_eq!(fmt(Lang::Tr, "menu.convert_to", &v), "JPG olarak dönüştür");
     }
 
     #[test]
