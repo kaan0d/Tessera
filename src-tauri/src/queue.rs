@@ -8,8 +8,10 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
-use crate::convert::{self, convert, uses_ffmpeg, ConvertError, Format, Options};
-use crate::i18n::{self, t};
+use crate::convert::combine::{self, MergeKind};
+use crate::convert::{self, convert, uses_ffmpeg, Conflict, ConvertError, Format, Options};
+use crate::history::{self, Entry, Kind};
+use crate::i18n::{self, fmt, t};
 use crate::panel;
 use crate::settings::Panel;
 
@@ -27,6 +29,17 @@ struct Done {
     ok: bool,
     message: String,
     output: Option<String>,
+    /// History entry of this job (for Undo); None when history is off or the job failed.
+    history_id: Option<u64>,
+}
+
+/// One unit of work for `enqueue_specs`.
+pub struct Spec {
+    pub path: PathBuf,
+    pub target: Format,
+    pub opts: Options,
+    /// Merge job: all files go into one output (`path` is the first one).
+    pub merge: Option<(MergeKind, Vec<PathBuf>)>,
 }
 
 struct Job {
@@ -37,6 +50,10 @@ struct Job {
     opts: Options,
     ffmpeg_ready: bool,
     cancel: Arc<AtomicBool>,
+    merge: Option<(MergeKind, Vec<PathBuf>)>,
+    kind: Kind,
+    label: String,
+    started: u64,
 }
 
 type Cancels = Arc<Mutex<HashMap<u64, Arc<AtomicBool>>>>;
@@ -47,6 +64,7 @@ pub struct Queue {
     cancels: Cancels,
     active: Arc<AtomicUsize>,
     pub panel: SharedPanel,
+    pub history: history::Shared,
 }
 
 /// Panel settings, shared with the settings command so changes apply to the next event.
@@ -74,8 +92,12 @@ fn sync_window(app: &AppHandle, n: usize, p: Panel) {
 }
 
 impl Queue {
-    pub fn new(app: AppHandle, panel: Panel) -> Queue {
+    pub fn new(app: AppHandle, panel: Panel, history_enabled: bool) -> Queue {
         let panel: SharedPanel = Arc::new(Mutex::new(panel));
+        let history: history::Shared = Arc::new(Mutex::new(history::Store::load(
+            history::history_path(),
+            history_enabled,
+        )));
         let (tx, rx) = channel::<Job>();
         let rx = Arc::new(Mutex::new(rx));
         let cancels: Cancels = Arc::default();
@@ -84,14 +106,15 @@ impl Queue {
             .map_or(2, |n| n.get())
             .min(4);
         for _ in 0..n {
-            let (rx, app, cancels, active, panel) = (
+            let (rx, app, cancels, active, panel, history) = (
                 rx.clone(),
                 app.clone(),
                 cancels.clone(),
                 active.clone(),
                 panel.clone(),
+                history.clone(),
             );
-            std::thread::spawn(move || worker(rx, app, cancels, active, panel));
+            std::thread::spawn(move || worker(rx, app, cancels, active, panel, history));
         }
         Queue {
             tx,
@@ -99,10 +122,11 @@ impl Queue {
             cancels,
             active,
             panel,
+            history,
         }
     }
 
-    /// Queues one job per file. Returns the job ids.
+    /// Queues one conversion job per file. Returns the job ids.
     pub fn enqueue(
         &self,
         app: &AppHandle,
@@ -111,14 +135,47 @@ impl Queue {
         opts: &Options,
         ffmpeg_ready: bool,
     ) -> Vec<u64> {
-        files
+        let label = fmt(
+            i18n::lang(),
+            "menu.convert_to",
+            &[("fmt", &target.ext().to_uppercase())],
+        );
+        let specs = files
             .into_iter()
-            .map(|path| {
+            .map(|path| Spec {
+                path,
+                target,
+                opts: opts.clone(),
+                merge: None,
+            })
+            .collect();
+        self.enqueue_specs(app, specs, Kind::Convert, &label, ffmpeg_ready)
+    }
+
+    /// Queues the given jobs; `kind` and `label` go into the history entries.
+    pub fn enqueue_specs(
+        &self,
+        app: &AppHandle,
+        specs: Vec<Spec>,
+        kind: Kind,
+        label: &str,
+        ffmpeg_ready: bool,
+    ) -> Vec<u64> {
+        specs
+            .into_iter()
+            .map(|spec| {
                 let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-                let name = path.file_name().map_or_else(
-                    || path.display().to_string(),
-                    |n| n.to_string_lossy().into(),
-                );
+                let name = match &spec.merge {
+                    Some((_, files)) => fmt(
+                        i18n::lang(),
+                        "job.merge_name",
+                        &[("n", &files.len().to_string())],
+                    ),
+                    None => spec.path.file_name().map_or_else(
+                        || spec.path.display().to_string(),
+                        |n| n.to_string_lossy().into(),
+                    ),
+                };
                 let cancel = Arc::new(AtomicBool::new(false));
                 self.cancels.lock().unwrap().insert(id, cancel.clone());
                 sync_window(
@@ -137,11 +194,15 @@ impl Queue {
                 let _ = self.tx.send(Job {
                     id,
                     name,
-                    path,
-                    target,
-                    opts: opts.clone(),
+                    path: spec.path,
+                    target: spec.target,
+                    opts: spec.opts,
                     ffmpeg_ready,
                     cancel,
+                    merge: spec.merge,
+                    kind,
+                    label: label.to_string(),
+                    started: history::now_ms(),
                 });
                 id
             })
@@ -190,6 +251,7 @@ impl Queue {
                     ok: true,
                     message: t(i18n::lang(), "job.done").into(),
                     output: None,
+                    history_id: None,
                 },
             );
             if ok && active.load(Ordering::Relaxed) == 0 {
@@ -212,13 +274,18 @@ fn worker(
     cancels: Cancels,
     active: Arc<AtomicUsize>,
     panel: SharedPanel,
+    history: history::Shared,
 ) {
     loop {
         // the lock is released at the end of this statement, so other workers can take jobs
         let Ok(job) = rx.lock().unwrap().recv() else {
             return;
         };
-        let done = run(&app, &job);
+        let mut done = run(&app, &job);
+        done.history_id = record(&history, &job, &done);
+        if done.history_id.is_some() || !done.ok {
+            let _ = app.emit("history-changed", ());
+        }
         cancels.lock().unwrap().remove(&job.id);
         let lang = i18n::lang();
         let (title, body) = if done.ok {
@@ -241,6 +308,25 @@ fn worker(
     }
 }
 
+/// Writes the finished job to history (failures too); the id is only given for successes.
+fn record(history: &history::Shared, job: &Job, done: &Done) -> Option<u64> {
+    let replaced =
+        done.ok && job.merge.is_none() && job.opts.output.conflict == Conflict::ReplaceOriginal;
+    let id = history.lock().unwrap().record(Entry {
+        started: job.started,
+        input: job.path.display().to_string(),
+        output: done.output.clone(),
+        kind: job.kind,
+        label: job.label.clone(),
+        ok: done.ok,
+        error: (!done.ok).then(|| done.message.clone()),
+        replaced_original: replaced,
+        original_recycled: replaced,
+        ..Entry::default()
+    });
+    id.filter(|_| done.ok)
+}
+
 fn run(app: &AppHandle, job: &Job) -> Done {
     let lang = i18n::lang();
     let fail = |message: String| Done {
@@ -249,6 +335,7 @@ fn run(app: &AppHandle, job: &Job) -> Done {
         ok: false,
         message,
         output: None,
+        history_id: None,
     };
     if job.cancel.load(Ordering::Relaxed) {
         return fail(t(lang, "job.cancelled").into());
@@ -273,7 +360,9 @@ fn run(app: &AppHandle, job: &Job) -> Done {
         .extension()
         .and_then(|e| e.to_str())
         .and_then(Format::from_ext);
-    let result = if from.is_some_and(|f| uses_ffmpeg(f, job.target)) {
+    let result = if let Some((kind, files)) = &job.merge {
+        combine::run(*kind, files, &job.opts, on_progress)
+    } else if from.is_some_and(|f| uses_ffmpeg(f, job.target)) {
         if job.ffmpeg_ready {
             ffmpeg_convert(job, on_progress)
         } else {
@@ -291,6 +380,7 @@ fn run(app: &AppHandle, job: &Job) -> Done {
             ok: true,
             message: t(lang, "job.done").into(),
             output: Some(out.display().to_string()),
+            history_id: None,
         },
         Err(ConvertError::NeedsFfmpeg) => fail(t(lang, "job.needs_ffmpeg").into()),
         Err(e) => fail(e.message(lang)),

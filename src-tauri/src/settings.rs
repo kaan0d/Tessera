@@ -233,6 +233,15 @@ pub fn settings_path() -> PathBuf {
     data_dir().join("settings.json")
 }
 
+/// `settings_version` as stored on disk (0 for old files, missing or corrupt ones).
+pub fn stored_version(path: &Path) -> u32 {
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .and_then(|v| v["settings_version"].as_u64())
+        .map_or(0, |v| v as u32)
+}
+
 /// Missing or corrupt file gives defaults.
 pub fn load_from(path: &Path) -> Settings {
     fs::read_to_string(path)
