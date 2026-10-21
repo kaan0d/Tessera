@@ -1,11 +1,13 @@
 //! The mini progress panel: a frameless, non-activating window in a screen corner.
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, LogicalSize, PhysicalPosition, WebviewWindow};
-use windows::Win32::Foundation::HWND;
+use tauri::{AppHandle, WebviewWindow};
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetWindowLongPtrW, SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE, SW_SHOWNOACTIVATE,
-    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, ShowWindow, GWL_EXSTYLE, HWND_TOPMOST,
+    MA_NOACTIVATE, SWP_NOACTIVATE, SWP_NOOWNERZORDER, SWP_SHOWWINDOW, SW_HIDE, WM_MOUSEACTIVATE,
+    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -57,49 +59,78 @@ fn hwnd(w: &WebviewWindow) -> Option<HWND> {
     w.hwnd().ok().map(|h| HWND(h.0))
 }
 
-/// One-time setup: no taskbar or Alt-Tab entry, never takes focus.
+/// Clicks inside the card are delivered, but never activate the window.
+unsafe extern "system" fn no_activate(
+    h: HWND,
+    msg: u32,
+    wp: WPARAM,
+    lp: LPARAM,
+    _id: usize,
+    _data: usize,
+) -> LRESULT {
+    if msg == WM_MOUSEACTIVATE {
+        return LRESULT(MA_NOACTIVATE as isize);
+    }
+    DefSubclassProc(h, msg, wp, lp)
+}
+
+/// One-time setup: no taskbar or Alt-Tab entry, topmost, never takes focus.
 pub fn init(w: &WebviewWindow) {
     let _ = w.set_focusable(false);
     let _ = w.set_shadow(false);
     if let Some(h) = hwnd(w) {
-        // SAFETY: plain style read-modify-write on a window this process owns.
+        // SAFETY: style read-modify-write and a subclass on a window this process owns.
         unsafe {
             let ex = GetWindowLongPtrW(h, GWL_EXSTYLE);
-            SetWindowLongPtrW(
-                h,
-                GWL_EXSTYLE,
-                ex | (WS_EX_TOOLWINDOW.0 | WS_EX_NOACTIVATE.0) as isize,
-            );
+            let add = WS_EX_TOOLWINDOW.0 | WS_EX_NOACTIVATE.0 | WS_EX_TOPMOST.0;
+            SetWindowLongPtrW(h, GWL_EXSTYLE, ex | add as isize);
+            let _ = SetWindowSubclass(h, Some(no_activate), 1, 0);
         }
     }
 }
 
-/// Sizes for `n` rows, moves to `corner` of the work area and shows without activating.
+/// Sizes for `n` rows, moves to `corner` of the work area and shows, topmost and without
+/// activating, in one `SetWindowPos`, so no step can pull focus from the app being typed in.
+/// Re-asserted on every call. Limit: Windows keeps exclusive-fullscreen games above any
+/// topmost window; the panel is not visible over those.
 pub fn show(app: &AppHandle, w: &WebviewWindow, n: usize, corner: Corner) {
-    let (lw, lh) = window_size(n);
-    let _ = w.set_size(LogicalSize::new(lw, lh));
+    let Some(h) = hwnd(w) else { return };
     let monitor = w
         .current_monitor()
         .ok()
         .flatten()
         .or_else(|| app.primary_monitor().ok().flatten());
-    if let (Some(m), Ok(size)) = (monitor, w.outer_size()) {
-        let a = m.work_area();
-        let (x, y) = position(
-            corner,
-            (a.position.x, a.position.y, a.size.width, a.size.height),
-            (size.width, size.height),
-            m.scale_factor(),
+    let Some(m) = monitor else { return };
+    let scale = m.scale_factor();
+    let (lw, lh) = window_size(n);
+    let size = ((lw * scale).round() as u32, (lh * scale).round() as u32);
+    let a = m.work_area();
+    let (x, y) = position(
+        corner,
+        (a.position.x, a.position.y, a.size.width, a.size.height),
+        size,
+        scale,
+    );
+    // SAFETY: plain window positioning on a window this process owns.
+    unsafe {
+        let _ = SetWindowPos(
+            h,
+            Some(HWND_TOPMOST),
+            x,
+            y,
+            size.0 as i32,
+            size.1 as i32,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER,
         );
-        let _ = w.set_position(PhysicalPosition::new(x, y));
     }
-    match hwnd(w) {
-        // SAFETY: shows without stealing focus.
-        Some(h) => unsafe {
-            let _ = ShowWindow(h, SW_SHOWNOACTIVATE);
-        },
-        None => {
-            let _ = w.show();
+}
+
+/// Hides through Win32 too: `show` bypasses tauri, whose own `hide` then sees nothing to do.
+pub fn hide(w: &WebviewWindow) {
+    if let Some(h) = hwnd(w) {
+        // SAFETY: plain ShowWindow on a window this process owns.
+        unsafe {
+            let _ = ShowWindow(h, SW_HIDE);
         }
     }
 }

@@ -54,18 +54,17 @@ pub type SharedPanel = Arc<Mutex<Panel>>;
 static SYNC_GEN: AtomicUsize = AtomicUsize::new(0);
 
 /// Shows the progress panel sized for `n` rows, or hides it a while after the queue empties.
-fn sync_window(app: &AppHandle, n: usize, panel: &SharedPanel) {
+fn sync_window(app: &AppHandle, n: usize, p: Panel) {
     let Some(w) = app.get_webview_window("progress") else {
         return;
     };
     let gen = SYNC_GEN.fetch_add(1, Ordering::SeqCst) + 1;
-    let p = *panel.lock().unwrap();
     if n == 0 {
         // keep the card up long enough to see the last result
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_secs(p.seconds.into()));
             if SYNC_GEN.load(Ordering::SeqCst) == gen {
-                let _ = w.hide();
+                panel::hide(&w);
             }
         });
     } else {
@@ -124,7 +123,7 @@ impl Queue {
                 sync_window(
                     app,
                     self.active.fetch_add(1, Ordering::Relaxed) + 1,
-                    &self.panel,
+                    *self.panel.lock().unwrap(),
                 );
                 let _ = app.emit(
                     "job-progress",
@@ -146,6 +145,57 @@ impl Queue {
                 id
             })
             .collect()
+    }
+
+    /// Plays a fake job on the real panel (nothing is converted). No-op while real jobs run
+    /// or another preview is playing. Ids start at 2^40 so they never meet real ones.
+    pub fn preview(&self, app: &AppHandle, p: Panel) {
+        static PLAYING: AtomicBool = AtomicBool::new(false);
+        static SEQ: AtomicU64 = AtomicU64::new(1 << 40);
+        if self.active.load(Ordering::Relaxed) > 0 || PLAYING.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let (app, active) = (app.clone(), self.active.clone());
+        let id = SEQ.fetch_add(1, Ordering::Relaxed);
+        std::thread::spawn(move || {
+            let name = String::from("ornek-foto.png");
+            let ev = |percent: f32| {
+                let _ = app.emit(
+                    "job-progress",
+                    Progress {
+                        id,
+                        name: name.clone(),
+                        percent,
+                    },
+                );
+            };
+            let _ = app.emit("panel-config", p);
+            sync_window(&app, 1, p);
+            let mut ok = true;
+            for i in 0..=30 {
+                // a real job started: stop and let its own events take over the panel
+                if active.load(Ordering::Relaxed) > 0 {
+                    ok = false;
+                    break;
+                }
+                ev(i as f32 * 100.0 / 30.0);
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            let _ = app.emit(
+                "job-done",
+                Done {
+                    id,
+                    name: name.clone(),
+                    ok: true,
+                    message: "Tamamlandı".into(),
+                    output: None,
+                },
+            );
+            if ok && active.load(Ordering::Relaxed) == 0 {
+                sync_window(&app, 0, p);
+            }
+            PLAYING.store(false, Ordering::SeqCst);
+        });
     }
 
     pub fn cancel(&self, id: u64) {
@@ -178,7 +228,11 @@ fn worker(
             )
         };
         let _ = app.emit("job-done", done);
-        sync_window(&app, active.fetch_sub(1, Ordering::Relaxed) - 1, &panel);
+        sync_window(
+            &app,
+            active.fetch_sub(1, Ordering::Relaxed) - 1,
+            *panel.lock().unwrap(),
+        );
         if panel.lock().unwrap().windows_toast {
             let _ = app.notification().builder().title(title).body(body).show();
         }
