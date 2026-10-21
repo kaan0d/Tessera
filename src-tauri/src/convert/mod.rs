@@ -412,6 +412,18 @@ pub fn convert(
     Ok(dest)
 }
 
+/// Decodes a still image the way `convert` would (with the options' orientation and resize)
+/// and encodes it to `w`; used by the ffmpeg path once ffmpeg has produced a PNG.
+pub(crate) fn encode_decoded(
+    png: &Path,
+    target: Format,
+    photo: bool,
+    opts: &Options,
+    w: &mut (impl std::io::Write + std::io::Seek),
+) -> Result<(), ConvertError> {
+    image::convert(png, Format::Png, target, photo, opts, w)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
