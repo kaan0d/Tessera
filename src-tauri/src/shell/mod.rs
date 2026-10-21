@@ -255,10 +255,10 @@ mod tests {
     #[test]
     fn labels_follow_the_language() {
         assert_eq!(label(Format::Jpg, Lang::En), "Convert to JPG");
-        assert_eq!(label(Format::Jpg, Lang::Tr), "JPG'ye dönüştür");
+        assert_eq!(label(Format::Jpg, Lang::Tr), "JPG olarak dönüştür");
         let root = test_root("d");
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-        for (lang, want) in [(Lang::En, "Convert to JPG"), (Lang::Tr, "JPG'ye dönüştür")] {
+        for (lang, want) in [(Lang::En, "Convert to JPG"), (Lang::Tr, "JPG olarak dönüştür")] {
             let s = Settings {
                 language: lang,
                 ..ready(false)
