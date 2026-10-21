@@ -139,6 +139,27 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
     vec![targets(false), presets, targets(true)]
 }
 
+/// Stock Windows icon for a verb, so each menu line shows what it does (`imageres.dll` indices
+/// are stable across Windows 10 and 11). `name` is the verb key without its position prefix.
+fn verb_icon(name: &str) -> String {
+    let index = match name {
+        "preset_web" => 170,
+        "preset_whatsapp" | "preset_discord" => 166,
+        "preset_email" => 15,
+        "preset_strip" => 73,
+        "preset_pdf" => 85,
+        "merge_pdf" | "merge_audio" => 245,
+        n if n.starts_with("preset_") => 322,
+        n => match Format::from_ext(n).map(Format::kind) {
+            Some("image") => 108,
+            Some("video") => 178,
+            Some("document") => 85,
+            _ => 206,
+        },
+    };
+    format!("imageres.dll,{index}")
+}
+
 /// Registers the cascading menu under `root` (idempotent: starts from a clean slate).
 /// Explorer lists verbs by subkey name, so each key carries a two-digit position prefix.
 pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
@@ -204,7 +225,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                     verb.set_value("CommandFlags", &0x20u32)?;
                 }
                 if s.menu.icons {
-                    verb.set_value("Icon", &icon)?;
+                    verb.set_value("Icon", &verb_icon(&name))?;
                 }
                 let (cmd, _) = verb.create_subkey("command")?;
                 cmd.set_value("", &format!(r#""{exe}" {args} "%1""#))?;
@@ -233,7 +254,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                     verb.set_value("CommandFlags", &0x20u32)?;
                 }
                 if s.menu.icons {
-                    verb.set_value("Icon", &icon)?;
+                    verb.set_value("Icon", &verb_icon(&name))?;
                 }
                 let (cmd, _) = verb.create_subkey("command")?;
                 cmd.set_value("", &format!(r#""{exe}" --folder {} "%1""#, action.arg()))?;
@@ -421,7 +442,10 @@ mod tests {
         );
         // png's first target is jpg
         let verb = png.open_subkey(r"shell\00_jpg").unwrap();
-        assert!(verb.get_value::<String, _>("Icon").is_ok());
+        assert_eq!(
+            verb.get_value::<String, _>("Icon").unwrap(),
+            "imageres.dll,108"
+        );
         assert_eq!(
             verb.open_subkey("command")
                 .unwrap()
