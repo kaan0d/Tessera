@@ -1,7 +1,7 @@
 //! HKCU-only Explorer context menu and autostart. No admin rights needed.
 
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
 use winreg::RegKey;
@@ -270,12 +270,77 @@ pub fn remove_at(root: &str) -> io::Result<()> {
     Ok(())
 }
 
+/// Registers the menu and applies the Send To switch (the shortcut follows `menu.sendto`).
 pub fn install(s: &Settings) -> io::Result<()> {
-    install_at(REAL_ROOT, &std::env::current_exe()?, s)
+    let exe = std::env::current_exe()?;
+    install_at(REAL_ROOT, &exe, s)?;
+    set_sendto_at(&sendto_dir(), &exe, s.menu.sendto)
 }
 
+/// Removes the menu keys and the Send To shortcut.
 pub fn remove() -> io::Result<()> {
-    remove_at(REAL_ROOT)
+    let sendto = set_sendto_at(&sendto_dir(), Path::new(""), false);
+    remove_at(REAL_ROOT).and(sendto)
+}
+
+/// `%APPDATA%\Microsoft\Windows\SendTo`
+pub fn sendto_dir() -> PathBuf {
+    std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir)
+        .join(r"Microsoft\Windows\SendTo")
+}
+
+pub fn sendto_link(dir: &Path) -> PathBuf {
+    dir.join(format!("{APP_NAME}.lnk"))
+}
+
+fn com(e: windows::core::Error) -> io::Error {
+    io::Error::other(e)
+}
+
+/// Creates (or replaces) the `<APP_NAME>.lnk` Send To shortcut in `dir`, or deletes it.
+/// Files sent to it arrive as plain path arguments, which the exe treats as a drop.
+pub fn set_sendto_at(dir: &Path, exe: &Path, on: bool) -> io::Result<()> {
+    use windows::core::{Interface, HSTRING};
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, IPersistFile, CLSCTX_INPROC_SERVER,
+        COINIT_APARTMENTTHREADED,
+    };
+    use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+
+    let link = sendto_link(dir);
+    if !on {
+        return match std::fs::remove_file(&link) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e),
+            _ => Ok(()),
+        };
+    }
+    std::fs::create_dir_all(dir)?;
+    // SAFETY: plain COM calls on interfaces created right here. A failed init only means COM
+    // was set up in another mode on this thread, which is fine for what follows.
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let shell: IShellLinkW =
+            CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER).map_err(com)?;
+        shell
+            .SetPath(&HSTRING::from(exe.as_os_str()))
+            .map_err(com)?;
+        shell
+            .SetIconLocation(&HSTRING::from(exe.as_os_str()), 0)
+            .map_err(com)?;
+        if let Some(d) = exe.parent() {
+            shell
+                .SetWorkingDirectory(&HSTRING::from(d.as_os_str()))
+                .map_err(com)?;
+        }
+        shell
+            .SetDescription(&HSTRING::from(APP_NAME))
+            .map_err(com)?;
+        let file: IPersistFile = shell.cast().map_err(com)?;
+        file.Save(&HSTRING::from(link.as_os_str()), true)
+            .map_err(com)
+    }
 }
 
 pub fn set_autostart(enabled: bool) -> io::Result<()> {
@@ -519,6 +584,42 @@ mod tests {
         assert!(first.get_value::<u32, _>("CommandFlags").is_err());
         remove_at(&root).unwrap();
         cleanup(&root);
+    }
+
+    #[test]
+    fn sendto_shortcut_round_trips() {
+        use windows::core::Interface;
+        use windows::Win32::Storage::FileSystem::WIN32_FIND_DATAW;
+        use windows::Win32::System::Com::{IPersistFile, STGM_READ};
+        use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+
+        let d = tempfile::tempdir().unwrap();
+        let dir = d.path().join("SendTo");
+        let exe = Path::new(r"C:\Program Files\X\x.exe");
+        set_sendto_at(&dir, exe, true).unwrap();
+        set_sendto_at(&dir, exe, true).unwrap(); // replacing is fine
+        let link = sendto_link(&dir);
+        assert!(link.is_file());
+        // read it back through the shell
+        unsafe {
+            let shell: IShellLinkW = windows::Win32::System::Com::CoCreateInstance(
+                &ShellLink,
+                None,
+                windows::Win32::System::Com::CLSCTX_INPROC_SERVER,
+            )
+            .unwrap();
+            let file: IPersistFile = shell.cast().unwrap();
+            file.Load(&windows::core::HSTRING::from(link.as_os_str()), STGM_READ)
+                .unwrap();
+            let mut buf = [0u16; 260];
+            let mut fd = WIN32_FIND_DATAW::default();
+            shell.GetPath(&mut buf, &mut fd, 0).unwrap();
+            let end = buf.iter().position(|&c| c == 0).unwrap();
+            assert_eq!(String::from_utf16_lossy(&buf[..end]), exe.to_string_lossy());
+        }
+        set_sendto_at(&dir, exe, false).unwrap();
+        set_sendto_at(&dir, exe, false).unwrap(); // missing is fine
+        assert!(!link.exists());
     }
 
     #[test]

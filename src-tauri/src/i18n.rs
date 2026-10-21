@@ -302,6 +302,17 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "That folder cannot be used",
         "Bu klasör kullanılamıyor",
     ),
+    // dropped files
+    (
+        "drop.unsupported",
+        "None of these files can be converted",
+        "Bu dosyaların hiçbiri dönüştürülemez",
+    ),
+    (
+        "drop.bad_choice",
+        "That choice does not fit the selected files",
+        "Bu seçim seçilen dosyalara uymuyor",
+    ),
     // commands
     (
         "cmd.autostart",

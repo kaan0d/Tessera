@@ -8,6 +8,8 @@ use crate::folder::Action;
 pub enum Cli {
     InstallMenu,
     RemoveMenu,
+    InstallSendTo,
+    RemoveSendTo,
     Convert {
         target: Format,
         files: Vec<PathBuf>,
@@ -24,6 +26,10 @@ pub enum Cli {
     Folder {
         action: Action,
         dir: PathBuf,
+    },
+    /// Bare file paths (dropped on the exe, Open with, Send To): ask what to do with them.
+    Drop {
+        files: Vec<PathBuf>,
     },
     Background,
     /// A headless subcommand (`convert`, `preset`, ...); never starts the app.
@@ -151,6 +157,12 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         }),
         Some("--version" | "-V") => Cli::Cmd(Command::Version),
         Some("--help" | "-h" | "help") => Cli::Cmd(Command::Help),
+        Some("--install-sendto") => Cli::InstallSendTo,
+        Some("--remove-sendto") => Cli::RemoveSendTo,
+        Some(a) if !a.starts_with('-') => match files(args, cwd) {
+            Some(files) => Cli::Drop { files },
+            None => Cli::Normal,
+        },
         _ => Cli::Normal,
     }
 }
@@ -281,6 +293,31 @@ mod tests {
             panic!()
         };
         assert_eq!(files, vec![PathBuf::from(r"C:\w\x.jpg")]);
+    }
+
+    #[test]
+    fn bare_paths_are_a_drop() {
+        assert_eq!(
+            parse(&a(&[r"C:\a b.png", r"C:\c.mp3"]), None),
+            Cli::Drop {
+                files: vec![PathBuf::from(r"C:\a b.png"), PathBuf::from(r"C:\c.mp3")]
+            }
+        );
+        assert_eq!(
+            parse(&a(&["x.png"]), Some(Path::new(r"C:\w"))),
+            Cli::Drop {
+                files: vec![PathBuf::from(r"C:\w\x.png")]
+            }
+        );
+        assert_eq!(parse(&a(&["--wat", "x.png"]), None), Cli::Normal);
+        assert_eq!(parse(&a(&["--install-sendto"]), None), Cli::InstallSendTo);
+        assert_eq!(parse(&a(&["--remove-sendto"]), None), Cli::RemoveSendTo);
+        // subcommands and flags still win
+        assert!(matches!(
+            parse(&a(&["convert", "--to", "png", "a.jpg"]), None),
+            Cli::Cmd(_)
+        ));
+        assert_eq!(parse(&[], None), Cli::Normal);
     }
 
     #[test]

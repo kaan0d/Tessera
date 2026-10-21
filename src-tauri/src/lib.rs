@@ -2,6 +2,7 @@ pub mod app_info;
 pub mod batch;
 pub mod cli;
 pub mod convert;
+pub mod dropped;
 pub mod ffmpeg;
 pub mod folder;
 pub mod headless;
@@ -42,6 +43,8 @@ struct AppState {
     download: Arc<Download>,
     merges: Arc<Mutex<Collector>>,
     watcher: Mutex<Option<watch::Running>>,
+    /// Files the chooser window currently shows (it reads them on load; the event can be early).
+    dropped: Mutex<Vec<PathBuf>>,
 }
 
 /// Milliseconds on a monotonic clock, for the merge collector.
@@ -603,6 +606,157 @@ fn start_preset(app: &AppHandle, id: &str, files: Vec<PathBuf>) {
         .enqueue_specs(app, specs, Kind::Preset, &name, s.ffmpeg_ready);
 }
 
+#[derive(Serialize, Clone)]
+struct DropPayload {
+    files: Vec<String>,
+    kinds: Vec<&'static str>,
+}
+
+fn drop_payload(files: &[PathBuf]) -> DropPayload {
+    let (known, _) = dropped::split(files);
+    let mut kinds: Vec<&'static str> = vec![];
+    for (_, f) in known {
+        if !kinds.contains(&f.kind()) {
+            kinds.push(f.kind());
+        }
+    }
+    DropPayload {
+        files: files.iter().map(|f| f.display().to_string()).collect(),
+        kinds,
+    }
+}
+
+/// Dropped/opened/sent files: opens the chooser window (centered, on top) with them.
+/// Nothing convertible among them: a notification instead.
+fn handle_drop(app: &AppHandle, paths: Vec<PathBuf>) {
+    let files = dropped::collect(&paths);
+    let lang = i18n::lang();
+    if dropped::split(&files).0.is_empty() {
+        notify(
+            app,
+            t(lang, "notify.failed_title"),
+            t(lang, "drop.unsupported"),
+        );
+        return;
+    }
+    let payload = drop_payload(&files);
+    *app.state::<AppState>().dropped.lock().unwrap() = files;
+    if let Some(w) = app.get_webview_window("drop") {
+        let _ = w.set_always_on_top(true);
+        let _ = w.center();
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+        let _ = app.emit_to("drop", "drop-files", payload);
+    }
+}
+
+fn close_drop(app: &AppHandle) {
+    app.state::<AppState>().dropped.lock().unwrap().clear();
+    if let Some(w) = app.get_webview_window("drop") {
+        let _ = w.hide();
+    }
+}
+
+fn to_paths(files: Vec<String>) -> Vec<PathBuf> {
+    files.into_iter().map(PathBuf::from).collect()
+}
+
+/// For the settings window's drag-drop event: opens the same chooser as a dropped exe launch.
+#[tauri::command]
+fn drop_files(paths: Vec<String>, app: AppHandle) {
+    handle_drop(&app, to_paths(paths));
+}
+
+/// The files the chooser currently shows (call on load; `drop-files` covers later drops).
+#[tauri::command]
+fn get_drop_files(state: State<AppState>) -> DropPayload {
+    drop_payload(&state.dropped.lock().unwrap())
+}
+
+#[derive(Serialize)]
+struct DropOptions {
+    kinds: Vec<&'static str>,
+    targets: Vec<dropped::DropTarget>,
+    presets: Vec<PresetInfo>,
+    /// "pdf" / "audio"
+    merge: Vec<&'static str>,
+    count: usize,
+    skipped: usize,
+}
+
+/// What the chooser may offer for these files: targets all of them share, presets that fit,
+/// merges. Unknown file types are counted in `skipped`.
+#[tauri::command]
+fn get_drop_options(files: Vec<String>, state: State<AppState>) -> DropOptions {
+    let s = state.settings.lock().unwrap().clone();
+    let c = dropped::choices(&dropped::collect(&to_paths(files)), &s);
+    let presets = preset_infos(&s)
+        .into_iter()
+        .filter(|p| c.preset_ids.contains(&p.id))
+        .collect();
+    DropOptions {
+        kinds: c.kinds,
+        targets: c.targets,
+        presets,
+        merge: c.merge,
+        count: c.count,
+        skipped: c.skipped,
+    }
+}
+
+/// Runs the chooser's pick through the queue like the context menu would, then closes it.
+#[tauri::command]
+fn run_drop(
+    files: Vec<String>,
+    choice: dropped::Choice,
+    app: AppHandle,
+    state: State<AppState>,
+) -> Result<(), String> {
+    let s = state.settings.lock().unwrap().clone();
+    let lang = s.language;
+    let bad = || Err(t(lang, "drop.bad_choice").to_string());
+    let files = dropped::collect(&to_paths(files));
+    let c = dropped::choices(&files, &s);
+    let known: Vec<PathBuf> = dropped::split(&files)
+        .0
+        .into_iter()
+        .map(|(p, _)| p.clone())
+        .collect();
+    match choice {
+        dropped::Choice::Target { target } => {
+            let Some(t) = Format::from_ext(&target).filter(|f| f.ext() == target) else {
+                return bad();
+            };
+            if !c.targets.iter().any(|x| x.ext == t.ext() && x.allowed) {
+                return bad();
+            }
+            start_convert(&app, t, known);
+        }
+        dropped::Choice::Preset { id } => {
+            if !c.preset_ids.contains(&id) {
+                return bad();
+            }
+            start_preset(&app, &id, known);
+        }
+        dropped::Choice::Merge { merge } => {
+            let Some(kind) = MergeKind::from_arg(&merge).filter(|k| c.merge.contains(&k.arg()))
+            else {
+                return bad();
+            };
+            start_merge(&app, kind, known);
+        }
+    }
+    close_drop(&app);
+    Ok(())
+}
+
+/// Closes the chooser without doing anything (Escape).
+#[tauri::command]
+fn close_drop_window(app: AppHandle) {
+    close_drop(&app);
+}
+
 /// Folder verb: converts the matching files of `dir` through the normal queue. The scan runs
 /// on its own thread (a big folder takes a moment); results go through `start_convert` /
 /// `start_preset`, so naming, conflicts, history and the panel behave as for the file menu.
@@ -753,6 +907,16 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             let s = settings::load_from(&settings::settings_path());
             Some(code(shell::install(&s)))
         }
+        Cli::InstallSendTo => Some(code(shell::set_sendto_at(
+            &shell::sendto_dir(),
+            &std::env::current_exe().unwrap_or_default(),
+            true,
+        ))),
+        Cli::RemoveSendTo => Some(code(shell::set_sendto_at(
+            &shell::sendto_dir(),
+            std::path::Path::new(""),
+            false,
+        ))),
         Cli::RemoveMenu => {
             // autostart goes too: this is the uninstall path
             let a = shell::set_autostart(false);
@@ -782,6 +946,7 @@ pub fn run() {
                 Cli::Preset { id, files } => start_preset(app, &id, files),
                 Cli::Merge { kind, files } => start_merge(app, kind, files),
                 Cli::Folder { action, dir } => start_folder(app, action, dir),
+                Cli::Drop { files } => handle_drop(app, files),
                 Cli::Normal => show_window(app),
                 _ => {}
             }
@@ -809,7 +974,12 @@ pub fn run() {
             check_update,
             open_url,
             get_watch,
-            set_watch
+            set_watch,
+            drop_files,
+            get_drop_files,
+            get_drop_options,
+            run_drop,
+            close_drop_window
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {
@@ -838,6 +1008,7 @@ pub fn run() {
                 download: Arc::default(),
                 merges: Arc::new(Mutex::new(Collector::new(batch::QUIET_MS))),
                 watcher: Mutex::new(None),
+                dropped: Mutex::new(vec![]),
             });
             ensure_ffmpeg(app.handle());
             restart_watch(app.handle());
@@ -885,6 +1056,7 @@ pub fn run() {
                 Cli::Folder { action, dir } => {
                     start_folder(app.handle(), action.clone(), dir.clone())
                 }
+                Cli::Drop { files } => handle_drop(app.handle(), files.clone()),
                 Cli::Normal => show_window(app.handle()),
                 _ => {}
             }
