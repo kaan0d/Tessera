@@ -133,7 +133,7 @@ function buildCustom() {
   need.id = 'cu-need';
   need.setAttribute('role', 'status');
   // keep these settings as a menu entry
-  const pname = el('input', 'field');
+  const pname = el('input', 'field plain');
   Object.assign(pname, { type: 'text', id: 'cu-pname', maxLength: 40, placeholder: t('dr.c_pname') });
   pname.setAttribute('aria-label', t('dr.c_pname'));
   const psave = el('button', 'btn sm ghost', t('dr.c_psave'));
