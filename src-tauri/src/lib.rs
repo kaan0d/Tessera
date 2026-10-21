@@ -35,6 +35,41 @@ use i18n::{fmt, t, Lang};
 use queue::{Queue, Spec};
 use settings::Settings;
 
+/// Tray mark for the taskbar theme: dark tiles on a light taskbar, light tiles on a dark one.
+fn tray_icon(light_taskbar: bool) -> tauri::image::Image<'static> {
+    let png: &[u8] = if light_taskbar {
+        include_bytes!("../icons/tray-light.png")
+    } else {
+        include_bytes!("../icons/tray-dark.png")
+    };
+    tauri::image::Image::from_bytes(png).expect("embedded tray icon is a valid PNG")
+}
+
+/// True when Windows draws the taskbar (and tray) light. Unreadable setting counts as dark.
+fn taskbar_is_light() -> bool {
+    winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER)
+        .open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        .and_then(|k| k.get_value::<u32, _>("SystemUsesLightTheme"))
+        .is_ok_and(|v| v == 1)
+}
+
+/// Swaps the tray mark when the user switches the Windows theme while the app runs.
+fn watch_taskbar_theme(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut light = taskbar_is_light();
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(10));
+            let now = taskbar_is_light();
+            if now != light {
+                light = now;
+                if let Some(t) = app.tray_by_id(TRAY_ID) {
+                    let _ = t.set_icon(Some(tray_icon(now)));
+                }
+            }
+        }
+    });
+}
+
 const TRAY_ID: &str = "main";
 
 struct AppState {
@@ -1061,10 +1096,9 @@ pub fn run() {
                         show_window(tray.app_handle());
                     }
                 });
-            if let Some(icon) = app.default_window_icon() {
-                tray = tray.icon(icon.clone());
-            }
+            tray = tray.icon(tray_icon(taskbar_is_light()));
             tray.build(app)?;
+            watch_taskbar_theme(app.handle().clone());
 
             // --background and --convert stay hidden; a plain launch shows the settings window
             match &cmd {
