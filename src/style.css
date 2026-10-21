@@ -776,3 +776,4 @@ html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 .cu-hint{font-size:var(--t-xs);color:var(--muted)}
 .cu-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--t-sm);font-weight:500;cursor:pointer}
 .cu-need{margin:0;padding:8px 10px;border-radius:var(--r-md);background:var(--warn-bg);color:var(--warn-ink)}
+.cu-hint.err{color:var(--danger)}

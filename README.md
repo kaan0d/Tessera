@@ -9,7 +9,7 @@ Converter apps that cost money, run on subscriptions or bury the exit under upse
 - **Explorer menu:** cascading "Tessera" menu per file type and per folder, with one icon per kind. Lives in your user registry only.
 - **Formats:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. Also reads SVG, HEIC, RAW (embedded preview) and PDF pages.
 - **Presets:** shrink for web, WhatsApp, email under 10 MB, Discord under 8 MB, strip location data, make a PDF. Make your own.
-- **Edit while converting:** resize, strip metadata, fix orientation, compress to a target file size.
+- **Edit while converting:** resize, strip metadata, fix orientation, compress to a target file size, cut audio and video, audio bitrate, mono, GIF fps and width. Save any custom settings as a menu preset.
 - **Batch:** merge images into one PDF or audio files into one, convert a whole folder, drop files on the window and choose.
 - **Automation:** watch folders with rules, a full CLI for scripts, a Send To entry.
 - **Safe by default:** the original stays, output gets a new name, nothing is overwritten unless you turn it on. History with undo, cancel any running job.
