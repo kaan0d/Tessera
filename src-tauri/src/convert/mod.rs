@@ -8,6 +8,7 @@
 //! [`ffmpeg::convert_with_ffmpeg`] when [`uses_ffmpeg`] says so.
 
 mod audio;
+pub mod combine;
 mod error;
 pub mod ffmpeg;
 mod image;
@@ -363,11 +364,15 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
         .collect()
 }
 
-/// `supported_targets` plus same-format output for raster images when the job transforms
-/// them (resize, size limit, strip), which is how "shrink this JPEG" works.
+/// `supported_targets` plus same-format output for every writable format except PDF when
+/// the job transforms the file (resize, size limit, strip), which is how "shrink this JPEG"
+/// or "email under 10 MB" works. Audio and video go through a re-encode.
 pub fn allows(ext: &str, from: Format, target: Format, opts: &Options) -> bool {
     supported_targets(ext).contains(&target)
-        || (target == from && IMAGES.contains(&from) && opts.transforms())
+        || (target == from
+            && from != Format::Pdf
+            && Format::ALL.contains(&from)
+            && opts.transforms())
 }
 
 /// Converts `input` to `target`, returning the written file's path.

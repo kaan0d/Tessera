@@ -127,16 +127,10 @@ pub fn encode(
         Format::Gif => img.write_to(w, ImageFormat::Gif)?,
         Format::Tiff => img.write_to(w, ImageFormat::Tiff)?,
         Format::Pdf if photo => {
-            let gray = !img.color().has_color();
-            let mut jpg = Vec::new();
-            if gray {
-                JpegEncoder::new_with_quality(&mut jpg, q).encode_image(&img.to_luma8())?;
-            } else {
-                JpegEncoder::new_with_quality(&mut jpg, q).encode_image(&flatten_on_white(img))?;
-            }
+            let (data, gray) = photo_jpeg(img, q)?;
             pdf::write(
                 &pdf::Payload::Jpeg {
-                    data: &jpg,
+                    data: &data,
                     w: img.width(),
                     h: img.height(),
                     gray,
@@ -150,6 +144,70 @@ pub fn encode(
     Ok(())
 }
 
+fn photo_jpeg(img: &DynamicImage, q: u8) -> Result<(Vec<u8>, bool), ConvertError> {
+    let gray = !img.color().has_color();
+    let mut jpg = Vec::new();
+    if gray {
+        JpegEncoder::new_with_quality(&mut jpg, q).encode_image(&img.to_luma8())?;
+    } else {
+        JpegEncoder::new_with_quality(&mut jpg, q).encode_image(&flatten_on_white(img))?;
+    }
+    Ok((jpg, gray))
+}
+
+/// One PDF page worth of image data, owned.
+pub enum Page {
+    Jpeg {
+        data: Vec<u8>,
+        w: u32,
+        h: u32,
+        gray: bool,
+    },
+    Pixels(DynamicImage),
+}
+
+impl Page {
+    pub fn payload(&self) -> pdf::Payload<'_> {
+        match self {
+            Page::Jpeg { data, w, h, gray } => pdf::Payload::Jpeg {
+                data,
+                w: *w,
+                h: *h,
+                gray: *gray,
+            },
+            Page::Pixels(i) => pdf::Payload::Pixels(i),
+        }
+    }
+
+    /// Approximate memory held.
+    pub fn bytes(&self) -> u64 {
+        match self {
+            Page::Jpeg { data, .. } => data.len() as u64,
+            Page::Pixels(i) => u64::from(i.width()) * u64::from(i.height()) * 4,
+        }
+    }
+}
+
+/// The page for one image of a merged PDF: same rules as a single image -> PDF job.
+pub fn pdf_page(src: &Path, from: Format, opts: &Options) -> Result<Page, ConvertError> {
+    if from == Format::Jpg {
+        if let Some((data, w, h, gray)) = jpeg_passthrough(src, opts) {
+            return Ok(Page::Jpeg { data, w, h, gray });
+        }
+    }
+    let img = load(src, from, opts)?;
+    if matches!(from, Format::Jpg | Format::Raw) {
+        let (data, gray) = photo_jpeg(&img, opts.quality.jpeg.clamp(1, 100))?;
+        return Ok(Page::Jpeg {
+            data,
+            w: img.width(),
+            h: img.height(),
+            gray,
+        });
+    }
+    Ok(Page::Pixels(img))
+}
+
 /// JPEG -> PDF with no pixel change wanted: the original JPEG data is embedded as is
 /// (minus metadata), so there is no second lossy pass. None when that does not apply.
 fn jpeg_into_pdf(
@@ -159,11 +217,23 @@ fn jpeg_into_pdf(
     opts: &Options,
     w: &mut impl Write,
 ) -> Option<Result<(), ConvertError>> {
-    if from != Format::Jpg
-        || target != Format::Pdf
-        || opts.resize.is_some()
-        || opts.max_bytes.is_some()
-    {
+    if from != Format::Jpg || target != Format::Pdf {
+        return None;
+    }
+    let (data, iw, ih, gray) = jpeg_passthrough(src, opts)?;
+    Some(pdf::write(
+        &pdf::Payload::Jpeg {
+            data: &data,
+            w: iw,
+            h: ih,
+            gray,
+        },
+        w,
+    ))
+}
+
+fn jpeg_passthrough(src: &Path, opts: &Options) -> Option<(Vec<u8>, u32, u32, bool)> {
+    if opts.resize.is_some() || opts.max_bytes.is_some() {
         return None;
     }
     if opts.preserve_orientation && transform::file_orientation(src).is_some_and(|o| o != 1) {
@@ -181,15 +251,7 @@ fn jpeg_into_pdf(
         _ => return None,
     };
     transform::check_size(iw, ih).ok()?;
-    Some(pdf::write(
-        &pdf::Payload::Jpeg {
-            data: &data,
-            w: iw,
-            h: ih,
-            gray,
-        },
-        w,
-    ))
+    Some((data, iw, ih, gray))
 }
 
 /// JPEG has no alpha: composite over white instead of letting transparency go black.

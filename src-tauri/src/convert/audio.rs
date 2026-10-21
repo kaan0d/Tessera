@@ -27,11 +27,74 @@ pub fn convert<W: Write + Seek>(
     w: &mut W,
     progress: &mut impl FnMut(f32),
 ) -> Result<(), ConvertError> {
+    encode(target, w, |sink| decode(src, ext, progress, sink))
+}
+
+type Sink<'a> = &'a mut dyn FnMut(u32, u16, &[i16]) -> Result<(), ConvertError>;
+
+/// Several files back to back as one WAV or FLAC. Files that differ from the first in
+/// sample rate or channel count are adapted to it.
+pub fn merge<W: Write + Seek>(
+    srcs: &[(&Path, &str)],
+    target: Format,
+    w: &mut W,
+    progress: &mut impl FnMut(f32),
+) -> Result<(), ConvertError> {
+    let n = srcs.len() as f32;
+    let mut spec: Option<(u32, u16)> = None;
+    encode(target, w, |sink| {
+        for (i, (src, ext)) in srcs.iter().enumerate() {
+            let mut p = |f: f32| progress((i as f32 + f) / n);
+            decode(src, ext, &mut p, |rate, ch, samples| {
+                let (r, c) = *spec.get_or_insert((rate, ch));
+                if (rate, ch) == (r, c) {
+                    sink(r, c, samples)
+                } else {
+                    sink(r, c, &adapt(samples, rate, ch, r, c))
+                }
+            })?;
+            progress((i + 1) as f32 / n);
+        }
+        Ok(())
+    })
+}
+
+// ponytail: nearest-sample resampling, per decoded packet; audible only as slight aliasing
+// when sample rates differ. Swap in linear interpolation if that ever matters.
+fn adapt(samples: &[i16], rate: u32, ch: u16, to_rate: u32, to_ch: u16) -> Vec<i16> {
+    let (ch, to_ch) = (usize::from(ch.max(1)), usize::from(to_ch.max(1)));
+    let frames = samples.len() / ch;
+    if frames == 0 {
+        return vec![];
+    }
+    let out_frames = (frames as u64 * u64::from(to_rate) / u64::from(rate.max(1))) as usize;
+    let mut out = Vec::with_capacity(out_frames * to_ch);
+    for o in 0..out_frames {
+        let f = ((o as u64 * u64::from(rate)) / u64::from(to_rate.max(1))) as usize;
+        let frame = &samples[f.min(frames - 1) * ch..][..ch];
+        for c in 0..to_ch {
+            out.push(if ch == to_ch {
+                frame[c]
+            } else if to_ch == 1 {
+                (frame.iter().map(|&s| i32::from(s)).sum::<i32>() / ch as i32) as i16
+            } else {
+                frame[c % ch]
+            });
+        }
+    }
+    out
+}
+
+fn encode<W: Write + Seek>(
+    target: Format,
+    w: &mut W,
+    drive: impl FnOnce(Sink) -> Result<(), ConvertError>,
+) -> Result<(), ConvertError> {
     match target {
         Format::Wav => {
             let mut wav: Option<WavWriter<&mut W>> = None;
             let mut w = Some(w);
-            decode(src, ext, progress, |rate, ch, samples| {
+            drive(&mut |rate, ch, samples| {
                 if wav.is_none() {
                     let spec = WavSpec {
                         channels: ch,
@@ -55,7 +118,7 @@ pub fn convert<W: Write + Seek>(
         Format::Flac => {
             let mut all: Vec<i32> = Vec::new();
             let mut fmt = (0u32, 0u16);
-            decode(src, ext, progress, |rate, ch, samples| {
+            drive(&mut |rate, ch, samples| {
                 if all.len() + samples.len() > MAX_FLAC_SAMPLES {
                     return Err(ConvertError::TooLarge);
                 }

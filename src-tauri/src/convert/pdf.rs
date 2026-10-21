@@ -37,24 +37,42 @@ pub enum Payload<'a> {
 }
 
 pub fn write(payload: &Payload, w: &mut impl Write) -> Result<(), ConvertError> {
+    write_pages(std::slice::from_ref(payload), w)
+}
+
+/// One page per payload, in order.
+pub fn write_pages(pages: &[Payload], w: &mut impl Write) -> Result<(), ConvertError> {
+    let (catalog, tree) = (Ref::new(1), Ref::new(2));
+    let page_ref = |i: usize| Ref::new(3 + 4 * i as i32);
+    let mut pdf = Pdf::new();
+    pdf.catalog(catalog).pages(tree);
+    pdf.pages(tree)
+        .kids((0..pages.len()).map(page_ref))
+        .count(pages.len() as i32);
+    for (i, payload) in pages.iter().enumerate() {
+        let n = 4 * i as i32;
+        let ids = (
+            page_ref(i),
+            tree,
+            Ref::new(4 + n),
+            Ref::new(5 + n),
+            Ref::new(6 + n),
+        );
+        write_page(&mut pdf, payload, ids);
+    }
+    w.write_all(&pdf.finish())?;
+    Ok(())
+}
+
+fn write_page(pdf: &mut Pdf, payload: &Payload, ids: (Ref, Ref, Ref, Ref, Ref)) {
+    let (page, tree, content_id, image_id, mask_id) = ids;
     let (pw, ph) = match payload {
         Payload::Jpeg { w, h, .. } => (*w, *h),
         Payload::Pixels(i) => (i.width(), i.height()),
     };
-    let (catalog, tree, page, content_id, image_id, mask_id) = (
-        Ref::new(1),
-        Ref::new(2),
-        Ref::new(3),
-        Ref::new(4),
-        Ref::new(5),
-        Ref::new(6),
-    );
     let k = (MAX_PAGE_PT / pw.max(ph) as f32).min(1.0);
     let (pt_w, pt_h) = (pw as f32 * k, ph as f32 * k);
 
-    let mut pdf = Pdf::new();
-    pdf.catalog(catalog).pages(tree);
-    pdf.pages(tree).kids([page]).count(1);
     let mut p = pdf.page(page);
     p.media_box(Rect::new(0.0, 0.0, pt_w, pt_h))
         .parent(tree)
@@ -104,8 +122,6 @@ pub fn write(payload: &Payload, w: &mut impl Write) -> Result<(), ConvertError> 
             }
         }
     }
-    w.write_all(&pdf.finish())?;
-    Ok(())
 }
 
 fn deflate(raw: &[u8]) -> Vec<u8> {
