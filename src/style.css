@@ -240,7 +240,7 @@ input[type=radio]:checked::after{scale:1}
 .q+.q{margin-top:14px}
 .val small{font-size:var(--t-xs);font-weight:600;color:var(--muted);margin-left:3px;letter-spacing:0}
 
-/* format chips: a small sheet with a folded corner that fills with ink when on */
+/* format chips: fill with ink when on */
 .kinds .row{padding:12px var(--s4) 14px}
 .kinds .label-line{align-items:center;min-height:24px}
 .mini{display:flex;gap:6px}
@@ -253,12 +253,8 @@ input[type=radio]:checked::after{scale:1}
   border-radius:var(--r-md);border:1px solid var(--line-strong);color:var(--muted);cursor:pointer;
   font-size:var(--t-xs);font-weight:700;letter-spacing:.04em;
   background:linear-gradient(var(--accent-soft),var(--accent-soft)) bottom/100% 0% no-repeat,var(--surface);
-  clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%);
   transition:background-size var(--d3) var(--ease),color var(--d2),border-color var(--d2),scale var(--d1) var(--ease)}
-.chip::after{content:"";position:absolute;top:-1px;right:-1px;width:9px;height:9px;
-  background:linear-gradient(to bottom left,transparent 50%,var(--line-strong) 50%);transition:background var(--d2)}
 .chip[aria-pressed=true]{background-size:100% 100%;color:var(--accent);border-color:var(--accent-ink)}
-.chip[aria-pressed=true]::after{background:linear-gradient(to bottom left,transparent 50%,var(--accent) 50%)}
 .chip .badge{width:12px;height:12px;stroke-width:2;margin-right:-3px}
 .chip[aria-disabled=true]{opacity:.5;cursor:not-allowed;border-style:dashed}
 @media (hover:hover){.chip:not([aria-disabled=true]):hover{border-color:var(--muted);color:var(--ink)}
@@ -417,13 +413,11 @@ input[type=radio]:checked::after{scale:1}
   font-size:var(--t-xs);font-weight:600;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kchip .ic{width:13px;height:13px;stroke-width:1.8}
 
-/* preset and rule cards: a sheet with a folded corner, like the format chips */
+/* preset and rule cards */
 .plist{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
 .pcard,.rcard{position:relative;display:flex;gap:var(--s3);align-items:flex-start;padding:14px 12px 12px var(--s4);
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-1),var(--hi);
-  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);transition:border-color var(--d2),box-shadow var(--d2)}
-.pcard::after,.rcard::after{content:"";position:absolute;top:-1px;right:-1px;width:15px;height:15px;
-  background:linear-gradient(to bottom left,transparent 50%,var(--line-strong) 50%);border-bottom-left-radius:3px}
+  transition:border-color var(--d2),box-shadow var(--d2)}
 @media (hover:hover){.pcard:hover,.rcard:hover{border-color:var(--line-strong);box-shadow:var(--shadow-2),var(--hi)}}
 .pc-main{flex:1;min-width:0}
 .pc-name,.r-name{font-size:var(--t-md);font-weight:600;line-height:1.35;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -435,7 +429,6 @@ input[type=radio]:checked::after{scale:1}
 .r-path{font-size:var(--t-xs);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
 .r-live{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:var(--t-xs);font-weight:600;color:var(--accent)}
 .rcard.is-err{border-color:color-mix(in srgb,var(--danger) 35%,transparent)}
-.rcard.is-err::after{background:linear-gradient(to bottom left,transparent 50%,var(--danger) 50%)}
 
 /* history list: one row per job, newest first */
 .hlist{list-style:none;margin:0;padding:0}
@@ -635,14 +628,11 @@ body.busy .dr-stack .s0 .outline,body.busy .dr-stack .s0 .fold{stroke:var(--acce
 @media (hover:hover){.chip.dr-choice:not([aria-disabled=true]):hover{background-size:100% 100%;color:var(--accent);border-color:var(--accent-ink)}}
 .chip.dr-choice:focus-visible{background-size:100% 100%;color:var(--accent);border-color:var(--accent)}
 .chip.dr-choice.chosen{background:var(--accent);color:var(--on-accent);border-color:transparent}
-.chip.dr-choice.chosen::after{background:linear-gradient(to bottom left,transparent 50%,var(--on-accent) 50%)}
 .dr-cards{display:flex;flex-direction:column;gap:6px}
 .dr-card{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;text-align:left;cursor:pointer;
   border:1px solid var(--line);border-radius:var(--r-lg);color:var(--ink);box-shadow:var(--shadow-1),var(--hi);
   background:linear-gradient(var(--accent-soft),var(--accent-soft)) bottom/100% 0% no-repeat,var(--surface);
-  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);
   transition:background-size var(--d3) var(--ease),border-color var(--d2),box-shadow var(--d2),scale var(--d1) var(--ease)}
-.dr-card::after{content:"";position:absolute;top:-1px;right:-1px;width:13px;height:13px;background:linear-gradient(to bottom left,transparent 50%,var(--line-strong) 50%)}
 .dr-card-name{display:block;font-size:13.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dr-card-sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:var(--t-xs);color:var(--muted);margin-top:1px;font-variant-numeric:tabular-nums}
 .dr-card .go{width:16px;height:16px;color:var(--muted);transition:translate var(--d3) var(--ease),color var(--d2)}
