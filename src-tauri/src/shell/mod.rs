@@ -142,9 +142,9 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
 
 /// Menu icon files, one per source kind (transparent .ico, brand colours).
 /// Bump when the .ico artwork changes.
-const ICON_REV: u32 = 3;
+const ICON_REV: u32 = 4;
 
-const KIND_ICONS: [(&str, &[u8]); 11] = [
+const KIND_ICONS: [(&str, &[u8]); 12] = [
     ("image", include_bytes!("../../menu-icons/image.ico")),
     ("audio", include_bytes!("../../menu-icons/audio.ico")),
     ("video", include_bytes!("../../menu-icons/video.ico")),
@@ -156,6 +156,7 @@ const KIND_ICONS: [(&str, &[u8]); 11] = [
     ("pin", include_bytes!("../../menu-icons/pin.ico")),
     ("sliders", include_bytes!("../../menu-icons/sliders.ico")),
     ("layers", include_bytes!("../../menu-icons/layers.ico")),
+    ("gif", include_bytes!("../../menu-icons/gif.ico")),
 ];
 
 /// Writes the kind icons next to the settings; Explorer reads them by path. A failed write only
@@ -188,6 +189,7 @@ fn write_kind_icons(dir: &Path) {
 /// `name` is the verb key without its position prefix (`jpg`, `preset_web`, `merge_pdf`).
 fn verb_icon(dir: &Path, name: &str) -> String {
     let icon = match name {
+        "gif" => "gif",
         "preset_web" => "web",
         "preset_whatsapp" => "chat",
         "preset_email" => "mail",
@@ -492,7 +494,7 @@ mod tests {
         assert!(verb
             .get_value::<String, _>("Icon")
             .unwrap()
-            .ends_with(r"menu-icons\image-3.ico"));
+            .ends_with(r"menu-icons\image-4.ico"));
         assert_eq!(
             verb.open_subkey("command")
                 .unwrap()
