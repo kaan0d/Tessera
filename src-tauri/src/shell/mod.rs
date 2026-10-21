@@ -141,6 +141,9 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
 }
 
 /// Menu icon files, one per source kind (transparent .ico, brand colours).
+/// Bump when the .ico artwork changes.
+const ICON_REV: u32 = 2;
+
 const KIND_ICONS: [(&str, &[u8]); 4] = [
     ("image", include_bytes!("../../menu-icons/image.ico")),
     ("audio", include_bytes!("../../menu-icons/audio.ico")),
@@ -153,7 +156,9 @@ const KIND_ICONS: [(&str, &[u8]); 4] = [
 fn write_kind_icons(dir: &Path) {
     let _ = fs::create_dir_all(dir);
     for (kind, bytes) in KIND_ICONS {
-        let file = dir.join(format!("{kind}.ico"));
+        // Explorer caches icons by path, so a new revision gets a new name; drop the old one
+        let _ = fs::remove_file(dir.join(format!("{kind}.ico")));
+        let file = dir.join(format!("{kind}-{ICON_REV}.ico"));
         if fs::read(&file).ok().as_deref() != Some(bytes) {
             let _ = fs::write(file, bytes);
         }
@@ -172,7 +177,7 @@ fn verb_icon(dir: &Path, name: &str, s: &Settings) -> String {
     } else {
         Format::from_ext(name).map_or("image", Format::kind).into()
     };
-    dir.join(format!("{kind}.ico"))
+    dir.join(format!("{kind}-{ICON_REV}.ico"))
         .to_string_lossy()
         .into_owned()
 }
@@ -466,7 +471,7 @@ mod tests {
         assert!(verb
             .get_value::<String, _>("Icon")
             .unwrap()
-            .ends_with(r"menu-icons\image.ico"));
+            .ends_with(r"menu-icons\image-2.ico"));
         assert_eq!(
             verb.open_subkey("command")
                 .unwrap()
