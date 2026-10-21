@@ -212,9 +212,8 @@ pub fn plan(e: &Entry, output_now: Option<(u64, Option<u64>)>) -> Plan {
     let Some((len, mtime)) = output_now else {
         return Plan::Refuse("undo.no_output");
     };
-    if e.output_len.is_some_and(|l| l != len)
-        || (e.output_mtime.is_some() && e.output_mtime != mtime)
-    {
+    // an entry without a recorded size cannot prove the file is still our output
+    if e.output_len != Some(len) || (e.output_mtime.is_some() && e.output_mtime != mtime) {
         return Plan::Refuse("undo.changed");
     }
     Plan::Go {

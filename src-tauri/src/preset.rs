@@ -206,7 +206,8 @@ impl Preset {
             .unwrap_or_default()
             .trim()
             .to_string();
-        if name.is_empty() || name.chars().count() > 40 {
+        // a leading '@' would make Explorer read the menu label as an indirect resource string
+        if name.is_empty() || name.chars().count() > 40 || name.starts_with('@') {
             return bad("preset.bad_name");
         }
         self.custom_name = Some(name);

@@ -367,9 +367,7 @@ enum FolderIssue {
 /// Lexical check (the folder may not exist yet). `recursive` also refuses a parent of a
 /// forbidden folder, since it would be watched too.
 fn check_folder(folder: &Path, recursive: bool, forbidden: &[PathBuf]) -> Result<(), FolderIssue> {
-    let raw = folder.to_string_lossy();
-    if raw.starts_with(r"\\")
-        || raw.starts_with("//")
+    if security::is_remote_or_device(folder)
         || !folder.is_absolute()
         || folder.components().any(|c| c.as_os_str() == "..")
     {

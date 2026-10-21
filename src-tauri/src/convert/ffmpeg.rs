@@ -212,6 +212,9 @@ fn head_args(input: &Path) -> Vec<OsString> {
         "-nostats",
         "-progress",
         "pipe:1",
+        // the input is one local file; a crafted playlist must not pull in anything else
+        "-protocol_whitelist",
+        "file",
         "-i",
     ]
     .map(OsString::from)
@@ -265,6 +268,7 @@ pub fn parse_probe(stderr: &str) -> Probe {
 
 fn probe(ffmpeg: &Path, src: &Path) -> Result<Probe, ConvertError> {
     let out = Command::new(ffmpeg)
+        .current_dir(ffmpeg.parent().unwrap_or(Path::new(".")))
         .args(["-hide_banner", "-nostdin", "-i"])
         .arg(src)
         .stdin(Stdio::null())
@@ -512,6 +516,8 @@ fn run_child(
     progress: &mut impl FnMut(f32),
 ) -> Result<(), ConvertError> {
     let mut child = Command::new(ffmpeg)
+        // not the caller's folder: nothing in there should be picked up by the child
+        .current_dir(ffmpeg.parent().unwrap_or(Path::new(".")))
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

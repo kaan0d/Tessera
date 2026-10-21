@@ -131,6 +131,7 @@ impl Download {
 // ponytail: not a hash check; a tampered but working exe passes. Re-hash the exe if that matters.
 pub fn is_working(exe: &Path) -> bool {
     Command::new(exe)
+        .current_dir(exe.parent().unwrap_or(Path::new(".")))
         .arg("-version")
         .stdin(Stdio::null())
         .stderr(Stdio::null())

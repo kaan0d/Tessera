@@ -64,9 +64,8 @@ fn is_merge_image(f: Format) -> bool {
 /// Output location rules: next to the first file (or the fixed folder), never replacing.
 fn plan(first: &Path, ext: &str, opts: &Options) -> Result<PathBuf, ConvertError> {
     let mut p = opts.output.clone();
-    if p.conflict == Conflict::ReplaceOriginal {
-        p.conflict = Conflict::AutoRename;
-    }
+    // a merge never replaces anything, not even an input that is already called merged.*
+    p.conflict = Conflict::AutoRename;
     let base = first
         .parent()
         .unwrap_or_else(|| Path::new("."))

@@ -551,7 +551,7 @@ fn app_info() -> app_info::AppInfo {
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
-    if path.contains('"') || path.starts_with(r"\\") || path.starts_with("//") {
+    if path.contains('"') || convert::security::is_remote_or_device(Path::new(&path)) {
         return Err(t(i18n::lang(), "cmd.bad_path").into());
     }
     let p = Path::new(&path);
@@ -563,7 +563,9 @@ fn open_folder(path: String) -> Result<(), String> {
     } else {
         format!("/select,\"{path}\"")
     };
-    std::process::Command::new("explorer")
+    // absolute path: a bare name would be searched in our own folder first
+    let windir = std::env::var_os("WINDIR").unwrap_or_else(|| r"C:\Windows".into());
+    std::process::Command::new(Path::new(&windir).join("explorer.exe"))
         .raw_arg(arg)
         .spawn()
         .map(|_| ())
@@ -813,7 +815,7 @@ fn start_folder(app: &AppHandle, action: folder::Action, dir: PathBuf) {
         let state = app.state::<AppState>();
         let s = state.settings.lock().unwrap().clone();
         let lang = s.language;
-        if !dir.is_dir() || dir.to_string_lossy().starts_with(r"\\") {
+        if convert::security::is_remote_or_device(&dir) || !dir.is_dir() {
             notify(
                 &app,
                 t(lang, "notify.failed_title"),

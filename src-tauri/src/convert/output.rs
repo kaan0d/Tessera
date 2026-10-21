@@ -98,7 +98,11 @@ pub fn plan(source: &Path, ext: &str, p: &OutputParams) -> Result<PathBuf, Conve
         expand(&p.template, stem, ext, &local_date())
     };
     let first = dir.join(format!("{stem}.{ext}"));
-    if p.conflict == Conflict::Overwrite || !first.exists() {
+    // output equal to the source (same format, a transform job) must never overwrite it
+    let is_source = first
+        .to_string_lossy()
+        .eq_ignore_ascii_case(&source.to_string_lossy());
+    if !is_source && (p.conflict == Conflict::Overwrite || !first.exists()) {
         return Ok(first);
     }
     // ReplaceOriginal also renames: the original must survive until the new file is verified
@@ -150,14 +154,47 @@ pub fn write_via_temp(
     result
 }
 
+/// True when `path` is on a fixed local disk (the only kind with a Recycle Bin we can trust).
+fn on_fixed_drive(path: &Path) -> bool {
+    use windows::core::PCWSTR;
+    use windows::Win32::Storage::FileSystem::GetDriveTypeW;
+    const DRIVE_FIXED: u32 = 3;
+    let s = path.to_string_lossy();
+    let Some(drive) = s.get(..2).filter(|d| d.ends_with(':')) else {
+        return false;
+    };
+    let root: Vec<u16> = format!("{drive}{}", std::path::MAIN_SEPARATOR)
+        .encode_utf16()
+        .chain(Some(0))
+        .collect();
+    // SAFETY: `root` is a NUL-terminated UTF-16 string that outlives the call
+    unsafe { GetDriveTypeW(PCWSTR(root.as_ptr())) == DRIVE_FIXED }
+}
+
 /// Moves a file to the Recycle Bin.
 pub fn recycle(path: &Path) -> Result<(), ConvertError> {
+    // removable and network drives have no Recycle Bin: the shell would delete for good
+    if !on_fixed_drive(path) {
+        return Err(ConvertError::Recycle("no Recycle Bin on this drive".into()));
+    }
     trash::delete(path).map_err(|e| ConvertError::Recycle(e.to_string()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn overwrite_never_targets_the_source_file() {
+        let dir = std::env::temp_dir().join(format!("tessera-plan-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let src = dir.join("a.jpg");
+        std::fs::write(&src, b"x").unwrap();
+        let out = plan(&src, "jpg", &params(Conflict::Overwrite)).unwrap();
+        assert_ne!(out, src);
+        assert_eq!(out, dir.join("a (1).jpg"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     fn params(c: Conflict) -> OutputParams {
         OutputParams {

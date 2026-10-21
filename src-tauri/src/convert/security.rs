@@ -39,9 +39,23 @@ pub fn validate_dir(dir: &Path) -> Result<PathBuf, ConvertError> {
     Ok(canon)
 }
 
-fn reject_device(path: &Path) -> Result<(), ConvertError> {
+/// True for UNC, device and other non-drive-letter forms, whatever slash mix they use
+/// (`\\h\s`, `//h/s`, `/\h\s`, `\\.\x`, `\\?\UNC\h\s`). Relative paths are not remote.
+pub fn is_remote_or_device(path: &Path) -> bool {
+    use std::path::{Component, Prefix};
     let s = path.to_string_lossy();
-    if s.starts_with(r"\\") || s.starts_with("//") {
+    let lead = |c: char| c == '\\' || c == '/';
+    let mut chars = s.chars();
+    let slashes = chars.next().is_some_and(lead) && chars.next().is_some_and(lead);
+    let prefix = matches!(
+        path.components().next(),
+        Some(Component::Prefix(p)) if !matches!(p.kind(), Prefix::Disk(_) | Prefix::VerbatimDisk(_))
+    );
+    slashes || prefix
+}
+
+fn reject_device(path: &Path) -> Result<(), ConvertError> {
+    if is_remote_or_device(path) {
         return Err(ConvertError::InvalidPath(PathIssue::Network));
     }
     Ok(())
@@ -68,6 +82,23 @@ fn strip_verbatim(p: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn slash_mixes_of_unc_and_device_paths_are_remote() {
+        for p in [
+            r"\\h\s\x",
+            "//h/s/x",
+            r"/\h\s",
+            r"\/h/s",
+            r"\\.\NUL",
+            r"\\?\UNC\h\s\x",
+        ] {
+            assert!(is_remote_or_device(Path::new(p)), "{p}");
+        }
+        for p in [r"C:\tmp\a.png", "C:/tmp/a.png", "a.png", r"sub\a.png"] {
+            assert!(!is_remote_or_device(Path::new(p)), "{p}");
+        }
+    }
 
     #[test]
     fn rejects_unc_and_device_paths() {

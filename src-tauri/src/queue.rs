@@ -281,7 +281,16 @@ fn worker(
         let Ok(job) = rx.lock().unwrap().recv() else {
             return;
         };
-        let mut done = run(&app, &job);
+        // a panic in a decoder must not kill the worker: the job fails, the queue keeps going
+        let mut done = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(&app, &job)))
+            .unwrap_or_else(|_| Done {
+                id: job.id,
+                name: job.name.clone(),
+                ok: false,
+                message: ConvertError::Corrupt.message(i18n::lang()),
+                output: None,
+                history_id: None,
+            });
         done.history_id = record(&history, &job, &done);
         if done.history_id.is_some() || !done.ok {
             let _ = app.emit("history-changed", ());
