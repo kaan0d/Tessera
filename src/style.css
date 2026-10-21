@@ -603,7 +603,7 @@ input[type=radio]:checked::after{scale:1}
 /* the dropped files sit as a small fanned stack of sheets; every choice fills with ink when pointed at */
 body.drop{height:100vh;overflow:hidden;
   background:radial-gradient(120% 50% at 0% 0%,var(--accent-soft),transparent 60%),linear-gradient(var(--ground),var(--ground-2))}
-.dr{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;height:100vh}
+.dr{overflow:hidden;scrollbar-gutter:auto;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;height:100vh}
 .dr-head .grow{min-width:0}
 .dr-head{display:flex;align-items:center;gap:14px;padding:18px 20px 12px}
 .dr-stack{position:relative;flex:none;width:58px;height:60px}
