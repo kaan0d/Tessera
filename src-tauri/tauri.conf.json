@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "DonusturX",
+  "productName": "new-app",
   "version": "0.1.0",
-  "identifier": "com.donusturx.app",
+  "identifier": "com.newapp.app",
   "build": {
     "frontendDist": "../src"
   },
@@ -10,7 +10,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "DonusturX",
+        "title": "new-app",
         "width": 520,
         "height": 640,
         "resizable": false,
@@ -19,7 +19,7 @@
       },
       {
         "label": "progress",
-        "title": "DonusturX",
+        "title": "new-app",
         "url": "progress.html",
         "width": 360,
         "height": 110,

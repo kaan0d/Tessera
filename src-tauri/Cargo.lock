@@ -869,30 +869,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "donusturx"
-version = "0.1.0"
-dependencies = [
- "flacenc",
- "hound",
- "image",
- "serde",
- "serde_json",
- "sha2",
- "symphonia",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-notification",
- "tauri-plugin-single-instance",
- "tempfile",
- "thiserror 2.0.21",
- "trash",
- "ureq",
- "winreg 0.55.0",
- "zip",
-]
-
-[[package]]
 name = "dpi"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2330,6 +2306,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys 0.3.1",
+]
+
+[[package]]
+name = "new-app"
+version = "0.1.0"
+dependencies = [
+ "flacenc",
+ "hound",
+ "image",
+ "serde",
+ "serde_json",
+ "sha2",
+ "symphonia",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-notification",
+ "tauri-plugin-single-instance",
+ "tempfile",
+ "thiserror 2.0.21",
+ "trash",
+ "ureq",
+ "winreg 0.55.0",
+ "zip",
 ]
 
 [[package]]

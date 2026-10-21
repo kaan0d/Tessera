@@ -1,11 +1,11 @@
 [package]
-name = "donusturx"
+name = "new-app"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
 
 [lib]
-name = "donusturx_lib"
+name = "new_app_lib"
 crate-type = ["rlib"]
 
 [build-dependencies]
