@@ -9,6 +9,7 @@ pub mod headless;
 pub mod history;
 pub mod i18n;
 pub mod install;
+pub mod log;
 pub mod panel;
 pub mod preset;
 pub mod queue;
@@ -120,6 +121,12 @@ fn start_ffmpeg_download(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let result = ffmpeg::install_with_retries(&download);
+        if let Err(e) = &result {
+            log::write(
+                "error",
+                &format!("ffmpeg download failed: {}", e.message(i18n::Lang::En)),
+            );
+        }
         if result.is_ok() {
             set_ffmpeg_ready(&app, true);
             let lang = i18n::lang();
@@ -575,6 +582,16 @@ fn open_folder(path: String) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|e| e.to_string())
+}
+
+/// Makes sure the log exists and shows it selected in Explorer (for "Open log" and bug reports).
+#[tauri::command]
+fn open_log() -> Result<(), String> {
+    let p = log::path();
+    if !p.exists() {
+        log::write("info", "log opened");
+    }
+    open_folder(p.to_string_lossy().into_owned())
 }
 
 fn tray_menu(app: &AppHandle, lang: Lang) -> tauri::Result<Menu<tauri::Wry>> {
@@ -1113,6 +1130,7 @@ fn install_start(app: AppHandle, req: install::Request) -> Result<String, String
                 let _ = app.emit("install-done", done.ffmpeg);
             }
             Err(message) => {
+                log::write("error", &format!("install failed: {message}"));
                 let _ = app.emit("install-error", message);
             }
         }
@@ -1184,6 +1202,7 @@ fn run_setup(mode: install::Mode) {
 }
 
 pub fn run() {
+    log::install_panic_hook();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let cmd = cli::parse(&args, None);
     // subcommands never reach the Tauri runtime
@@ -1242,7 +1261,8 @@ pub fn run() {
             run_drop,
             close_drop_window,
             get_licenses,
-            app_info
+            app_info,
+            open_log
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {

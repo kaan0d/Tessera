@@ -291,6 +291,12 @@ fn worker(
                 output: None,
                 history_id: None,
             });
+        if !done.ok && done.message != ConvertError::Cancelled.message(i18n::lang()) {
+            crate::log::write(
+                "error",
+                &format!("job failed: {}: {}", job.name, done.message),
+            );
+        }
         done.history_id = record(&history, &job, &done);
         if done.history_id.is_some() || !done.ok {
             let _ = app.emit("history-changed", ());
