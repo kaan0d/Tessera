@@ -932,7 +932,7 @@ body.settings::after,body.drop::after{content:"";position:fixed;inset:0;z-index:
 .sent{display:inline-block}
 
 /* ---------- readability pass (from the review) ---------- */
-.badge.tag{font-size:11.5px}
+.badge.tag{font-size:12px}
 .fmt{font-size:12px}
 .chips.small .chip{font-size:12px}
 .mini .link{height:28px}
@@ -981,3 +981,4 @@ body.drop:not(.kb) .dr-card:focus-visible{outline:none;background-size:100% 0%;b
 @media (hover:hover){.nav>button:not([aria-selected=true]):hover{background:color-mix(in srgb,var(--ink) 9%,transparent);box-shadow:inset 2px 0 0 color-mix(in srgb,var(--ink) 35%,transparent)}}
 /* the chooser list fades at its lower edge, so a cut-off card reads as "more below" */
 .dr-body{-webkit-mask-image:linear-gradient(#000 calc(100% - 22px),transparent);mask-image:linear-gradient(#000 calc(100% - 22px),transparent)}
+kbd{font-size:12px}
