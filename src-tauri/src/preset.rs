@@ -116,7 +116,7 @@ pub fn builtins() -> Vec<Preset> {
             "same",
             Some("mp4"),
             PresetOptions {
-                max_bytes: Some(8_000_000),
+                max_bytes: Some(10_000_000),
                 ..o()
             },
         ),

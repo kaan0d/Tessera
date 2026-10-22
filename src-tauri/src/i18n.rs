@@ -84,7 +84,7 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("preset.web", "Shrink for web", "Web için küçült"),
     ("preset.whatsapp", "For WhatsApp", "WhatsApp için"),
     ("preset.email", "Email: under 10 MB", "E-posta: 10 MB altı"),
-    ("preset.discord", "Discord: under 8 MB", "Discord: 8 MB altı"),
+    ("preset.discord", "Discord: under 10 MB", "Discord: 10 MB altı"),
     (
         "preset.strip",
         "Remove location & camera info",
