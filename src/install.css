@@ -27,7 +27,7 @@ body{
 }
 .mark-cv{width:240px;height:240px;align-self:center;margin-top:-8px}
 
-.col{display:grid;grid-template-rows:auto 1fr auto;min-width:0}
+.col{display:flex;flex-direction:column;justify-content:center;min-width:0}
 
 /* big percentage: odometer digits */
 .pct{
@@ -47,7 +47,7 @@ body{
 .pct{transition:opacity .7s var(--ease),color .8s var(--ease)}
 
 /* text views stacked in one cell, cross-fading */
-.views{display:grid;min-height:0;padding-bottom:26px}
+.views{display:grid;min-height:0}
 .view{grid-area:1/1;align-self:center;opacity:0;translate:0 14px;pointer-events:none;visibility:hidden;
   transition:opacity .45s var(--ease),translate .6s var(--ease),visibility 0s .6s}
 [data-state=welcome][data-mode=install] .v-welcome,[data-state=welcome][data-mode=uninstall] .v-remove,[data-state=run] .v-run,[data-state=done][data-mode=install] .v-done,[data-state=done][data-mode=uninstall] .v-gone{
@@ -82,7 +82,7 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 @keyframes sheen{from{background-position:-80% 0}to{background-position:180% 0}}
 
 /* buttons */
-.actions{position:absolute;left:0;right:0;bottom:0;display:flex;gap:10px;justify-content:flex-start}
+.actions{position:relative;display:flex;gap:10px;justify-content:flex-start}
 .btn{white-space:nowrap;
   font:600 14px/1 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;height:42px;padding:0 26px;border-radius:12px;border:0;
   cursor:pointer;position:relative;overflow:hidden;
@@ -171,15 +171,18 @@ html[lang=tr] .sign{order:-1;margin:.34em .08em 0 0}
 /* the percentage is a progress number: not shown before an install or removal starts */
 [data-state=welcome] .pct{opacity:0}
 
-/* before the install starts there is no number, so its row takes no room and the form can use the height */
-[data-state=welcome] .pct{height:0;margin:0}
-.pct{transition:opacity .7s var(--ease),color .8s var(--ease),height .6s var(--ease)}
-.views{padding-bottom:64px}
-
-/* while it runs and when it is done the number and the text sit as one group on the arch's centre line */
-[data-state=run] .pct,[data-state=done] .pct{margin-top:70px}
-[data-state=run] .views,[data-state=done] .views{padding-bottom:96px}
-.views{transition:padding .6s var(--ease)}
 /* the row is the window's inner height, so hidden views can never stretch it and push the arch off centre */
 .stage{grid-template-rows:minmax(0,1fr)}
 .col{min-height:0}
+
+/* one block, centred on the arch's centre line: number (when there is one), text, buttons.
+   Only the current view takes room; the others wait out of the flow. */
+.view{position:absolute;left:0;right:0;top:0;align-self:start}
+[data-state=welcome][data-mode=install] .v-welcome,[data-state=welcome][data-mode=uninstall] .v-remove,[data-state=run] .v-run,
+[data-state=done][data-mode=install] .v-done,[data-state=done][data-mode=uninstall] .v-gone{position:relative}
+.pct{flex:none;margin-top:0;transition:opacity .7s var(--ease),color .8s var(--ease),height .6s var(--ease),margin .6s var(--ease)}
+[data-state=welcome] .pct{height:0;margin:0}
+[data-state=run] .pct,[data-state=done] .pct{height:140px;margin:0 0 22px}
+.foot{flex:none;margin-top:30px}
+[data-state=run] .foot{margin-top:0}
+.v-run .tip{position:absolute;left:0;right:0;top:100%;margin:0}
