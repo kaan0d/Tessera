@@ -12,6 +12,8 @@ pub enum Cli {
     Setup,
     /// Download the pinned ffmpeg, printing `P <percent>` lines (the installer reads them).
     InstallFfmpeg,
+    /// Record that ffmpeg is downloaded later (the installer's "skip").
+    DeferFfmpeg,
     /// Silent install (`--install <dir> [--portable]`), no window.
     Install {
         dir: String,
@@ -145,6 +147,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         Some("--remove-menu") => Cli::RemoveMenu,
         Some("--setup") => Cli::Setup,
         Some("--install-ffmpeg") => Cli::InstallFfmpeg,
+        Some("--defer-ffmpeg") => Cli::DeferFfmpeg,
         Some("--install") => match args.get(1) {
             Some(dir) if !dir.starts_with("--") => Cli::Install {
                 dir: dir.clone(),
@@ -378,6 +381,7 @@ mod tests {
         assert_eq!(parse(&a(&["--remove-menu"]), None), Cli::RemoveMenu);
         assert_eq!(parse(&a(&["--setup"]), None), Cli::Setup);
         assert_eq!(parse(&a(&["--install-ffmpeg"]), None), Cli::InstallFfmpeg);
+        assert_eq!(parse(&a(&["--defer-ffmpeg"]), None), Cli::DeferFfmpeg);
         assert_eq!(
             parse(&a(&["--install", r"D:\Apps", "--portable"]), None),
             Cli::Install {

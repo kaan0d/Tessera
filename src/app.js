@@ -435,7 +435,7 @@ function render() {
   $('path').textContent = fixed ? s.output_dir.path || '' : '';
   $('conflict').value = s.conflict;
   $('warn').hidden = s.conflict !== 'replace_original';
-  $('ff-notice').hidden = !!s.ffmpeg_notice_seen;
+  $('ff-notice').hidden = !!s.ffmpeg_notice_seen || !!s.ffmpeg_ready;
   for (const id in SLIDERS) paintSlider(id, SLIDERS[id].get());
   if (document.activeElement !== $('tpl')) {
     $('tpl').value = s.name_template;
@@ -584,7 +584,8 @@ function ffView(state, text, pct) {
   bar.setAttribute('aria-valuenow', Math.round(p));
   $('ff-pct').hidden = state !== 'downloading';
   $('ff-pct').textContent = t('pct', { n: Math.round(p) });
-  $('ff-retry').hidden = state !== 'error';
+  $('ff-retry').hidden = state !== 'error' && state !== 'later';
+  $('ff-retry').querySelector('span').textContent = t(state === 'later' ? 'ff.download_now' : 'ff.retry');
   const dl = state === 'downloading' ? Math.round(pct) : null;
   if (dl !== ffPct) {
     ffPct = dl;
@@ -605,6 +606,7 @@ async function refreshFfmpeg() {
     if (f.ready) ffView('ready', t('ff.ready'));
     else if (f.downloading) ffView('downloading', t('ff.downloading'), pct);
     else if (f.error) ffView('error', t('ff.failed', { err: f.error }));
+    else if (f.later) ffView('later', t('ff.later'));
     else ffView('checking', t('ff.checking'));
     if (!f.ready) ffTimer = setTimeout(refreshFfmpeg, f.downloading ? 1000 : 3000);
   } catch (e) {
@@ -663,10 +665,26 @@ function bind() {
   $('hist-sw').onchange = (e) => change({ history_enabled: e.target.checked });
   $('upd-sw').onchange = (e) => setIn('updates', 'check_on_start', e.target.checked);
   $$('input[name=sort]').forEach((r) => (r.onchange = () => setIn('menu', 'sort', r.value)));
-  $('ff-notice-ok').onclick = () => change({ ffmpeg_notice_seen: true });
+  $('ff-notice-ok').onclick = async () => {
+    $('ff-notice').hidden = true;
+    try {
+      await invoke('retry_ffmpeg_download');
+      if (s) { s.ffmpeg_notice_seen = true; s.ffmpeg_later = false; }
+    } catch (e) {
+      showError(t('err.dl_start', { err: e }));
+    }
+    refreshFfmpeg();
+  };
+  $('ff-notice-later').onclick = async () => {
+    $('ff-notice').hidden = true;
+    await change({ ffmpeg_notice_seen: true, ffmpeg_later: true });
+    refreshFfmpeg();
+  };
   $('ff-retry').onclick = async () => {
     try {
       await invoke('retry_ffmpeg_download');
+      if (s) { s.ffmpeg_notice_seen = true; s.ffmpeg_later = false; }
+      $('ff-notice').hidden = true;
     } catch (e) {
       showError(t('err.dl_start', { err: e }));
     }

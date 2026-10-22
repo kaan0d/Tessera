@@ -159,6 +159,15 @@ fn ensure_ffmpeg(app: &AppHandle) {
         if ready {
             set_ffmpeg_ready(&app, false);
         }
+        // "later", or the first-run question not answered yet: wait for the user
+        let hold = {
+            let st = app.state::<AppState>();
+            let s = st.settings.lock().unwrap();
+            s.ffmpeg_later || !s.ffmpeg_notice_seen
+        };
+        if hold {
+            return;
+        }
         start_ffmpeg_download(&app);
     });
 }
@@ -515,12 +524,27 @@ fn cancel_job(id: u64, state: State<AppState>) {
 
 #[tauri::command]
 fn ffmpeg_status(state: State<AppState>) -> FfmpegStatus {
-    let ready = state.settings.lock().unwrap().ffmpeg_ready;
-    state.download.status(ready, i18n::lang())
+    let (ready, hold) = {
+        let s = state.settings.lock().unwrap();
+        (s.ffmpeg_ready, s.ffmpeg_later || !s.ffmpeg_notice_seen)
+    };
+    let mut f = state.download.status(ready, i18n::lang());
+    f.later = !f.ready && !f.downloading && hold;
+    f
 }
 
 #[tauri::command]
 fn retry_ffmpeg_download(app: AppHandle) {
+    {
+        // asking for the download answers "later" and the first-run question
+        let state = app.state::<AppState>();
+        let mut s = state.settings.lock().unwrap();
+        if s.ffmpeg_later || !s.ffmpeg_notice_seen {
+            s.ffmpeg_later = false;
+            s.ffmpeg_notice_seen = true;
+            let _ = settings::save_to(&settings::settings_path(), &s);
+        }
+    }
     start_ffmpeg_download(&app);
 }
 
@@ -1063,6 +1087,13 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             Some(code(shell::remove().and(a)))
         }
         Cli::InstallFfmpeg => Some(install_ffmpeg_headless()),
+        Cli::DeferFfmpeg => {
+            let path = settings::settings_path();
+            let mut s = settings::load_initial(&path);
+            s.ffmpeg_later = true;
+            s.ffmpeg_notice_seen = true;
+            Some(i32::from(settings::save_to(&path, &s).is_err()))
+        }
         Cli::Uninstall {
             quiet: true,
             keep_data,
@@ -1071,6 +1102,7 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             let req = install::Request {
                 dir: dir.clone(),
                 portable: *portable,
+                ffmpeg: true,
             };
             Some(i32::from(install::run_install(&req, |_| {}).is_err()))
         }
@@ -1127,7 +1159,12 @@ fn install_start(app: AppHandle, req: install::Request) -> Result<String, String
         }) {
             Ok(done) => {
                 *app.state::<SetupState>().exe.lock().unwrap() = Some(done.exe);
-                let _ = app.emit("install-done", done.ffmpeg);
+                let how = match done.ffmpeg {
+                    Some(true) => "ok",
+                    Some(false) => "failed",
+                    None => "skipped",
+                };
+                let _ = app.emit("install-done", how);
             }
             Err(message) => {
                 log::write("error", &format!("install failed: {message}"));

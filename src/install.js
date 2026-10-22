@@ -145,6 +145,10 @@
       left_menu: "the Explorer menu", left_autostart: "the autostart entry", left_shortcut: "the Start menu shortcut",
       left_entry: "the uninstall entry", left_data: "settings and history", left_files: "the program files",
       ff_note: "Video support will download the next time Tessera opens.",
+      ff_skipped: "Video support is off. Turn it on any time in Advanced.",
+      ffdl: "Download video support now (about 170 MB)",
+      ffdl_hint: "Needed for video, MP3, OGG and AAC. You can also do it later.",
+      "Skipping video support": "Skipping video support",
       step: "{n} of {t}",
       "Copying files": "Copying files", "Registering the menu": "Registering the menu",
       "Adding icons and shortcuts": "Adding icons and shortcuts", "Downloading video support": "Downloading video support",
@@ -176,6 +180,10 @@
       left_menu: "Explorer menüsü", left_autostart: "otomatik başlatma kaydı", left_shortcut: "Başlat menüsü kısayolu",
       left_entry: "kaldırma kaydı", left_data: "ayarlar ve geçmiş", left_files: "program dosyaları",
       ff_note: "Video desteği Tessera'nın bir sonraki açılışında indirilecek.",
+      ff_skipped: "Video desteği kapalı. İstediğin zaman Gelişmiş bölümünden açabilirsin.",
+      ffdl: "Video desteğini şimdi indir (yaklaşık 170 MB)",
+      ffdl_hint: "Video, MP3, OGG ve AAC için gerekli. Sonra da yapabilirsin.",
+      "Skipping video support": "Video desteği atlanıyor",
       step: "Adım {n} / {t}",
       "Copying files": "Dosyalar kopyalanıyor", "Registering the menu": "Menü kaydediliyor",
       "Adding icons and shortcuts": "Simgeler ve kısayollar ekleniyor", "Downloading video support": "Video desteği indiriliyor",
@@ -282,7 +290,7 @@
     const dir = dirEl.value.trim();
     doneDirPath = dir; document.getElementById("doneDir").textContent = t("installed_to") + " " + dir;
     if (!T) return demo();
-    T.core.invoke("install_start", { req: { dir, portable: document.getElementById("portable").checked } })
+    T.core.invoke("install_start", { req: { dir, portable: document.getElementById("portable").checked, ffmpeg: document.getElementById("ffdl").checked } })
       .then((real) => { dirEl.value = real; doneDirPath = real; document.getElementById("doneDir").textContent = t("installed_to") + " " + real; api.start(); })
       .catch((e) => showError(String(e)));
   });
@@ -307,7 +315,7 @@
       const items = (e.payload || []).map((k) => t("left_" + k)).join(", ");
       document.getElementById("leftNote").textContent = items ? t("left_note").replace("{items}", items) : "";
     });
-    T.event.listen("install-done", (e) => { document.getElementById("ffNote").textContent = e.payload === false ? t("ff_note") : ""; });
+    T.event.listen("install-done", (e) => { document.getElementById("ffNote").textContent = e.payload === "failed" ? t("ff_note") : e.payload === "skipped" ? t("ff_skipped") : ""; });
     T.core.invoke("install_defaults").then((d) => {
       applyLang(d.lang);
       if (d.mode === "uninstall") {

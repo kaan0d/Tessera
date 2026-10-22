@@ -19,9 +19,12 @@ const I18N = {
     'tab.menu': 'Menu',
     'tab.advanced': 'Advanced',
 
-    'ffn.title': 'Getting video and audio support ready',
-    'ffn.body': 'ffmpeg, a free open-source tool, is downloaded once (about 170 MB) for video, MP3, OGG and AAC. You can keep converting images, WAV and FLAC while you wait.',
-    'ffn.ok': 'Got it',
+    'ffn.title': 'Video and audio support needs one download',
+    'ffn.body': 'Video, MP3, OGG and AAC use ffmpeg, a free open-source tool (about 170 MB, downloaded once). Images, WAV and FLAC work without it.',
+    'ffn.ok': 'Download now',
+    'ffn.later': 'Later',
+    'ff.later': 'Video and MP3 support is off until you download it (about 170 MB).',
+    'ff.download_now': 'Download now',
 
     'lang.label': 'Language',
     'lang.desc': 'Language of the app and its right-click menu.',
@@ -482,9 +485,12 @@ const I18N = {
     'tab.menu': 'Menü',
     'tab.advanced': 'Gelişmiş',
 
-    'ffn.title': 'Video ve ses desteği hazırlanıyor',
-    'ffn.body': 'Video, MP3, OGG ve AAC için ücretsiz ve açık kaynaklı ffmpeg bir kez indirilir (yaklaşık 170 MB). Beklerken resim, WAV ve FLAC dönüştürmeye devam edebilirsiniz.',
-    'ffn.ok': 'Anladım',
+    'ffn.title': 'Video ve ses desteği için bir indirme gerekiyor',
+    'ffn.body': 'Video, MP3, OGG ve AAC için ücretsiz ve açık kaynaklı ffmpeg aracı kullanılır (yaklaşık 170 MB, bir kez indirilir). Resim, WAV ve FLAC onsuz da çalışır.',
+    'ffn.ok': 'Şimdi indir',
+    'ffn.later': 'Daha sonra',
+    'ff.later': 'Video ve MP3 desteği, indirene kadar kapalı (yaklaşık 170 MB).',
+    'ff.download_now': 'Şimdi indir',
 
     'lang.label': 'Dil',
     'lang.desc': 'Uygulamanın ve sağ tık menüsünün dili.',

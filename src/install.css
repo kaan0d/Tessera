@@ -13,7 +13,7 @@ body{
   display:grid;place-items:center;-webkit-font-smoothing:antialiased;
 }
 .stage{
-  position:relative;width:800px;height:484px;padding:52px 56px 44px;display:grid;
+  position:relative;width:800px;height:520px;padding:52px 56px 44px;display:grid;
   grid-template-columns:240px 1fr;gap:64px;overflow:hidden;isolation:isolate;
   background:linear-gradient(var(--ground),var(--ground-2));
 }

@@ -33,10 +33,17 @@ pub struct Defaults {
     pub portable: bool,
 }
 
+fn yes() -> bool {
+    true
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Request {
     pub dir: String,
     pub portable: bool,
+    /// Download ffmpeg during the install (the default); false = later.
+    #[serde(default = "yes")]
+    pub ffmpeg: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -332,7 +339,8 @@ fn run_step(
 /// What an install produced: the exe, and whether video support (ffmpeg) is in place.
 pub struct Installed {
     pub exe: PathBuf,
-    pub ffmpeg: bool,
+    /// Some(true) downloaded, Some(false) failed, None skipped on purpose.
+    pub ffmpeg: Option<bool>,
 }
 
 /// Runs `<exe> --install-ffmpeg`, mapping its `P <percent>` lines onto `sub`. True on success.
@@ -368,7 +376,7 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Inst
     let src = std::env::current_exe().map_err(|e| e.to_string())?;
     let dst = dir.join(EXE_NAME);
     let emit: &mut dyn FnMut(Progress) = &mut emit;
-    let mut ffmpeg_ok = false;
+    let mut ffmpeg_ok: Option<bool> = None;
 
     run_step(emit, 1, "Copying files", (0.0, 0.06), &mut |sub| {
         stop_running(&dir);
@@ -410,10 +418,22 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Inst
     run_step(
         emit,
         4,
-        "Downloading video support",
+        if req.ffmpeg {
+            "Downloading video support"
+        } else {
+            "Skipping video support"
+        },
         (0.12, 0.96),
         &mut |sub| {
-            ffmpeg_ok = download_ffmpeg(&dst, sub);
+            if req.ffmpeg {
+                ffmpeg_ok = Some(download_ffmpeg(&dst, sub));
+            } else {
+                // the app then waits for the user instead of fetching 170 MB on its own
+                let _ = Command::new(&dst)
+                    .arg("--defer-ffmpeg")
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+            }
             Ok(())
         },
     )?;

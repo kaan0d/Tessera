@@ -86,6 +86,8 @@ pub struct FfmpegStatus {
     pub downloading: bool,
     pub percent: f32,
     pub error: Option<String>,
+    /// Not downloaded and not downloading: waiting for the user ("later" or the first-run question).
+    pub later: bool,
 }
 
 /// Download state shared between the worker thread and the UI poll.
@@ -123,6 +125,7 @@ impl Download {
             downloading: self.active.load(Ordering::SeqCst),
             percent: self.permille.load(Ordering::Relaxed) as f32 / 10.0,
             error: self.error.lock().unwrap().as_ref().map(|e| e.message(lang)),
+            later: false,
         }
     }
 }

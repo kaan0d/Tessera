@@ -7,7 +7,7 @@ Converter apps that cost money, run on subscriptions or bury the exit under upse
 ## Features
 
 - **Explorer menu:** cascading "Tessera" menu per file type and per folder, with one icon per kind. Lives in your user registry only.
-- **Formats:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. Also reads SVG, HEIC, RAW (embedded preview) and PDF pages.
+- **Formats:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. Also reads SVG, HEIC, RAW (embedded preview) and PDF pages, and turns animated GIFs into MP4 or WebM.
 - **Presets:** shrink for web, WhatsApp, email under 10 MB, Discord under 8 MB, strip location data, make a PDF. Make your own.
 - **Edit while converting:** resize, strip metadata, fix orientation, compress to a target file size, cut audio and video, audio bitrate, mono, GIF fps and width. Save any custom settings as a menu preset.
 - **Batch:** merge images into one PDF or audio files into one, convert a whole folder, drop files on the window and choose.
@@ -51,7 +51,7 @@ In scripts use `tessera-cli.exe` (installed next to `tessera.exe`): the same too
 
 ## ffmpeg and your data
 
-Video and a few audio and image formats need ffmpeg. Tessera downloads one pinned LGPL build (about 170 MB, SHA-256 checked) during setup, with a live percentage, or on first run if that was skipped, and shows a notification. Nothing else is downloaded, and the update check is off until you turn it on.
+Video and a few audio and image formats need ffmpeg. Tessera downloads one pinned LGPL build (about 170 MB, SHA-256 checked) during setup, with a live percentage. Untick it there, or choose Later in the app, and nothing is fetched until you press Download now under Advanced. Nothing else is downloaded, and the update check is off until you turn it on.
 
 Files never leave your computer. On disk, in `%APPDATA%\Tessera` (or the `data` folder next to the app): `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most). Uninstalling can delete all of it.
 

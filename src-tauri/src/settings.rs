@@ -120,6 +120,8 @@ pub struct Settings {
     pub ffmpeg_ready: bool,
     /// The first-run ffmpeg info card was dismissed.
     pub ffmpeg_notice_seen: bool,
+    /// The user chose to download ffmpeg later: nothing is fetched until they ask.
+    pub ffmpeg_later: bool,
     /// User presets (built-ins are in code). Owned by the preset commands; `set_settings` keeps them.
     pub presets: Vec<Preset>,
     /// Ids of hidden presets, built-in or custom. Owned by `set_preset_hidden`.
@@ -156,6 +158,7 @@ impl Default for Settings {
             legacy_jpeg_quality: None,
             ffmpeg_ready: false,
             ffmpeg_notice_seen: false,
+            ffmpeg_later: false,
             presets: vec![],
             hidden_presets: vec![],
             history_enabled: true,
@@ -511,5 +514,19 @@ mod tests {
         let s = serde_json::from_str::<Settings>(json).unwrap().normalized();
         assert_eq!(s.presets.len(), 1);
         assert_eq!(s.hidden_presets, ["web", "a"]);
+    }
+}
+
+#[cfg(test)]
+mod ffmpeg_later_tests {
+    use super::*;
+
+    #[test]
+    fn later_defaults_off_and_survives_a_round_trip() {
+        assert!(!Settings::default().ffmpeg_later);
+        let s: Settings = serde_json::from_str(r#"{"ffmpeg_later":true}"#).unwrap();
+        assert!(s.ffmpeg_later);
+        let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+        assert!(back.ffmpeg_later);
     }
 }

@@ -430,7 +430,11 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
         return vec![];
     };
     let pdf = [Format::Pdf];
-    let (family, extra): (&[Format], &[Format]) = if src.is_image() {
+    // an animated GIF can become a video as well
+    let gif = [Format::Pdf, Format::Mp4, Format::Webm];
+    let (family, extra): (&[Format], &[Format]) = if src == Format::Gif {
+        (&IMAGES, &gif)
+    } else if src.is_image() {
         (&IMAGES, &pdf)
     } else if src == Format::Pdf {
         (&IMAGES, &[])
@@ -556,6 +560,22 @@ mod tests {
         }
         assert_eq!(t.len(), 4 + 6);
         assert!(!supported_targets("wav").contains(&Format::Mp4));
-        assert!(!supported_targets("gif").contains(&Format::Mp4));
+        assert!(supported_targets("gif").contains(&Format::Mp4)); // animated GIFs become videos
+    }
+}
+
+#[cfg(test)]
+mod gif_video_tests {
+    use super::*;
+
+    #[test]
+    fn a_gif_can_become_a_video_but_a_png_cannot() {
+        let gif = supported_targets("gif");
+        assert!(
+            gif.contains(&Format::Mp4) && gif.contains(&Format::Webm) && gif.contains(&Format::Pdf)
+        );
+        assert!(!supported_targets("png").contains(&Format::Mp4));
+        assert!(uses_ffmpeg(Format::Gif, Format::Mp4));
+        assert!(!uses_ffmpeg(Format::Gif, Format::Png));
     }
 }
