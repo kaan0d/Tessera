@@ -135,6 +135,7 @@
       left_path: "the PATH entry",
       ffdl: "Download video support now (about 170 MB)",
       ffdl_hint: "Needed for video, MP3, OGG and AAC. You can also do it later.",
+      ffdl_have: "Video support is already installed", ffdl_have_hint: "Nothing to download. Tick it to download again.",
       "Skipping video support": "Skipping video support",
       step: "{n} of {t}",
       "Copying files": "Copying files", "Registering the menu": "Registering the menu",
@@ -174,6 +175,7 @@
       left_path: "PATH kaydı",
       ffdl: "Video desteğini şimdi indir (yaklaşık 170 MB)",
       ffdl_hint: "Video, MP3, OGG ve AAC için gerekli. Sonra da yapabilirsin.",
+      ffdl_have: "Video desteği zaten kurulu", ffdl_have_hint: "İndirilecek bir şey yok. Yeniden indirmek için işaretle.",
       "Skipping video support": "Video desteği atlanıyor",
       step: "Adım {n} / {t}",
       "Copying files": "Dosyalar kopyalanıyor", "Registering the menu": "Menü kaydediliyor",
@@ -325,6 +327,13 @@
         dirEl.value = d.dir;
         document.getElementById("portable").checked = d.portable;
         if (d.installed) { document.getElementById("welcomeTitle").dataset.t = "update_title"; setGo("update"); applyLang(d.lang); }
+        if (d.ffmpeg) {
+          const cb = document.getElementById("ffdl");
+          cb.checked = false;
+          cb.closest(".check").querySelector("[data-t=ffdl]").dataset.t = "ffdl_have";
+          cb.closest(".check").querySelector("small").dataset.t = "ffdl_have_hint";
+          applyLang(d.lang);
+        }
       }
       ready();
     }).catch(ready);

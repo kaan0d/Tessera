@@ -1090,7 +1090,10 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
         Cli::DeferFfmpeg => {
             let path = settings::settings_path();
             let mut s = settings::load_initial(&path);
-            s.ffmpeg_later = true;
+            // an update over a working ffmpeg has nothing to defer
+            let have = ffmpeg::is_working(&ffmpeg::exe_path());
+            s.ffmpeg_ready = have;
+            s.ffmpeg_later = !have;
             s.ffmpeg_notice_seen = true;
             Some(i32::from(settings::save_to(&path, &s).is_err()))
         }
@@ -1124,7 +1127,8 @@ fn install_ffmpeg_headless() -> i32 {
         let _ = writeln!(out, "P {p:.1}");
         let _ = out.flush();
     };
-    let ok = ffmpeg::is_working(&ffmpeg::exe_path()) || ffmpeg::install_pinned(&mut |p| say(p)).is_ok();
+    let ok =
+        ffmpeg::is_working(&ffmpeg::exe_path()) || ffmpeg::install_pinned(&mut |p| say(p)).is_ok();
     if ok {
         say(100.0);
         // the app must not ask again what the installer already answered

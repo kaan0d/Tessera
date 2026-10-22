@@ -31,6 +31,8 @@ pub struct Defaults {
     pub dir: String,
     pub installed: bool,
     pub portable: bool,
+    /// A working ffmpeg is already in the installed copy's data folder.
+    pub ffmpeg: bool,
 }
 
 fn yes() -> bool {
@@ -110,7 +112,18 @@ pub fn default_dir() -> PathBuf {
 pub fn defaults(mode: Mode) -> Defaults {
     let installed = installed_dir().filter(|d| d.join(EXE_NAME).is_file());
     let dir = installed.clone().unwrap_or_else(default_dir);
+    let data = if dir.join("data").is_dir() {
+        dir.join("data")
+    } else {
+        std::env::var_os("APPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(std::env::temp_dir)
+            .join(APP_NAME)
+    };
+    let ffmpeg =
+        installed.is_some() && crate::ffmpeg::is_working(&data.join("ffmpeg").join("ffmpeg.exe"));
     Defaults {
+        ffmpeg,
         lang: if crate::i18n::system_lang() == crate::i18n::Lang::Tr {
             "tr"
         } else {
