@@ -141,6 +141,9 @@
       done_free: "Free and open source. No account, no ads, no telemetry.", installed_to: "Installed to",
       gone_title: "Tessera is removed", gone_lead: "Your converted files were not touched.",
       gone_fine: "Thanks for trying a free converter.",
+      left_note: "Could not remove: {items}. You can delete them by hand.",
+      left_menu: "the Explorer menu", left_autostart: "the autostart entry", left_shortcut: "the Start menu shortcut",
+      left_entry: "the uninstall entry", left_data: "settings and history", left_files: "the program files",
       ff_note: "Video support will download the next time Tessera opens.",
       step: "{n} of {t}",
       "Copying files": "Copying files", "Registering the menu": "Registering the menu",
@@ -169,6 +172,9 @@
       done_free: "Ücretsiz ve açık kaynak. Hesap, reklam ve izleme yok.", installed_to: "Kurulum yeri:",
       gone_title: "Tessera kaldırıldı", gone_lead: "Dönüştürdüğün dosyalara dokunulmadı.",
       gone_fine: "Ücretsiz bir dönüştürücüyü denediğin için teşekkürler.",
+      left_note: "Kaldırılamayanlar: {items}. Elle silebilirsin.",
+      left_menu: "Explorer menüsü", left_autostart: "otomatik başlatma kaydı", left_shortcut: "Başlat menüsü kısayolu",
+      left_entry: "kaldırma kaydı", left_data: "ayarlar ve geçmiş", left_files: "program dosyaları",
       ff_note: "Video desteği Tessera'nın bir sonraki açılışında indirilecek.",
       step: "Adım {n} / {t}",
       "Copying files": "Dosyalar kopyalanıyor", "Registering the menu": "Menü kaydediliyor",
@@ -297,6 +303,10 @@
   if (T) {
     T.event.listen("install-progress", (e) => api.set(e.payload.p, e.payload.label, e.payload.step));
     T.event.listen("install-error", (e) => showError(String(e.payload)));
+    T.event.listen("uninstall-left", (e) => {
+      const items = (e.payload || []).map((k) => t("left_" + k)).join(", ");
+      document.getElementById("leftNote").textContent = items ? t("left_note").replace("{items}", items) : "";
+    });
     T.event.listen("install-done", (e) => { document.getElementById("ffNote").textContent = e.payload === false ? t("ff_note") : ""; });
     T.core.invoke("install_defaults").then((d) => {
       applyLang(d.lang);

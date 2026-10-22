@@ -84,7 +84,11 @@ pub fn scan(
                 if recursive && depth < MAX_DEPTH && m.file_attributes() & REPARSE_POINT == 0 {
                     stack.push((path, depth + 1));
                 }
-            } else if m.is_file() && want(&path) && !own(&path) {
+            } else if m.is_file()
+                && m.file_attributes() & REPARSE_POINT == 0
+                && want(&path)
+                && !own(&path)
+            {
                 found.push(path);
             }
         }

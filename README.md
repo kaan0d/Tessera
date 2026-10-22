@@ -49,9 +49,11 @@ Exit codes: 0 ok, 1 a file failed, 2 usage error.
 
 In scripts use `tessera-cli.exe` (installed next to `tessera.exe`): the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`.
 
-## ffmpeg
+## ffmpeg and your data
 
-Video and a few audio and image formats need ffmpeg. Tessera downloads one pinned LGPL build (about 170 MB, SHA-256 checked) on first run and tells you first. Nothing else is downloaded, and the update check is off until you turn it on.
+Video and a few audio and image formats need ffmpeg. Tessera downloads one pinned LGPL build (about 170 MB, SHA-256 checked) during setup, with a live percentage, or on first run if that was skipped, and shows a notification. Nothing else is downloaded, and the update check is off until you turn it on.
+
+Files never leave your computer. On disk, in `%APPDATA%\Tessera` (or the `data` folder next to the app): `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most). Uninstalling can delete all of it.
 
 ## Limits
 

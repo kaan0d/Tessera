@@ -1144,7 +1144,9 @@ fn uninstall_start(app: AppHandle, keep_data: bool) -> Result<(), String> {
         match install::run_uninstall(keep_data, |p| {
             let _ = app.emit("install-progress", p);
         }) {
-            Ok(()) => {}
+            Ok(left) => {
+                let _ = app.emit("uninstall-left", left);
+            }
             Err(message) => {
                 let _ = app.emit("install-error", message);
             }
