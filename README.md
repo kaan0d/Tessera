@@ -1,8 +1,26 @@
+<p align="center"><img src="docs/og.png" alt="Tessera: a free, modern file converter in the Windows right-click menu" width="100%"></p>
+
 # Tessera
 
-**Right-click any file, pick a format, done.** Tessera is a free, open-source file converter that lives in the Windows right-click menu. It turns photos, audio, video and PDFs into the format you need, shrinks them for email or WhatsApp, and never sends a file anywhere. No account, no ads, no telemetry, no admin rights.
+**Right-click any file, pick a format, done.** Tessera is a **100% free**, open-source file converter with a **modern interface**. It lives in the Windows right-click menu, turns photos, audio, video and PDFs into the format you need, shrinks them for email or WhatsApp, and never sends a file anywhere.
 
-Most converter apps cost money, run on subscriptions or bury the exit under upsells, and all of them do the same job: decode a file and encode it again. Tessera does that on your own machine, from the Explorer menu you already use. MIT licensed, so there is nothing to buy and nothing to unlock.
+- **Free, for real:** MIT licensed. No price, no subscription, no premium tier, no account, no ads, no telemetry, no admin rights.
+- **Modern interface:** a clean, fast window in dark and light, smooth motion, keyboard friendly, English and Turkish. Built for Windows 10 and 11.
+
+Most converter apps cost money, run on subscriptions or bury the exit under upsells, and all of them do the same job: decode a file and encode it again. Tessera does that on your own machine, from the Explorer menu you already use. There is nothing to buy and nothing to unlock.
+
+## A look
+
+<table>
+<tr>
+<td width="50%"><img src="docs/img/settings-formats.png" alt="Settings: choose what the right-click menu offers"><br><sub><b>Settings.</b> Choose what the menu offers.</sub></td>
+<td width="50%"><img src="docs/img/settings-light.png" alt="The same window in the light theme"><br><sub><b>Light and dark.</b> Both are finished, not an afterthought.</sub></td>
+</tr>
+<tr>
+<td><img src="docs/img/chooser.png" alt="The chooser: formats and presets for the selected file" width="48%"> <img src="docs/img/progress.png" alt="The progress panel" width="48%"><br><sub><b>Chooser and progress panel.</b> Pick a format or preset, watch every file.</sub></td>
+<td><img src="docs/img/installer.png" alt="The installer window"><br><sub><b>One-file installer.</b> No setup wizard, no admin rights.</sub></td>
+</tr>
+</table>
 
 ## How it works
 
@@ -71,6 +89,12 @@ Everything is per user. Files: the install folder and the data folder above. Reg
 - The installer is not code-signed, so SmartScreen may warn on first run.
 - A full-screen exclusive game hides the progress panel.
 - RAW files use the embedded JPEG preview, not a full demosaic.
+
+## Built with
+
+<p align="center"><img src="docs/img/languages.svg" alt="Languages used in Tessera: Rust, JavaScript, CSS and HTML" width="760"></p>
+
+A Rust engine does the converting and runs the menu, the queue, the watchers and the installer. The window is plain HTML, CSS and JavaScript with no framework and no bundler, hosted by [Tauri 2](https://tauri.app) and the WebView2 that Windows already has, which is why the whole app is one small exe. The app speaks English and Turkish.
 
 ## License
 

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="222" viewBox="0 0 760 222" role="img" aria-label="Languages used in Tessera">
+<title>Languages used in Tessera</title>
+<style>.n{font:600 15px 'Segoe UI',system-ui,sans-serif;fill:#f2f2f0}.v{font:500 13px 'Segoe UI',system-ui,sans-serif;fill:#a9a9b0}.h{font:700 17px 'Segoe UI',system-ui,sans-serif;fill:#f2f2f0}</style>
+<rect width="760" height="222" rx="18" fill="#17171b"/>
+<rect x=".5" y=".5" width="759" height="221" rx="17.5" fill="none" stroke="#2a2a31"/>
+<text x="28" y="38" class="h">Built with</text>
+<clipPath id="c"><rect x="28" y="62" width="704" height="14" rx="7"/></clipPath>
+<g clip-path="url(#c)"><rect x="28.0" y="62" width="486.2" height="14" fill="#ff6b4a"/><rect x="514.2" y="62" width="140.4" height="14" fill="#f5c451"/><rect x="654.6" y="62" width="41.2" height="14" fill="#6aa7ff"/><rect x="695.8" y="62" width="36.2" height="14" fill="#b58cff"/></g>
+<circle cx="34" cy="103" r="6" fill="#ff6b4a"/><text x="50" y="108" class="n">Rust</text><rect x="250" y="96" width="360.0" height="10" rx="5" fill="#ff6b4a" opacity=".85"/><text x="732" y="108" class="v" text-anchor="end">69.1%  ·  14,242 lines</text><circle cx="34" cy="137" r="6" fill="#f5c451"/><text x="50" y="142" class="n">JavaScript</text><rect x="250" y="130" width="104.0" height="10" rx="5" fill="#f5c451" opacity=".85"/><text x="732" y="142" class="v" text-anchor="end">19.9%  ·  4,114 lines</text><circle cx="34" cy="171" r="6" fill="#6aa7ff"/><text x="50" y="176" class="n">CSS</text><rect x="250" y="164" width="30.5" height="10" rx="5" fill="#6aa7ff" opacity=".85"/><text x="732" y="176" class="v" text-anchor="end">5.8%  ·  1,206 lines</text><circle cx="34" cy="205" r="6" fill="#b58cff"/><text x="50" y="210" class="n">HTML</text><rect x="250" y="198" width="26.8" height="10" rx="5" fill="#b58cff" opacity=".85"/><text x="732" y="210" class="v" text-anchor="end">5.1%  ·  1,060 lines</text>
+</svg>
