@@ -445,8 +445,8 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("ce.no_free_name", "no free file name", "uygun ad bulunamadı"),
     (
         "ce.no_stream",
-        "The file has no stream needed for this conversion",
-        "Dosyada bu dönüşüm için gereken akış yok",
+        "The file has no audio or video track this conversion needs (for example no sound for MP3)",
+        "Dosyada bu dönüşümün gerektiği ses ya da görüntü yok (ör. MP3 için ses)",
     ),
     ("ce.empty_output", "Empty output", "Boş çıktı"),
     ("ce.unknown", "unknown error", "bilinmeyen hata"),

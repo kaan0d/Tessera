@@ -1210,6 +1210,15 @@ pub fn run() {
         Cli::Cmd(c) => std::process::exit(headless::run(c)),
         other => other,
     };
+    // tessera-cli.exe is the console-flagged copy for scripts: it only runs subcommands
+    let console_copy = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.file_stem().map(|s| s.eq_ignore_ascii_case("tessera-cli")))
+        .unwrap_or(false);
+    if console_copy {
+        let msg = "a command is required: convert, preset, list-presets or formats";
+        std::process::exit(headless::run(cli::Command::Usage(msg.into())));
+    }
     if let Some(code) = run_headless(&cmd) {
         std::process::exit(code);
     }

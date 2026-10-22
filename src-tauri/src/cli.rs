@@ -75,6 +75,11 @@ pub struct ConvertArgs {
     pub no_audio: bool,
     pub gif_fps: Option<u8>,
     pub gif_width: Option<u16>,
+    pub video_mbps: Option<u8>,
+    pub recursive: bool,
+    pub dry_run: bool,
+    pub json: bool,
+    pub quiet: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -244,6 +249,8 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
     let (mut strip, mut quality, mut out) = (false, None, None);
     let (mut start, mut end, mut audio_kbps) = (None, None, None);
     let (mut mono, mut no_audio, mut gif_fps, mut gif_width) = (false, false, None, None);
+    let (mut video_mbps, mut recursive, mut dry_run, mut json, mut quiet) =
+        (None, false, false, false, false);
     let mut conflict = Conflict::AutoRename;
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -255,11 +262,20 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
             Some((n, v)) => (n, Some(v.to_string())),
             None => (flag, None),
         };
-        if inline.is_none() && matches!(name, "strip" | "mono" | "no-audio") {
+        if inline.is_none()
+            && matches!(
+                name,
+                "strip" | "mono" | "no-audio" | "recursive" | "dry-run" | "json" | "quiet"
+            )
+        {
             match name {
                 "strip" => strip = true,
                 "mono" => mono = true,
-                _ => no_audio = true,
+                "no-audio" => no_audio = true,
+                "recursive" => recursive = true,
+                "dry-run" => dry_run = true,
+                "json" => json = true,
+                _ => quiet = true,
             }
             continue;
         }
@@ -289,6 +305,7 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
             "audio-bitrate" => audio_kbps = Some(num(8, 512)? as u16),
             "gif-fps" => gif_fps = Some(num(5, 30)? as u8),
             "gif-width" => gif_width = Some(num(120, 1280)? as u16),
+            "video-mbps" => video_mbps = Some(num(1, 30)? as u8),
             "out" => out = Some(PathBuf::from(&v)),
             "conflict" => {
                 conflict = match v.as_str() {
@@ -326,6 +343,11 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
         no_audio,
         gif_fps,
         gif_width,
+        video_mbps,
+        recursive,
+        dry_run,
+        json,
+        quiet,
     })
 }
 

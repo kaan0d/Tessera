@@ -18,7 +18,7 @@ pub const EXIT_USAGE: i32 = 2;
 
 pub const HELP: &str = "\
 Usage:
-  tessera convert <files...> --to <ext> [options]
+  tessera convert <files, folders or *.png> --to <ext> [options]
   tessera preset <id> <files...>
   tessera list-presets
   tessera formats <ext>
@@ -29,10 +29,14 @@ Convert options:
   --max-edge <px>     longest side at most <px> pixels
   --percent <n>       scale to <n> percent (1-400)
   --strip             remove EXIF/GPS and other metadata
-  --max-size <size>   compress to at most <size>, e.g. 8MB or 500KB
+  --max-size <size>   compress to at most <size>, e.g. 8MB or 500KB (a bare number is bytes)
   --quality <1-100>   image quality
   --out <dir>         output folder (default: next to the source)
   --conflict <mode>   rename (default) or overwrite
+  --recursive         with a folder: go into its subfolders too
+  --dry-run           show what would happen, change nothing
+  --json              one JSON line per file instead of text
+  --quiet             only errors and the summary
   --start <time>      cut audio/video: keep from here (90 or 1:30)
   --end <time>        cut audio/video: keep until here
   --audio-bitrate <k> audio quality in kbit/s (8-512)
@@ -40,10 +44,12 @@ Convert options:
   --no-audio          video without its sound track
   --gif-fps <5-30>    frames per second of a GIF
   --gif-width <px>    width of a GIF (120-1280)
+  --video-mbps <n>    video quality in Mbit/s (1-30)
 
 Presets come from `list-presets` and use your saved settings.
 Video, MP3 and OGG need the ffmpeg the app installed; it is never downloaded here.
 Exit codes: 0 ok, 1 a file failed, 2 usage error.
+Scripts: use tessera-cli.exe (next to tessera.exe); it waits for the job and returns the exit code.
 ";
 
 fn out(s: &str) {
@@ -125,7 +131,7 @@ fn formats(ext: &str) -> i32 {
     let ext = ext.trim_start_matches('.');
     let Some(src) = Format::from_ext(ext) else {
         err(&format!("unknown format: {ext}"));
-        return EXIT_FAILED;
+        return EXIT_USAGE;
     };
     out(&format!("{} ({})", ext.to_lowercase(), src.kind()));
     let targets = supported_targets(ext);
@@ -147,6 +153,17 @@ fn formats(ext: &str) -> i32 {
     EXIT_OK
 }
 
+/// Why a file cannot be planned: shown as "skipped" with this reason.
+type Plan = Result<(Format, Options), String>;
+
+/// How a run reports itself (`--dry-run`, `--json`, `--quiet`).
+#[derive(Clone, Copy, Default)]
+struct Style {
+    dry_run: bool,
+    json: bool,
+    quiet: bool,
+}
+
 fn convert_cmd(a: ConvertArgs) -> i32 {
     let mut opts = Options {
         resize: a.resize,
@@ -165,15 +182,173 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
     if let Some(w) = a.gif_width {
         opts.quality.gif_width = w;
     }
+    if let Some(m) = a.video_mbps {
+        opts.quality.video_mbps = m;
+    }
     if let Some(q) = a.quality {
         opts.quality.jpeg = q;
         opts.quality.webp = q;
     }
     opts.output.conflict = a.conflict;
-    if let Some(d) = a.out {
+    if let Some(d) = a.out.clone() {
         opts.output.dir = OutDir::Fixed(d);
     }
-    run_files(&a.files, |_| Some((a.target, opts.clone())))
+    for w in ignored_flags(&a) {
+        err(&format!("warning: {w}"));
+    }
+    let files = expand_inputs(&a.files, a.recursive);
+    if files.is_empty() {
+        err("error: no files matched");
+        return EXIT_USAGE;
+    }
+    let target = a.target;
+    let style = Style {
+        dry_run: a.dry_run,
+        json: a.json,
+        quiet: a.quiet,
+    };
+    run_files(&files, style, |path| {
+        let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+            return Err(
+                "no file extension: add one (like .png) so Tessera can tell the format".into(),
+            );
+        };
+        if Format::from_ext(ext) == Some(target) && !opts.transforms() {
+            return Err(format!(
+                "already {}: nothing to convert (add --max-edge, --percent, --max-size ... to change it)",
+                target.ext().to_uppercase()
+            ));
+        }
+        Ok((target, opts.clone()))
+    })
+}
+
+/// Flags the chosen target cannot use: not an error, but silence would mislead.
+fn ignored_flags(a: &ConvertArgs) -> Vec<String> {
+    let t = a.target;
+    let kind = t.kind();
+    let av = kind == "audio" || kind == "video";
+    let video = kind == "video";
+    let mut v = Vec::new();
+    let mut add = |on: bool, flag: &str, why: &str| {
+        if on {
+            v.push(format!("--{flag} is ignored for {} ({why})", t.ext()));
+        }
+    };
+    add(a.mono && !av, "mono", "the result has no audio");
+    add(
+        a.no_audio && !video,
+        "no-audio",
+        "only video has a sound track to remove",
+    );
+    add(
+        (a.start.is_some() || a.end.is_some()) && !av,
+        "start and --end",
+        "only audio and video can be cut",
+    );
+    add(
+        a.audio_kbps.is_some() && !(av && !matches!(t, Format::Wav | Format::Flac)),
+        "audio-bitrate",
+        "lossless or no audio",
+    );
+    add(
+        (a.gif_fps.is_some() || a.gif_width.is_some()) && t != Format::Gif,
+        "gif-fps and --gif-width",
+        "only GIF output uses them",
+    );
+    add(
+        a.video_mbps.is_some() && !video,
+        "video-mbps",
+        "only video uses it",
+    );
+    add(
+        a.quality.is_some() && !matches!(t, Format::Jpg | Format::Webp),
+        "quality",
+        "only JPG and WebP use it",
+    );
+    v
+}
+
+/// `*` and `?` in a file name, folders (their supported files), and `--recursive`.
+fn expand_inputs(files: &[PathBuf], recursive: bool) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for f in files {
+        let name = f.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if name.contains('*') || name.contains('?') {
+            let dir = f
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .unwrap_or(Path::new("."));
+            let mut hits: Vec<PathBuf> = std::fs::read_dir(dir)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.is_file()
+                        && p.file_name()
+                            .and_then(|n| n.to_str())
+                            .is_some_and(|n| wildcard(name, n))
+                })
+                .collect();
+            hits.sort();
+            out.extend(hits);
+        } else if f.is_dir() {
+            collect_dir(f, recursive, 0, &mut out);
+        } else {
+            out.push(f.clone());
+        }
+    }
+    out
+}
+
+fn collect_dir(dir: &Path, recursive: bool, depth: u8, out: &mut Vec<PathBuf>) {
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .collect();
+    entries.sort();
+    for p in entries {
+        let is_link = std::fs::symlink_metadata(&p).is_ok_and(|m| m.file_type().is_symlink());
+        if p.is_file() {
+            let supported = p
+                .extension()
+                .and_then(|e| e.to_str())
+                .and_then(Format::from_ext)
+                .is_some();
+            if supported {
+                out.push(p);
+            }
+        } else if p.is_dir() && recursive && depth < 8 && !is_link {
+            collect_dir(&p, recursive, depth + 1, out);
+        }
+    }
+}
+
+/// Case-insensitive match of `name` against a pattern with `*` and `?`.
+fn wildcard(pat: &str, name: &str) -> bool {
+    let p: Vec<char> = pat.to_lowercase().chars().collect();
+    let n: Vec<char> = name.to_lowercase().chars().collect();
+    let (mut pi, mut ni, mut star, mut mark) = (0, 0, None, 0);
+    while ni < n.len() {
+        if pi < p.len() && (p[pi] == '?' || p[pi] == n[ni]) {
+            pi += 1;
+            ni += 1;
+        } else if pi < p.len() && p[pi] == '*' {
+            star = Some(pi);
+            mark = ni;
+            pi += 1;
+        } else if let Some(s) = star {
+            pi = s + 1;
+            mark += 1;
+            ni = mark;
+        } else {
+            return false;
+        }
+    }
+    p[pi..].iter().all(|&c| c == '*')
 }
 
 fn preset_cmd(id: &str, files: &[PathBuf]) -> i32 {
@@ -182,44 +357,92 @@ fn preset_cmd(id: &str, files: &[PathBuf]) -> i32 {
         err(&format!(
             "unknown preset: {id} (see `tessera list-presets`)"
         ));
-        return EXIT_FAILED;
+        return EXIT_USAGE;
     };
     let opts = p.options_for(&s);
-    run_files(files, |path| {
+    let files = expand_inputs(files, false);
+    run_files(&files, Style::default(), |path| {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        p.resolve(ext, &opts).map(|t| (t, opts.clone()))
+        p.resolve(ext, &opts)
+            .map(|t| (t, opts.clone()))
+            .ok_or_else(|| "this preset does not apply to this kind of file".to_string())
     })
 }
 
-/// Converts each file with what `plan` picks (None = not applicable). Exit code 1 if any failed.
-fn run_files(files: &[PathBuf], plan: impl Fn(&Path) -> Option<(Format, Options)>) -> i32 {
-    let (mut failed, mut ffmpeg_ok) = (0, None);
+/// One line of JSON per file (`--json`).
+fn json_line(file: &Path, ok: bool, key: &str, text: &str) {
+    let v = serde_json::json!({ "file": file.display().to_string(), "ok": ok, key: text });
+    out(&v.to_string());
+}
+
+/// Converts each file with what `plan` picks. Exit 1 if any failed or nothing could be done.
+fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i32 {
+    let (mut failed, mut skipped, mut done, mut ffmpeg_ok) = (0, 0, 0, None);
     let n = files.len();
     for (i, path) in files.iter().enumerate() {
         let tag = format!("[{}/{n}] {}", i + 1, path.display());
-        let Some((target, opts)) = plan(path) else {
-            err(&format!("{tag}: not supported here, skipped"));
-            failed += 1;
-            continue;
+        let (target, opts) = match plan(path) {
+            Ok(p) => p,
+            Err(reason) => {
+                if style.json {
+                    json_line(path, false, "skipped", &reason);
+                } else {
+                    err(&format!("{tag}: skipped: {reason}"));
+                }
+                skipped += 1;
+                continue;
+            }
         };
+        if style.dry_run {
+            if style.json {
+                json_line(path, true, "would_convert_to", target.ext());
+            } else {
+                out(&format!("{tag} -> .{} (dry run)", target.ext()));
+            }
+            done += 1;
+            continue;
+        }
         let mut last = 0.0f32;
         let on_progress = |p: f32| {
             let step = (p * 4.0).floor() / 4.0;
-            if step > last && step < 1.0 {
+            if step > last && step < 1.0 && !style.quiet && !style.json {
                 last = step;
                 out(&format!("{tag} {:.0}%", step * 100.0));
             }
         };
         match convert_one(path, target, &opts, &mut ffmpeg_ok, on_progress) {
-            Ok(dest) => out(&format!("{tag} -> {}", dest.display())),
+            Ok(dest) => {
+                done += 1;
+                if style.json {
+                    json_line(path, true, "output", &dest.display().to_string());
+                } else if !style.quiet {
+                    out(&format!("{tag} -> {}", dest.display()));
+                }
+                let big = std::fs::metadata(&dest).is_ok_and(|m| m.len() > 20_000_000);
+                if big && target == Format::Gif {
+                    err(&format!(
+                        "warning: {} is over 20 MB: lower --gif-width or --gif-fps for a smaller GIF",
+                        dest.display()
+                    ));
+                }
+            }
             Err(e) => {
-                err(&format!("{tag}: {e}"));
+                if style.json {
+                    json_line(path, false, "error", &e);
+                } else {
+                    err(&format!("{tag}: {e}"));
+                }
                 failed += 1;
             }
         }
     }
     if failed > 0 {
         err(&format!("{failed} of {n} failed"));
+    }
+    if skipped > 0 && !style.json {
+        err(&format!("{skipped} skipped"));
+    }
+    if failed > 0 || (done == 0 && skipped > 0) {
         EXIT_FAILED
     } else {
         EXIT_OK
@@ -268,4 +491,100 @@ fn convert_one(
         convert(path, target, opts, progress)
     };
     r.map_err(|e| e.message(lang))
+}
+
+#[cfg(test)]
+mod more_cli_tests {
+    use super::*;
+    use crate::cli::{parse, Cli, Command};
+
+    #[test]
+    fn wildcards_match_like_a_shell_would() {
+        assert!(wildcard("*.png", "A.PNG"));
+        assert!(wildcard("img_??.jpg", "img_07.jpg"));
+        assert!(wildcard("*", "x"));
+        assert!(!wildcard("*.png", "a.jpg"));
+        assert!(!wildcard("a?c", "ac"));
+    }
+
+    #[test]
+    fn folders_and_globs_expand_to_files() {
+        let d = tempfile::tempdir().unwrap();
+        for n in ["a.png", "b.jpg", "c.txt"] {
+            std::fs::write(d.path().join(n), b"x").unwrap();
+        }
+        std::fs::create_dir(d.path().join("sub")).unwrap();
+        std::fs::write(d.path().join("sub").join("d.png"), b"x").unwrap();
+        let names = |v: Vec<PathBuf>| -> Vec<String> {
+            v.iter()
+                .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+                .collect()
+        };
+        assert_eq!(
+            names(expand_inputs(&[d.path().to_path_buf()], false)),
+            ["a.png", "b.jpg"]
+        );
+        assert_eq!(
+            names(expand_inputs(&[d.path().to_path_buf()], true)),
+            ["a.png", "b.jpg", "d.png"]
+        );
+        assert_eq!(
+            names(expand_inputs(&[d.path().join("*.png")], false)),
+            ["a.png"]
+        );
+    }
+
+    #[test]
+    fn ignored_flags_name_the_flag_and_the_reason() {
+        let args = |v: &[&str]| -> ConvertArgs {
+            let a: Vec<String> = v.iter().map(|s| s.to_string()).collect();
+            match parse(&[vec!["convert".to_string()], a].concat(), None) {
+                Cli::Cmd(Command::Convert(c)) => c,
+                other => panic!("not a convert: {other:?}"),
+            }
+        };
+        let w = ignored_flags(&args(&[
+            "x.png",
+            "--to",
+            "jpg",
+            "--mono",
+            "--gif-fps",
+            "10",
+            "--quality",
+            "80",
+        ]));
+        assert_eq!(w.len(), 2, "{w:?}");
+        assert!(w.iter().any(|m| m.contains("--mono")) && w.iter().any(|m| m.contains("gif")));
+        assert!(
+            ignored_flags(&args(&["x.mp4", "--to", "mp3", "--mono", "--start", "2"])).is_empty()
+        );
+        assert_eq!(
+            ignored_flags(&args(&["x.mp4", "--to", "wav", "--audio-bitrate", "96"])).len(),
+            1
+        );
+    }
+
+    #[test]
+    fn new_flags_parse() {
+        let a: Vec<String> = [
+            "convert",
+            "dir",
+            "--to",
+            "jpg",
+            "--recursive",
+            "--dry-run",
+            "--json",
+            "--quiet",
+            "--video-mbps",
+            "4",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        let Cli::Cmd(Command::Convert(c)) = parse(&a, None) else {
+            panic!("did not parse");
+        };
+        assert!(c.recursive && c.dry_run && c.json && c.quiet);
+        assert_eq!(c.video_mbps, Some(4));
+    }
 }

@@ -47,6 +47,8 @@ tessera formats png
 
 Exit codes: 0 ok, 1 a file failed, 2 usage error.
 
+In scripts use `tessera-cli.exe` (installed next to `tessera.exe`): the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`.
+
 ## ffmpeg
 
 Video and a few audio and image formats need ffmpeg. Tessera downloads one pinned LGPL build (about 170 MB, SHA-256 checked) on first run and tells you first. Nothing else is downloaded, and the update check is off until you turn it on.
