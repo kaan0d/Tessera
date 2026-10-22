@@ -130,7 +130,7 @@
   const DICT = {
     en: {
       install_title: "Install Tessera", update_title: "Update Tessera", lead: "Right-click any file, pick a format, done.",
-      install_to: "Install to", no_admin: "no admin rights needed", browse: "Browse",
+      install_to: "Install to", browse: "Browse",
       keep: "Keep settings inside the app folder",
       keep_hint: "Settings, history and menu icons go to <b>data</b> next to the app instead of %APPDATA%.",
       install: "Install", update: "Update", uninstall: "Uninstall", cancel: "Cancel", open: "Open Tessera", close: "Close",
@@ -169,7 +169,7 @@
     },
     tr: {
       install_title: "Tessera'yı kur", update_title: "Tessera'yı güncelle", lead: "Herhangi bir dosyaya sağ tıkla, biçimi seç, bitti.",
-      install_to: "Kurulum yeri", no_admin: "yönetici izni gerekmez", browse: "Gözat",
+      install_to: "Kurulum yeri", browse: "Gözat",
       keep: "Ayarları uygulama klasöründe tut",
       keep_hint: "Ayarlar, geçmiş ve menü simgeleri %APPDATA% yerine uygulamanın yanındaki <b>data</b> klasörüne gider.",
       install: "Kur", update: "Güncelle", uninstall: "Kaldır", cancel: "Vazgeç", open: "Tessera'yı aç", close: "Kapat",

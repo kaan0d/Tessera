@@ -49,9 +49,10 @@ body{
 /* text views stacked in one cell, cross-fading */
 .views{display:grid;min-height:0}
 .view{grid-area:1/1;align-self:center;opacity:0;translate:0 14px;pointer-events:none;visibility:hidden;
-  transition:opacity .45s var(--ease),translate .6s var(--ease),visibility 0s .6s}
+  transition:none}
 [data-state=welcome][data-mode=install] .v-welcome,[data-state=welcome][data-mode=uninstall] .v-remove,[data-state=run] .v-run,[data-state=done][data-mode=install] .v-done,[data-state=done][data-mode=uninstall] .v-gone{
-  opacity:1;translate:0 0;pointer-events:auto;visibility:visible;transition-delay:.15s,.15s,0s}
+  opacity:1;translate:0 0;pointer-events:auto;visibility:visible;
+  transition:opacity .45s var(--ease) .12s,translate .6s var(--ease) .12s}
 h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.01em}
 .lead{margin:0;color:var(--ink);opacity:.82;font-size:14px}
 .fine{margin:8px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
@@ -100,7 +101,7 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 /* only the buttons of the current state are visible */
 #go{opacity:1}
 #open,#close{opacity:0;translate:0 14px;pointer-events:none;visibility:hidden}
-[data-state=run] #go,[data-state=done] #go{opacity:0;translate:0 -14px;pointer-events:none;visibility:hidden;transition:translate .4s var(--ease),opacity .3s,visibility 0s .4s}
+[data-state=run] #go,[data-state=done] #go{opacity:0;translate:0 -14px;pointer-events:none;visibility:hidden;transition:none}
 [data-state=done] #open,[data-state=done] #close{opacity:1;translate:0 0;pointer-events:auto;visibility:visible;transition-delay:.9s}
 [data-state=done] #close{transition-delay:1s}
 
@@ -186,3 +187,4 @@ html[lang=tr] .sign{order:-1;margin:.34em .08em 0 0}
 .foot{flex:none;margin-top:30px}
 [data-state=run] .foot{margin-top:0}
 .v-run .tip{position:absolute;left:0;right:0;top:100%;margin:0}
+[data-state=run] #cancel{transition:none}
