@@ -30,6 +30,14 @@ pub fn convert(
     if let Some(done) = jpeg_into_pdf(src, from, target, opts, w) {
         return done;
     }
+    // a JPEG that only has to lose its metadata keeps its pixels: no second lossy pass, no growth
+    if from == Format::Jpg && target == Format::Jpg && opts.strip_metadata {
+        let upright = transform::file_orientation(src).is_none_or(|o| o == 1);
+        if let Some((data, ..)) = upright.then(|| jpeg_passthrough(src, opts)).flatten() {
+            w.write_all(&data)?;
+            return Ok(());
+        }
+    }
     opts.check_cancel()?;
     let img = load(src, from, opts)?;
     opts.check_cancel()?;
@@ -236,13 +244,30 @@ impl Page {
 
 /// The page for one image of a merged PDF: same rules as a single image -> PDF job.
 pub fn pdf_page(src: &Path, from: Format, opts: &Options) -> Result<Page, ConvertError> {
+    pdf_page_as(src, from, opts, false)
+}
+
+/// Same, but every page is stored as a JPEG (alpha flattened on white): the way to meet a size limit.
+pub fn pdf_page_lossy(src: &Path, from: Format, opts: &Options) -> Result<Page, ConvertError> {
+    pdf_page_as(src, from, opts, true)
+}
+
+fn pdf_page_as(
+    src: &Path,
+    from: Format,
+    opts: &Options,
+    lossy: bool,
+) -> Result<Page, ConvertError> {
     if from == Format::Jpg {
         if let Some((data, w, h, gray)) = jpeg_passthrough(src, opts) {
             return Ok(Page::Jpeg { data, w, h, gray });
         }
     }
-    let img = load(src, from, opts)?;
-    if matches!(from, Format::Jpg | Format::Raw) {
+    let mut img = load(src, from, opts)?;
+    if lossy && img.color().has_alpha() {
+        img = DynamicImage::ImageRgb8(flatten_on_white(&img));
+    }
+    if lossy || matches!(from, Format::Jpg | Format::Raw) {
         let (data, gray) = photo_jpeg(&img, opts.quality.jpeg.clamp(1, 100))?;
         return Ok(Page::Jpeg {
             data,
@@ -303,6 +328,9 @@ fn jpeg_passthrough(src: &Path, opts: &Options) -> Option<(Vec<u8>, u32, u32, bo
 /// JPEG has no alpha: composite over white instead of letting transparency go black.
 fn flatten_on_white(img: &DynamicImage) -> RgbImage {
     let rgba = img.to_rgba8();
+    if rgba.pixels().any(|p| p[3] < 255) {
+        super::ALPHA_FLATTENED.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
     let mut out = RgbImage::new(rgba.width(), rgba.height());
     for (o, p) in out.pixels_mut().zip(rgba.pixels()) {
         let a = u32::from(p[3]);

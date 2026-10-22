@@ -20,7 +20,8 @@ pub const HELP: &str = "\
 Usage:
   {p} convert <files, folders or *.png> --to <ext> [options]
   {p} preset <id> <files...> [--dry-run --json --quiet --out <dir> --conflict <mode>]
-  {p} merge <pdf|audio> <files...> [--out <dir>]  several images into one PDF, or audio files into one
+  {p} merge <pdf|audio> <files...> [--out <dir>] [--max-size <size>] [--to mp3|wav|flac]
+                      several images into one PDF, or audio files into one (audio is FLAC unless --to)
   {p} list-presets
   {p} formats <ext>
   {p} --version | --help
@@ -391,6 +392,9 @@ fn preset_cmd(id: &str, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
     if flags.overwrite {
         opts.output.conflict = crate::convert::Conflict::Overwrite;
     }
+    if flags.max_bytes.is_some() {
+        opts.max_bytes = flags.max_bytes;
+    }
     let style = Style {
         dry_run: flags.dry_run,
         json: flags.json,
@@ -418,6 +422,7 @@ fn merge_cmd(kind: crate::MergeKind, files: &[PathBuf], flags: crate::cli::RunFl
     if flags.overwrite {
         opts.output.conflict = crate::convert::Conflict::Overwrite;
     }
+    opts.max_bytes = flags.max_bytes;
     if flags.dry_run {
         out(&format!(
             "{} files -> one {} (dry run)",
@@ -426,7 +431,21 @@ fn merge_cmd(kind: crate::MergeKind, files: &[PathBuf], flags: crate::cli::RunFl
         ));
         return EXIT_OK;
     }
-    match crate::convert::combine::run(kind, &files, &opts, |_| {}) {
+    let merged = crate::convert::combine::run(kind, &files, &opts, |_| {}).and_then(|dest| {
+        // audio is merged as FLAC; --to asks for another result
+        match flags.to.as_deref().and_then(Format::from_ext) {
+            Some(t) if kind == crate::MergeKind::Audio && t != Format::Flac => {
+                let mut o = opts.clone();
+                o.max_bytes = None;
+                let mut ff = None;
+                let r = convert_one(&dest, t, &o, &mut ff, |_| {});
+                let _ = std::fs::remove_file(&dest);
+                r.map_err(crate::convert::ConvertError::Encode)
+            }
+            _ => Ok(dest),
+        }
+    });
+    match merged {
         Ok(dest) => {
             let size = std::fs::metadata(&dest)
                 .map(|m| human(m.len()))
@@ -484,10 +503,10 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i
             continue;
         }
         if style.dry_run {
-            let name = path.with_extension(target.ext());
+            let name = dry_name(path, target, &opts);
             if style.json {
-                json_line(path, true, "would_convert_to", target.ext());
-            } else {
+                json_line(path, true, "output", &name.display().to_string());
+            } else if !style.quiet {
                 out(&format!("{tag} -> {} (dry run)", name.display()));
             }
             done += 1;
@@ -501,9 +520,18 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i
                 out(&format!("{tag} {:.0}%", step * 100.0));
             }
         };
+        crate::convert::ALPHA_FLATTENED.store(false, std::sync::atomic::Ordering::Relaxed);
         match convert_one(path, target, &opts, &mut ffmpeg_ok, on_progress) {
             Ok(dest) => {
                 done += 1;
+                if crate::convert::ALPHA_FLATTENED.swap(false, std::sync::atomic::Ordering::Relaxed)
+                    && !style.quiet
+                {
+                    err(&format!(
+                        "{tag}: note: transparency was replaced with white ({} has none)",
+                        target.ext().to_uppercase()
+                    ));
+                }
                 if style.json {
                     json_line(path, true, "output", &dest.display().to_string());
                 } else if !style.quiet {
@@ -543,6 +571,23 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i
         EXIT_FAILED
     } else {
         EXIT_OK
+    }
+}
+
+/// The file a real run would write, for `--dry-run`: the same naming and conflict rules, but no
+/// folder is created.
+fn dry_name(path: &Path, target: Format, opts: &Options) -> PathBuf {
+    let plain = |dir: Option<&Path>| {
+        let f = path.with_extension(target.ext());
+        match dir {
+            Some(d) => d.join(f.file_name().unwrap_or_default()),
+            None => f,
+        }
+    };
+    match &opts.output.dir {
+        OutDir::Fixed(d) if !d.is_dir() => plain(Some(d)),
+        _ => crate::convert::output::plan(path, target.ext(), &opts.output)
+            .unwrap_or_else(|_| plain(None)),
     }
 }
 

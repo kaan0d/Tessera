@@ -96,11 +96,19 @@ pub fn images_to_pdf(
     opts.check_cancel()?;
     let dest = plan(&list[0].0, "pdf", opts)?;
     progress(0.0);
-    output::write_atomic(&dest, |w| {
+    // the pages for `o`, as the bytes of the finished PDF
+    let build = |o: &Options,
+                 lossy: bool,
+                 progress: &mut dyn FnMut(f32)|
+     -> Result<Vec<u8>, ConvertError> {
         let (mut pages, mut bytes) = (Vec::new(), 0u64);
         for (i, (src, from)) in list.iter().enumerate() {
-            opts.check_cancel()?;
-            let page = image::pdf_page(src, *from, opts)?;
+            o.check_cancel()?;
+            let page = if lossy {
+                image::pdf_page_lossy(src, *from, o)?
+            } else {
+                image::pdf_page(src, *from, o)?
+            };
             bytes += page.bytes();
             if bytes > super::transform::MAX_ALLOC {
                 return Err(ConvertError::TooLarge);
@@ -109,7 +117,40 @@ pub fn images_to_pdf(
             progress((i + 1) as f32 / list.len() as f32 * 0.9);
         }
         let payloads: Vec<_> = pages.iter().map(image::Page::payload).collect();
-        pdf::write_pages(&payloads, w)
+        let mut out = Vec::new();
+        pdf::write_pages(&payloads, &mut out)?;
+        Ok(out)
+    };
+    let mut plain = opts.clone();
+    plain.max_bytes = None;
+    let mut result = build(&plain, false, &mut progress)?;
+    if let Some(max) = opts.max_bytes.filter(|m| result.len() as u64 > *m) {
+        // over the limit: JPEG pages, quality first, then smaller pictures
+        let mut fitted = None;
+        'search: for edge in [
+            None,
+            Some(2400),
+            Some(1800),
+            Some(1400),
+            Some(1000),
+            Some(700),
+        ] {
+            for q in [80u8, 60, 45] {
+                let mut o = plain.clone();
+                o.resize = edge.map(super::Resize::MaxEdge);
+                o.quality.jpeg = q;
+                let bytes = build(&o, true, &mut |_| {})?;
+                if bytes.len() as u64 <= max {
+                    fitted = Some(bytes);
+                    break 'search;
+                }
+            }
+        }
+        result = fitted.ok_or(ConvertError::TargetSize)?;
+    }
+    output::write_atomic(&dest, |w| {
+        std::io::Write::write_all(w, &result)?;
+        Ok(())
     })?;
     progress(1.0);
     Ok(dest)

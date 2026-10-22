@@ -277,6 +277,8 @@ fn still_args(input: &Path, output: &Path) -> Vec<OsString> {
 pub struct Probe {
     pub duration_us: Option<u64>,
     pub has_audio: bool,
+    /// Whole-file bitrate in bit/s ("bitrate: 1511 kb/s").
+    pub bitrate_bps: Option<u64>,
 }
 
 pub fn parse_probe(stderr: &str) -> Probe {
@@ -284,6 +286,12 @@ pub fn parse_probe(stderr: &str) -> Probe {
     for l in stderr.lines() {
         if let Some(d) = parse_duration_us(l) {
             p.duration_us = Some(d);
+            p.bitrate_bps = l
+                .split("bitrate:")
+                .nth(1)
+                .and_then(|r| r.trim().strip_suffix("kb/s"))
+                .and_then(|k| k.trim().parse::<u64>().ok())
+                .map(|k| k * 1000);
         }
         if l.contains("Stream #") && l.contains(": Audio:") {
             p.has_audio = true;
@@ -310,6 +318,8 @@ fn probe(ffmpeg: &Path, src: &Path) -> Result<Probe, ConvertError> {
 const RETRIES: usize = 3;
 /// Share of the byte budget left for the payload: container overhead and rate-control error.
 const HEADROOM: f64 = 0.90;
+/// A source with fewer bits than this still gets this much video bitrate (bit/s).
+const MIN_COPY_BPS: u64 = 250_000;
 /// Below this a video is not worth producing (bit/s).
 const MIN_VIDEO_BPS: f64 = 30_000.0;
 /// Below this an audio track is not worth producing (bit/s).
@@ -483,6 +493,16 @@ pub fn convert_with_ffmpeg(
                 let b =
                     plan_bitrates(max, d, target, p.has_audio && !opts.no_audio, &opts.quality)?;
                 (x.video_bps, x.audio_bps) = (b.video_bps, b.audio_bps);
+            }
+        }
+        // a re-encode never needs more bits than the source had: small clips stay small
+        if target.is_video() {
+            if let Some(src_bps) = probe(ffmpeg, &src)?.bitrate_bps {
+                let cap = src_bps.max(MIN_COPY_BPS);
+                let cur = x
+                    .video_bps
+                    .unwrap_or(u64::from(opts.quality.video_mbps) * 1_000_000);
+                x.video_bps = Some(cur.min(cap));
             }
         }
         output::write_via_temp(&dest, |tmp| {
@@ -869,9 +889,15 @@ mod tests {
             p,
             Probe {
                 duration_us: Some(6_020_000),
-                has_audio: true
+                has_audio: true,
+                bitrate_bps: None
             }
         );
+        let p = parse_probe(
+            "  Duration: 00:00:10.00, start: 0.000000, bitrate: 1511 kb/s
+",
+        );
+        assert_eq!(p.bitrate_bps, Some(1_511_000));
         let p = parse_probe(
             "  Duration: N/A
   Stream #0:0: Video: h264

@@ -676,7 +676,14 @@ mod tests {
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         assert_eq!(verb_names(&png).len(), 9); // 8 formats + custom
         st.menu.presets_enabled = true;
-        st.hidden_presets = vec!["web".into(), "pdf".into(), "webp".into(), "ico".into()];
+        st.hidden_presets = vec![
+            "web".into(),
+            "pdf".into(),
+            "webp".into(),
+            "ico".into(),
+            "instagram".into(),
+            "podcast".into(),
+        ];
         st.menu_sources = vec!["png".into(), "heic".into()];
         install_at(&root, exe, &st).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();

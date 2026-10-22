@@ -144,6 +144,29 @@ pub fn builtins() -> Vec<Preset> {
             },
         ),
         builtin("ico", &["image"], "ico", None, o()),
+        builtin(
+            "instagram",
+            &["image"],
+            "jpg",
+            None,
+            PresetOptions {
+                resize: Some(Resize::MaxEdge(1080)),
+                strip_metadata: true,
+                jpeg_quality: Some(85),
+                ..o()
+            },
+        ),
+        builtin(
+            "podcast",
+            &["audio"],
+            "mp3",
+            None,
+            PresetOptions {
+                audio_kbps: Some(96),
+                mono: true,
+                ..o()
+            },
+        ),
     ]
 }
 
@@ -326,16 +349,32 @@ mod tests {
         };
         assert_eq!(
             ids("png", &s),
-            ["web", "whatsapp", "email", "discord", "strip", "pdf", "webp", "ico"]
+            [
+                "web",
+                "whatsapp",
+                "email",
+                "discord",
+                "strip",
+                "pdf",
+                "webp",
+                "ico",
+                "instagram"
+            ]
         );
         // a JPEG stays JPEG for web (same format with transforms); pdf source gets none
-        assert_eq!(ids("jpg", &s).len(), 8);
+        assert_eq!(ids("jpg", &s).len(), 9);
         assert!(ids("pdf", &s).is_empty());
         assert_eq!(ids("mp4", &s), ["email", "discord", "strip"]);
-        assert!(ids("mp3", &s).is_empty());
+        assert_eq!(ids("mp3", &s), ["podcast"]);
         // source-only image formats cannot keep their format, but can become JPG/PDF
-        assert_eq!(ids("heic", &s), ["web", "whatsapp", "pdf", "webp", "ico"]);
-        assert_eq!(ids("svg", &s), ["web", "whatsapp", "pdf", "webp", "ico"]);
+        assert_eq!(
+            ids("heic", &s),
+            ["web", "whatsapp", "pdf", "webp", "ico", "instagram"]
+        );
+        assert_eq!(
+            ids("svg", &s),
+            ["web", "whatsapp", "pdf", "webp", "ico", "instagram"]
+        );
     }
 
     #[test]

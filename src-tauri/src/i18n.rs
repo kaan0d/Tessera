@@ -93,6 +93,8 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("preset.pdf", "Make a PDF", "PDF yap"),
     ("preset.webp", "Make a WebP", "WebP yap"),
     ("preset.ico", "Make an icon (ICO)", "Simge yap (ICO)"),
+    ("preset.instagram", "For Instagram (1080 px)", "Instagram için (1080 px)"),
+    ("preset.podcast", "Podcast: mono MP3, 96 kbps", "Podcast: mono MP3, 96 kbps"),
     // preset errors
     (
         "preset.bad_name",

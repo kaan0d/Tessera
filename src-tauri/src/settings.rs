@@ -161,7 +161,12 @@ impl Default for Settings {
             ffmpeg_later: false,
             presets: vec![],
             // in the chooser and the CLI from the start, in the Explorer menu once switched on
-            hidden_presets: vec!["webp".into(), "ico".into()],
+            hidden_presets: vec![
+                "webp".into(),
+                "ico".into(),
+                "instagram".into(),
+                "podcast".into(),
+            ],
             history_enabled: true,
             updates: Updates::default(),
             watch: Watch::default(),
@@ -504,7 +509,9 @@ mod tests {
         let s = load_from(&p);
         assert!(s.menu.presets_enabled && s.menu.merge && s.history_enabled);
         assert!(!s.updates.check_on_start && !s.watch.enabled && s.watch.rules.is_empty());
-        assert!(s.presets.is_empty() && s.hidden_presets == ["webp", "ico"]);
+        assert!(
+            s.presets.is_empty() && s.hidden_presets == ["webp", "ico", "instagram", "podcast"]
+        );
     }
 
     #[test]

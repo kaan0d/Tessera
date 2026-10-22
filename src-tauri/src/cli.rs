@@ -250,10 +250,14 @@ pub struct RunFlags {
     pub quiet: bool,
     pub out: Option<PathBuf>,
     pub overwrite: bool,
+    /// `--max-size`: a limit for the result (merge, and a preset's own limit when given).
+    pub max_bytes: Option<u64>,
+    /// `--to` of `merge audio`: mp3, wav or flac.
+    pub to: Option<String>,
 }
 
 fn parse_merge(args: &[String]) -> Command {
-    match parse_preset(args) {
+    match parse_run(args, true) {
         Command::Preset { id, files, flags } => match MergeKind::from_arg(&id) {
             Some(kind) => Command::MergeFiles { kind, files, flags },
             None => usage("merge needs pdf or audio first: merge pdf a.png b.png"),
@@ -264,6 +268,10 @@ fn parse_merge(args: &[String]) -> Command {
 }
 
 fn parse_preset(args: &[String]) -> Command {
+    parse_run(args, false)
+}
+
+fn parse_run(args: &[String], merge: bool) -> Command {
     let (mut id, mut files, mut flags) = (None, vec![], RunFlags::default());
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -275,6 +283,14 @@ fn parse_preset(args: &[String]) -> Command {
                 Some(d) => flags.out = Some(PathBuf::from(d)),
                 None => return usage("--out needs a folder"),
             },
+            "--max-size" => match it.next().and_then(|v| parse_size(v)) {
+                Some(n) => flags.max_bytes = Some(n),
+                None => return usage("--max-size must look like 8MB or 500KB"),
+            },
+            "--to" if merge => match it.next().map(|v| v.to_lowercase()) {
+                Some(v) if matches!(v.as_str(), "mp3" | "wav" | "flac") => flags.to = Some(v),
+                _ => return usage("--to must be mp3, wav or flac"),
+            },
             "--conflict" => match it.next().map(String::as_str) {
                 Some("rename") => flags.overwrite = false,
                 Some("overwrite") => flags.overwrite = true,
@@ -282,7 +298,8 @@ fn parse_preset(args: &[String]) -> Command {
             },
             f if f.starts_with("--") => {
                 return usage(&format!(
-                    "unknown option {f} (presets take --dry-run, --json, --quiet, --out and --conflict)"
+                    "unknown option {f} (allowed: --dry-run, --json, --quiet, --out, --max-size, --conflict{})",
+                    if merge { ", --to" } else { "" }
                 ))
             }
             _ if id.is_none() => id = Some(a.clone()),

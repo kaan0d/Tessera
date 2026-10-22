@@ -9,6 +9,11 @@
 
 mod audio;
 pub mod combine;
+
+/// Set when an encode replaced real transparency with white (JPG, BMP have none); the CLI
+/// reads and clears it to print a note.
+pub static ALPHA_FLATTENED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
 mod error;
 pub mod ffmpeg;
 mod image;

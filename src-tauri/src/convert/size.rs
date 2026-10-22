@@ -6,7 +6,7 @@ use image::DynamicImage;
 use super::{transform, ConvertError};
 
 /// Smallest long edge the downscale loop will go to.
-const MIN_EDGE: u32 = 48;
+const MIN_EDGE: u32 = 128;
 /// Downscale rounds before giving up.
 const MAX_ROUNDS: usize = 12;
 
@@ -47,7 +47,7 @@ fn best_quality<E>(
 /// `lossy` encoders get their quality searched in `1..=q0` (the best fit wins); a lossless
 /// one, or a lossy one at quality 1, shrinks the image instead. `enc(image, quality)` must
 /// return the whole encoded file. Fails with `TargetSize` when the long edge would drop
-/// below 48 px or after 12 rounds.
+/// below 160 px or after 12 rounds.
 pub fn fit(
     img: &DynamicImage,
     max: u64,
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn lossless_shrinks_by_size() {
-        let img = noisy(300, 300);
+        let img = noisy(600, 600);
         let png = |i: &DynamicImage, _q| {
             let mut c = std::io::Cursor::new(Vec::new());
             i.write_to(&mut c, image::ImageFormat::Png)?;
@@ -162,7 +162,7 @@ mod tests {
         let full = png(&img, 100).unwrap().len() as u64;
         let out = fit(&img, full / 3, false, 90, png).unwrap();
         assert!(out.len() as u64 <= full / 3);
-        assert!(image::load_from_memory(&out).unwrap().width() < 300);
+        assert!(image::load_from_memory(&out).unwrap().width() < 600);
     }
 
     #[test]

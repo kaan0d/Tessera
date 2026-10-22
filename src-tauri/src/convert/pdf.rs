@@ -100,7 +100,7 @@ fn write_page(pdf: &mut Pdf, payload: &Payload, ids: (Ref, Ref, Ref, Ref, Ref)) 
         }
         Payload::Pixels(img) => {
             let (color, alpha) = split(img);
-            let packed = deflate(&color.1);
+            let packed = deflate(&png_predict(&color.1, pw as usize, usize::from(color.0)));
             let mut x = pdf.image_xobject(image_id, &packed);
             x.width(pw as i32).height(ph as i32).bits_per_component(8);
             if color.0 == 1 {
@@ -112,16 +112,77 @@ fn write_page(pdf: &mut Pdf, payload: &Payload, ids: (Ref, Ref, Ref, Ref, Ref)) 
                 x.s_mask(mask_id);
             }
             x.filter(Filter::FlateDecode);
+            x.decode_parms()
+                .predictor(pdf_writer::types::Predictor::PngOptimum)
+                .colors(i32::from(color.0))
+                .bits_per_component(8)
+                .columns(pw as i32);
             x.finish();
             if let Some(a) = alpha {
-                let packed = deflate(&a);
+                let packed = deflate(&png_predict(&a, pw as usize, 1));
                 let mut m = pdf.image_xobject(mask_id, &packed);
                 m.width(pw as i32).height(ph as i32).bits_per_component(8);
                 m.color_space().device_gray();
                 m.filter(Filter::FlateDecode);
+                m.decode_parms()
+                    .predictor(pdf_writer::types::Predictor::PngOptimum)
+                    .colors(1)
+                    .bits_per_component(8)
+                    .columns(pw as i32);
             }
         }
     }
+}
+
+/// PNG row filters (PDF "Predictor 15"): every row gets the filter byte that leaves the smallest
+/// sum of absolute residuals, which is what makes lossless pixels as small as a PNG.
+fn png_predict(raw: &[u8], width: usize, bpp: usize) -> Vec<u8> {
+    let stride = width * bpp;
+    if stride == 0 {
+        return raw.to_vec();
+    }
+    let mut out = Vec::with_capacity(raw.len() + raw.len() / stride + 1);
+    let zero = vec![0u8; stride];
+    let mut prev: &[u8] = &zero;
+    let paeth = |a: u8, b: u8, c: u8| {
+        let (ia, ib, ic) = (i32::from(a), i32::from(b), i32::from(c));
+        let p = ia + ib - ic;
+        let (pa, pb, pc) = ((p - ia).abs(), (p - ib).abs(), (p - ic).abs());
+        if pa <= pb && pa <= pc {
+            a
+        } else if pb <= pc {
+            b
+        } else {
+            c
+        }
+    };
+    for row in raw.chunks(stride) {
+        let left = |i: usize| if i >= bpp { row[i - bpp] } else { 0 };
+        let upleft = |i: usize| if i >= bpp { prev[i - bpp] } else { 0 };
+        let filtered = |t: u8| -> Vec<u8> {
+            (0..row.len())
+                .map(|i| {
+                    row[i].wrapping_sub(match t {
+                        0 => 0,
+                        1 => left(i),
+                        2 => prev[i],
+                        _ => paeth(left(i), prev[i], upleft(i)),
+                    })
+                })
+                .collect()
+        };
+        let cost =
+            |v: &[u8]| -> u64 { v.iter().map(|&b| u64::from((b as i8).unsigned_abs())).sum() };
+        let best = [0u8, 1, 2, 4]
+            .iter()
+            .map(|&t| (t, filtered(if t == 4 { 3 } else { t })))
+            .min_by_key(|(_, v)| cost(v))
+            .unwrap_or((0, row.to_vec()));
+        out.push(best.0);
+        out.extend_from_slice(&best.1);
+        prev = row;
+    }
+    out
 }
 
 fn deflate(raw: &[u8]) -> Vec<u8> {
