@@ -153,20 +153,44 @@
     next();
   }
 
-  document.getElementById("go").addEventListener("click", () => {
-    const dir = document.getElementById("dir").value.trim();
-    document.getElementById("doneDir").textContent = "Installed to " + dir;
-    if (window.__TAURI__) window.__TAURI__.core.invoke("install_start", { dir, portable: document.getElementById("portable").checked }).catch(() => {});
-    else demo();
-  });
+  const T = window.__TAURI__;
   const dirEl = document.getElementById("dir");
+  const errEl = document.getElementById("err");
   const SAMPLE = [String.raw`D:\Apps\Tessera`, String.raw`C:\Users\you\AppData\Local\Tessera`]; // preview only
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    setState("welcome"); tp = dp = 0; popAt.fill(0); curLabel = "";
+  }
+
+  document.getElementById("go").addEventListener("click", () => {
+    errEl.textContent = "";
+    const dir = dirEl.value.trim();
+    document.getElementById("doneDir").textContent = "Installed to " + dir;
+    if (!T) return demo();
+    T.core.invoke("install_start", { req: { dir, portable: document.getElementById("portable").checked } })
+      .then((real) => { dirEl.value = real; document.getElementById("doneDir").textContent = "Installed to " + real; api.start(); })
+      .catch((e) => showError(String(e)));
+  });
   document.getElementById("browse").addEventListener("click", () => {
-    if (window.__TAURI__) window.__TAURI__.core.invoke("pick_install_dir").then((p) => { if (p) dirEl.value = p; }).catch(() => {});
+    if (T) T.core.invoke("pick_install_dir").then((p) => { if (p) dirEl.value = p; }).catch(() => {});
     else dirEl.value = SAMPLE[(SAMPLE.indexOf(dirEl.value) + 1) % SAMPLE.length];
   });
-  document.getElementById("close").addEventListener("click", () => { if (window.__TAURI__) window.__TAURI__.window.getCurrentWindow().close(); else location.reload(); });
-  document.getElementById("open").addEventListener("click", () => { if (window.__TAURI__) window.__TAURI__.core.invoke("install_open").catch(() => {}); else location.reload(); });
+  document.getElementById("close").addEventListener("click", () => { if (T) T.core.invoke("install_close"); else location.reload(); });
+  document.getElementById("open").addEventListener("click", () => { if (T) T.core.invoke("install_open"); else location.reload(); });
+
+  if (T) {
+    T.event.listen("install-progress", (e) => api.set(e.payload.p, e.payload.label, e.payload.step));
+    T.event.listen("install-error", (e) => showError(String(e.payload)));
+    T.core.invoke("install_defaults").then((d) => {
+      dirEl.value = d.dir;
+      document.getElementById("portable").checked = d.portable;
+      if (d.installed) {
+        document.querySelector(".v-welcome h1").textContent = "Update Tessera";
+        document.getElementById("go").textContent = "Update";
+      }
+    }).catch(() => {});
+  }
 
   // ?state=run&p=0.6 / ?state=done for screenshots
   const q = new URLSearchParams(location.search);

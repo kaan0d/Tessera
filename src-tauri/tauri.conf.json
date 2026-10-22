@@ -51,6 +51,18 @@
         "closable": false,
         "alwaysOnTop": true,
         "visible": false
+      },
+      {
+        "label": "setup",
+        "create": false,
+        "title": "Tessera Setup",
+        "url": "install.html",
+        "width": 800,
+        "height": 484,
+        "center": true,
+        "resizable": false,
+        "maximizable": false,
+        "visible": true
       }
     ],
     "security": {
@@ -59,34 +71,15 @@
     "withGlobalTauri": true
   },
   "bundle": {
-    "active": true,
-    "targets": [
-      "nsis"
-    ],
-    "publisher": "kaan0d",
-    "copyright": "MIT License",
-    "shortDescription": "Convert files from the right-click menu",
+    "active": false,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/icon.png",
       "icons/icon.ico"
     ],
-    "resources": {
-      "../LICENSE": "LICENSE",
-      "../THIRD-PARTY-LICENSES.md": "THIRD-PARTY-LICENSES.md"
-    },
-    "windows": {
-      "nsis": {
-        "installMode": "currentUser",
-        "installerHooks": "installer/hooks.nsh",
-        "languages": [
-          "English",
-          "Turkish"
-        ],
-        "displayLanguageSelector": false
-      }
-    },
-    "licenseFile": "../LICENSE"
+    "publisher": "kaan0d",
+    "copyright": "MIT License",
+    "shortDescription": "Convert files from the right-click menu"
   }
 }

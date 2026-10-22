@@ -4,7 +4,8 @@
   "windows": [
     "main",
     "progress",
-    "drop"
+    "drop",
+    "setup"
   ],
   "permissions": [
     "core:event:default",

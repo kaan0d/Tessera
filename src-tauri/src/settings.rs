@@ -247,7 +247,16 @@ impl Settings {
     }
 }
 
+/// Settings, history, ffmpeg and menu icons. A `data` folder next to the exe (the installer's
+/// "keep settings inside the app folder" option) wins over `%APPDATA%\Tessera`.
 pub fn data_dir() -> PathBuf {
+    if let Some(d) = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(|p| p.join("data")))
+        .filter(|d| d.is_dir())
+    {
+        return d;
+    }
     let base = std::env::var_os("APPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(std::env::temp_dir);

@@ -8,6 +8,7 @@ pub mod folder;
 pub mod headless;
 pub mod history;
 pub mod i18n;
+pub mod install;
 pub mod panel;
 pub mod preset;
 pub mod queue;
@@ -1044,8 +1045,92 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             let a = shell::set_autostart(false);
             Some(code(shell::remove().and(a)))
         }
+        Cli::Uninstall => Some(install::uninstall()),
+        Cli::Install { dir, portable } => {
+            let req = install::Request {
+                dir: dir.clone(),
+                portable: *portable,
+            };
+            Some(i32::from(install::run_install(&req, |_| {}).is_err()))
+        }
         _ => None,
     }
+}
+
+struct SetupState(Mutex<Option<PathBuf>>);
+
+#[tauri::command]
+fn install_defaults() -> install::Defaults {
+    install::defaults()
+}
+
+/// Folder picker for the installer; the result already ends in `Tessera`.
+#[tauri::command]
+async fn pick_install_dir(app: AppHandle) -> Option<String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .blocking_pick_folder()?
+        .into_path()
+        .ok()?;
+    let dir = install::normalize_dir(&picked.to_string_lossy()).ok()?;
+    Some(dir.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn install_start(app: AppHandle, req: install::Request) -> Result<String, String> {
+    let dir = install::normalize_dir(&req.dir)?;
+    std::thread::spawn(move || {
+        match install::run_install(&req, |p| {
+            let _ = app.emit("install-progress", p);
+        }) {
+            Ok(exe) => {
+                *app.state::<SetupState>().0.lock().unwrap() = Some(exe);
+                let _ = app.emit("install-done", ());
+            }
+            Err(message) => {
+                let _ = app.emit("install-error", message);
+            }
+        }
+    });
+    Ok(dir.to_string_lossy().into_owned())
+}
+
+/// "Open Tessera" on the last screen: start the installed copy and quit the installer.
+#[tauri::command]
+fn install_open(app: AppHandle, state: State<SetupState>) {
+    if let Some(exe) = state.0.lock().unwrap().clone() {
+        let _ = std::process::Command::new(exe).spawn();
+    }
+    app.exit(0);
+}
+
+#[tauri::command]
+fn install_close(app: AppHandle) {
+    app.exit(0);
+}
+
+/// The installer window: nothing else of the app (tray, watchers, queue) starts.
+fn run_setup() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            install_defaults,
+            pick_install_dir,
+            install_start,
+            install_open,
+            install_close
+        ])
+        .setup(|app| {
+            app.manage(SetupState(Mutex::new(None)));
+            if let Some(cfg) = app.config().app.windows.iter().find(|c| c.label == "setup") {
+                tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?.build()?;
+            }
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("failed to start the installer");
 }
 
 pub fn run() {
@@ -1058,6 +1143,9 @@ pub fn run() {
     };
     if let Some(code) = run_headless(&cmd) {
         std::process::exit(code);
+    }
+    if install::needs_setup(&cmd) {
+        return run_setup();
     }
 
     tauri::Builder::default()
@@ -1132,7 +1220,13 @@ pub fn run() {
                 customs: Arc::default(),
             });
             // windows are built only now so their pages never invoke a command before the state exists
-            for cfg in &app.config().app.windows {
+            for cfg in app
+                .config()
+                .app
+                .windows
+                .iter()
+                .filter(|c| c.label != "setup")
+            {
                 tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?.build()?;
             }
             if let Some(w) = app.get_webview_window("progress") {

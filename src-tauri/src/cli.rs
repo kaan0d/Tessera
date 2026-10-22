@@ -8,6 +8,15 @@ use crate::folder::Action;
 pub enum Cli {
     InstallMenu,
     RemoveMenu,
+    /// Show the installer window even when the exe looks installed.
+    Setup,
+    /// Silent install (`--install <dir> [--portable]`), no window.
+    Install {
+        dir: String,
+        portable: bool,
+    },
+    /// Remove the installed app (menu, shortcuts, uninstall entry, files).
+    Uninstall,
     InstallSendTo,
     RemoveSendTo,
     Convert {
@@ -98,6 +107,15 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
     match args.first().map(String::as_str) {
         Some("--install-menu") => Cli::InstallMenu,
         Some("--remove-menu") => Cli::RemoveMenu,
+        Some("--setup") => Cli::Setup,
+        Some("--install") => match args.get(1) {
+            Some(dir) if !dir.starts_with("--") => Cli::Install {
+                dir: dir.clone(),
+                portable: args.iter().any(|a| a == "--portable"),
+            },
+            _ => Cli::Normal,
+        },
+        Some("--uninstall") => Cli::Uninstall,
         Some("--background") => Cli::Background,
         Some("--convert") => {
             let Some(target) = args.get(1).and_then(|t| Format::from_ext(t)) else {
@@ -280,6 +298,16 @@ mod tests {
         assert_eq!(parse(&a(&[]), None), Cli::Normal);
         assert_eq!(parse(&a(&["--install-menu"]), None), Cli::InstallMenu);
         assert_eq!(parse(&a(&["--remove-menu"]), None), Cli::RemoveMenu);
+        assert_eq!(parse(&a(&["--setup"]), None), Cli::Setup);
+        assert_eq!(
+            parse(&a(&["--install", r"D:\Apps", "--portable"]), None),
+            Cli::Install {
+                dir: r"D:\Apps".into(),
+                portable: true
+            }
+        );
+        assert_eq!(parse(&a(&["--install"]), None), Cli::Normal);
+        assert_eq!(parse(&a(&["--uninstall"]), None), Cli::Uninstall);
         assert_eq!(parse(&a(&["--background"]), None), Cli::Background);
         assert_eq!(parse(&a(&["--bogus"]), None), Cli::Normal);
     }

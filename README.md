@@ -26,17 +26,12 @@ cargo build --release
 target\release\tessera.exe
 ```
 
-The menu registers on first run. `tessera.exe --remove-menu` takes it out again.
-
-Per-user installer (no admin, installs to `%LOCALAPPDATA%\Tessera`, uninstall removes the menu, autostart entry and app data):
+Run the release exe and it opens its own installer: pick a folder (default `%LOCALAPPDATA%\Tessera`), optionally keep settings and history in a `data` folder next to the app instead of `%APPDATA%`, and it registers the menu, a Start menu shortcut and an uninstall entry. No admin rights, no separate setup file.
 
 ```
-npm install
-npx tauri build --bundles nsis
+tessera.exe --install D:\Apps --portable   silent install (adds \Tessera to the folder)
+tessera.exe --uninstall                      remove menu, shortcuts, entry, files and data
 ```
-
-Output: `src-tauri	argeteleaseundle
-sis\Tessera_<version>_x64-setup.exe`.
 
 ## Usage
 
