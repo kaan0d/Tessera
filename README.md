@@ -58,6 +58,7 @@ Files never leave your computer. On disk, in `%APPDATA%\Tessera` (or the `data` 
 ## Limits
 
 - Windows 11 shows classic menus under "Show more options".
+- The window needs Microsoft Edge WebView2, which Windows 11 and current Windows 10 already include.
 - The installer is not code signed, so SmartScreen may warn on first run.
 - A full-screen exclusive game hides the progress panel.
 - RAW files use the embedded JPEG preview, not a full demosaic.
