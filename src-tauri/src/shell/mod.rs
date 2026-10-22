@@ -270,11 +270,16 @@ fn flatten(groups: Vec<Vec<Row>>) -> Vec<Row> {
     rows
 }
 
+/// A menu label as Explorer wants it: `&` marks a keyboard shortcut there, so a literal one is doubled.
+fn menu_text(text: &str) -> String {
+    text.replace('&', "&&")
+}
+
 /// Writes `rows` as the `shell` verbs under `parent`; groups become nested cascades.
 fn write_rows(parent: &RegKey, rows: &[Row], icons: Option<&Path>) -> io::Result<()> {
     for (i, r) in rows.iter().enumerate() {
         let (verb, _) = parent.create_subkey(format!(r"shell\{i:02}_{}", r.name))?;
-        verb.set_value("MUIVerb", &r.text)?;
+        verb.set_value("MUIVerb", &menu_text(&r.text))?;
         if r.separator {
             verb.set_value("CommandFlags", &0x20u32)?;
         }
@@ -560,6 +565,15 @@ mod tests {
             .enum_keys()
             .map(Result::unwrap)
             .collect()
+    }
+
+    #[test]
+    fn an_ampersand_in_a_label_is_doubled_for_explorer() {
+        assert_eq!(
+            menu_text("Remove location & camera info"),
+            "Remove location && camera info"
+        );
+        assert_eq!(menu_text("Plain"), "Plain");
     }
 
     #[test]
