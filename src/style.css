@@ -119,9 +119,6 @@ main{height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
 @media (hover:hover){.link:hover{background:var(--accent-soft)}}
 .aside .link,.hint .link{padding:0;text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px}
 .mark{width:36px;height:36px;flex:none;border-radius:23%;box-shadow:0 4px 12px var(--accent-ink),var(--shadow-1)}
-.mark-sheet{fill:rgba(255,255,255,.28)}
-.mark-ink{fill:#fff}
-.mark-fold{fill:none;stroke:rgba(255,255,255,.9);stroke-width:1.4;stroke-linejoin:round}
 .brand h1{font-family:var(--font-display);font-size:var(--t-lg);font-weight:600;letter-spacing:-.01em;line-height:1.15}
 .brand .sub{font-size:var(--t-sm);color:var(--muted)}
 .brand{flex:1;min-width:0}
@@ -380,9 +377,6 @@ input[type=radio]:checked::after{scale:1}
 .enter .nav>button,.enter .nav-group{animation:settle var(--d4) var(--ease) both}
 .enter .nav-thumb{animation:fade var(--d4) var(--ease) both}
 @keyframes settle{from{opacity:0;translate:0 8px}}
-/* the mark fills once as the window opens: the concept in miniature */
-.enter .mark-ink{animation:rise var(--d4) var(--ease) 120ms both}
-@keyframes rise{from{translate:0 13px}}
 
 /* ---------- shared bits for the newer sections ---------- */
 .iconbtn{flex:none;width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:var(--r-sm);background:transparent;color:var(--muted);cursor:pointer;
