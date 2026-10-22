@@ -947,4 +947,15 @@ body.settings::after,body.drop::after{content:"";position:fixed;inset:0;z-index:
 /* a chip that is on says so with more than a tint: a check, and a clearer rim when off */
 .chip{border-color:color-mix(in srgb,var(--ink) 30%,transparent)}
 .chip[aria-pressed=true]{border-color:var(--accent-ink)}
-.chip[aria-pressed=true]:not(.dr-choice)::before{content:"¹3" / "";font-size:10px;font-weight:800;margin-right:5px;line-height:1}
+.chip[aria-pressed=true]:not(.dr-choice)::before{content:"✓" / "";font-size:10px;font-weight:800;margin-right:5px;line-height:1}
+
+/* a long list tucked away: the file types are decided by the profile, the list is for fine tuning */
+.fold>.card{margin-top:var(--s2)}
+.fold-sum{display:flex;align-items:center;gap:var(--s2);cursor:pointer;list-style:none;padding:4px 2px;border-radius:var(--r-md);user-select:none}
+.fold-sum::-webkit-details-marker{display:none}
+.fold-sum .group-title{flex:none;padding-left:2px}
+.fold-sum .count{margin-left:auto}
+.fold-ic{width:16px;height:16px;color:var(--muted);rotate:0deg;transition:rotate var(--d3) var(--ease)}
+.fold[open] .fold-ic{rotate:180deg}
+@media (hover:hover){.fold-sum:hover .group-title{color:var(--ink)}}
+.fold-sum:focus-visible{outline-offset:2px}

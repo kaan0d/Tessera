@@ -180,13 +180,17 @@
         <p id="t-hint" class="foot hint" role="status" aria-live="polite"></p>
       </div>
     </div>
-    <div class="group">
-      <h2 class="group-title" id="h-sources" data-i18n="fmt.sources"></h2>
+    <details class="group fold" id="g-sources">
+      <summary class="fold-sum">
+        <span class="group-title" id="h-sources" data-i18n="fmt.sources"></span>
+        <span class="count" id="s-count"></span>
+        <svg class="ic fold-ic" aria-hidden="true"><use href="#i-chevron"/></svg>
+      </summary>
       <div class="card">
         <div id="sources" class="kinds" aria-labelledby="h-sources"></div>
         <p id="s-hint" class="foot hint" role="status" aria-live="polite"></p>
       </div>
-    </div>
+    </details>
     <p id="cat-err" class="banner err" role="alert" hidden></p>
   </section>
 

@@ -309,6 +309,7 @@ function paintHints(flash) {
   } else hint(th, '', []);
   th.hidden = !th.childNodes.length;
   const n = s.menu_sources.length;
+  $('s-count').textContent = t('fmt.src_count', { n });
   const raw = s.menu_sources.some((e) => RAW.includes(e));
   hint($('s-hint'), n ? '' : 'warn', n
     ? [t('hint.sources', { n }), ' ', t('hint.src_ff'), ...(raw ? [' ' + t('hint.raw')] : [])]
