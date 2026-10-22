@@ -254,8 +254,8 @@ function paintProfiles() {
     c.children[1].textContent = t(`profile.${c.dataset.id}_desc`);
     c.setAttribute('aria-pressed', c.dataset.id === cur);
   }
-  $('p-hint').hidden = !!cur;
-  $('p-hint').textContent = t('profile.custom_desc');
+  // always shown with a line of the same size, so picking a chip never pushes the page down
+  $('p-hint').textContent = t(cur ? 'profile.matched' : 'profile.custom_desc');
 }
 
 function paintChips() {
