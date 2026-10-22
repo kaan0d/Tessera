@@ -167,3 +167,6 @@ body.ready{opacity:1}
 .check small{text-wrap:balance}
 html[lang=tr] .sign{order:-1;margin:.34em .08em 0 0}
 .pct{direction:ltr}
+
+/* the percentage is a progress number: not shown before an install or removal starts */
+[data-state=welcome] .pct{opacity:0}

@@ -256,6 +256,16 @@ function paintProfiles() {
   }
   // always shown with a line of the same size, so picking a chip never pushes the page down
   $('p-hint').textContent = t(cur !== 'custom' ? 'profile.matched' : 'profile.custom_desc');
+  const fine = document.createElement('button');
+  fine.type = 'button';
+  fine.className = 'link inline';
+  fine.textContent = t('fmt.fine_tune');
+  fine.onclick = () => {
+    const g = $('g-sources');
+    g.open = true;
+    g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  $('p-hint').append(fine);
 }
 
 function paintChips() {

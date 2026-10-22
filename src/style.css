@@ -27,7 +27,7 @@
 }
 @media (prefers-color-scheme:dark){:root{
   --ground:#0f0f12;--ground-2:#0a0a0c;--surface:#17171b;--surface-2:#1d1d22;
-  --ink:#f2f2f0;--muted:#a3a3a8;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16);
+  --ink:#f2f2f0;--muted:#b4b4ba;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16);
   --accent:#ff6b4a;--accent-hover:#ff8566;--on-accent:#1d1d22;--accent-soft:rgba(255,107,74,.13);--accent-ink:rgba(255,107,74,.34);
   --danger:#ff7b93;--danger-hover:#ff98ab;--on-danger:#2d0710;--danger-soft:rgba(255,123,147,.13);
   --warn-bg:#3a2f12;--warn-ink:#f7d774;--warn-line:rgba(247,215,116,.22);
@@ -81,7 +81,7 @@ main{height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
   .nav>button:hover .ic{translate:1px 0}}
 .nav>button:active{scale:.98}
 .nav>button:focus-visible{outline-offset:-2px;border-radius:var(--r-md)}
-.nav-group{font-size:var(--t-xs);font-weight:600;color:var(--muted);opacity:.8;padding:12px 12px 4px}
+.nav-group{font-size:var(--t-xs);font-weight:600;color:var(--muted);opacity:1;padding:12px 12px 4px}
 
 /* sticky section header: title + one line; a hairline settles in once content scrolls under it */
 .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:var(--s3);padding:18px var(--s5) 14px;
@@ -886,7 +886,7 @@ body.settings{
    Always the dark palette (it floats over any desktop), the tile mark fills with the job,
    the percentage is light and large, the bar carries the pale-to-coral ramp. */
 .p-card{
-  --ink:#f2f2f0;--muted:#a3a3a8;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.15);
+  --ink:#f2f2f0;--muted:#b4b4ba;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.15);
   --surface:#17171b;--surface-2:#1d1d22;--track:rgba(255,255,255,.12);
   --accent:#ff6b4a;--accent-hover:#ff8566;--on-accent:#1d1d22;--accent-soft:rgba(255,107,74,.14);--accent-ink:rgba(255,107,74,.34);
   --danger:#ff7b93;--danger-soft:rgba(255,123,147,.13);--on-danger:#2d0710;
@@ -982,3 +982,26 @@ body.drop:not(.kb) .dr-card:focus-visible{outline:none;background-size:100% 0%;b
 /* the chooser list fades at its lower edge, so a cut-off card reads as "more below" */
 .dr-body{-webkit-mask-image:linear-gradient(#000 calc(100% - 22px),transparent);mask-image:linear-gradient(#000 calc(100% - 22px),transparent)}
 kbd{font-size:12px}
+
+/* ---------- review round 4 ---------- */
+/* switches and segmented controls answer the pointer with more than a border */
+@media (hover:hover){
+  .switch:hover{box-shadow:0 0 0 4px color-mix(in srgb,var(--ink) 9%,transparent)}
+  .switch:checked:hover{box-shadow:0 0 0 4px var(--accent-soft)}
+  .seg>button:not([aria-selected=true]):hover,.seg>label:not(:has(:checked)):hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+}
+/* the chosen panel corner shows a miniature of the card that will appear there */
+.corner:has(:checked) .slot{
+  border-style:solid;
+  background:
+    linear-gradient(var(--accent) 0 0) 12px calc(100% - 12px)/58% 3px no-repeat,
+    linear-gradient(var(--ink) 0 0) 40px 16px/46% 6px no-repeat,
+    linear-gradient(var(--muted) 0 0) 40px 29px/30% 4px no-repeat,
+    linear-gradient(var(--accent) 0 0) 12px 14px/20px 20px no-repeat,
+    var(--surface)}
+/* a card where something failed says so in its bar and its keystone */
+.p-head.fail .bar>span{background:var(--danger)}
+.p-head.fail .mark-arch .key{fill:var(--danger)}
+/* the profile line carries a link to the file types */
+#p-hint{justify-content:space-between;gap:12px}
+#p-hint .link{flex:none}

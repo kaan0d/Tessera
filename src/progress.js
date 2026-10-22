@@ -190,6 +190,7 @@ function paintSummary() {
   const pct = all.length ? all.reduce((a, j) => a + (j.state === 'run' ? j.percent : 100), 0) / all.length : 0;
   const head = document.getElementById('head');
   head.classList.toggle('done', !run && all.length > 0);
+  head.classList.toggle('fail', !run && err > 0);
   document.getElementById('p-title').textContent = run ? t('p.running') : err ? t('p.some_failed') : t('p.done');
   document.getElementById('p-sub').textContent = run
     ? all.length === 1 ? t('p.sub_one') : t('p.sub_run', { done: all.length - run, total: all.length })
