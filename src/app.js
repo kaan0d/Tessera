@@ -711,6 +711,7 @@ document.addEventListener('visibilitychange', intro);
 
 // features.js loads after this file; DOMContentLoaded waits for both
 document.addEventListener('DOMContentLoaded', async () => {
+  initWindowChrome();
   bind();
   dragDrop();
   paintNav();

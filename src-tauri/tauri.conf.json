@@ -16,7 +16,9 @@
         "height": 700,
         "resizable": false,
         "maximizable": false,
-        "visible": false
+        "visible": false,
+        "decorations": false,
+        "shadow": true
       },
       {
         "label": "drop",
@@ -30,7 +32,9 @@
         "maximizable": false,
         "minimizable": false,
         "alwaysOnTop": true,
-        "visible": false
+        "visible": false,
+        "decorations": false,
+        "shadow": true
       },
       {
         "label": "progress",

@@ -354,6 +354,7 @@ async function fetchFiles(tries) {
 
 document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && fetchFiles(4));
 document.addEventListener('DOMContentLoaded', () => {
+  initWindowChrome(() => invoke('close_drop_window').catch(() => {}));
   if (T && T.event) {
     T.event.listen('drop-files', (e) => load(e.payload));
     T.event.listen('language-changed', (e) => (setLang(e.payload), relabel()));

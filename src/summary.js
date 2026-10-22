@@ -30,3 +30,15 @@ function ffTag() {
   s.textContent = 'ffmpeg';
   return s;
 }
+
+/** The window has no native frame: drag from the header, minimize and close are ours. */
+function initWindowChrome(closeFn) {
+  const w = window.__TAURI__ && window.__TAURI__.window && window.__TAURI__.window.getCurrentWindow
+    ? window.__TAURI__.window.getCurrentWindow() : null;
+  document.querySelectorAll('.top,.top *,.side,.brand-row,.brand,.brand *,.mark-arch,.dr-head,.dr-head *')
+    .forEach((el) => el.setAttribute('data-tauri-drag-region', ''));
+  const min = document.getElementById('wc-min');
+  if (min) min.onclick = () => { if (w) w.minimize().catch(() => {}); };
+  const close = document.getElementById('wc-close');
+  if (close) close.onclick = closeFn || (() => { if (w) w.hide().catch(() => {}); });
+}
