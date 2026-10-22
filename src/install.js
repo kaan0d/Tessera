@@ -68,32 +68,9 @@
     if (f > 0.002) {
       ctx.save();
       ctx.clip(paths[i]);
-      const level = bx.y + bx.h * (1 - f);
-      const amp = f >= 1 ? 0 : Math.min(bx.h, 40) * 0.07 * Math.sin(Math.PI * f) + 0.5;
-      const grad = ctx.createLinearGradient(bx.x, bx.y, bx.x + bx.w, bx.y + bx.h);
-      const col = key ? CORAL : PAPER;
-      grad.addColorStop(0, col[0]); grad.addColorStop(1, col[1]);
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.moveTo(bx.x - 3, bx.y + bx.h + 3);
-      for (let px = -3; px <= bx.w + 3; px += 3) {
-        const w = reduce ? 0 : Math.sin((px / Math.max(bx.w, 20)) * 6.283 * 1.3 + t * 3.2 + i * 1.7) * amp;
-        ctx.lineTo(bx.x + px, level + w);
-      }
-      ctx.lineTo(bx.x + bx.w + 3, bx.y + bx.h + 3); ctx.closePath(); ctx.fill();
-      // soft highlight
-      const h = ctx.createRadialGradient(bx.x + bx.w * 0.28, bx.y + bx.h * 0.18, 0, bx.x + bx.w * 0.28, bx.y + bx.h * 0.18, Math.max(bx.w, bx.h) * 0.9);
-      h.addColorStop(0, "rgba(255,255,255,.32)"); h.addColorStop(0.55, "rgba(255,255,255,0)");
-      ctx.fillStyle = h; ctx.fillRect(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4);
-      // one sweep of light over the finished arch
-      if (doneAt && !reduce) {
-        const sp = (now - doneAt) / 1100;
-        if (sp > 0 && sp < 1) {
-          const d = lerp(-0.2, 1.2, sp) * 256;
-          const sg = ctx.createLinearGradient(d - 70, d - 70, d + 70, d + 70);
-          sg.addColorStop(0, "rgba(255,255,255,0)"); sg.addColorStop(0.5, "rgba(255,255,255,.55)"); sg.addColorStop(1, "rgba(255,255,255,0)");
-          ctx.fillStyle = sg; ctx.fillRect(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4);
-        }
-      }
+      // flat fill rising from the bottom, no wave, no gloss
+      ctx.fillStyle = key ? CORAL[1] : PAPER[0];
+      ctx.fillRect(bx.x - 3, bx.y + bx.h * (1 - f), bx.w + 6, bx.h * f + 3);
       ctx.restore();
     }
     ctx.restore();
