@@ -594,8 +594,8 @@ function ffView(state, text, pct) {
   bar.setAttribute('aria-valuenow', Math.round(p));
   $('ff-pct').hidden = state !== 'downloading';
   $('ff-pct').textContent = t('pct', { n: Math.round(p) });
-  $('ff-retry').hidden = state !== 'error' && state !== 'later';
-  $('ff-retry').querySelector('span').textContent = t(state === 'later' ? 'ff.download_now' : 'ff.retry');
+  $('ff-retry').hidden = state !== 'error' && state !== 'later' && state !== 'ready';
+  $('ff-retry').querySelector('span').textContent = t(state === 'later' ? 'ff.download_now' : state === 'ready' ? 'ff.update' : 'ff.retry');
   const dl = state === 'downloading' ? Math.round(pct) : null;
   if (dl !== ffPct) {
     ffPct = dl;
@@ -613,12 +613,12 @@ async function refreshFfmpeg() {
   try {
     const f = await invoke('ffmpeg_status');
     const pct = f.percent || 0;
-    if (f.ready) ffView('ready', t('ff.ready'));
-    else if (f.downloading) ffView('downloading', t('ff.downloading'), pct);
+    if (f.downloading) ffView('downloading', t('ff.downloading'), pct);
+    else if (f.ready) ffView('ready', t('ff.ready'));
     else if (f.error) ffView('error', t('ff.failed', { err: f.error }));
     else if (f.later) ffView('later', t('ff.later'));
     else ffView('checking', t('ff.checking'));
-    if (!f.ready) ffTimer = setTimeout(refreshFfmpeg, f.downloading ? 1000 : 3000);
+    if (!f.ready || f.downloading) ffTimer = setTimeout(refreshFfmpeg, f.downloading ? 1000 : 3000);
   } catch (e) {
     ffView('error', t('ff.status_err', { err: e }));
     $('ff-retry').hidden = true;

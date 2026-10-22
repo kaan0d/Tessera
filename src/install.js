@@ -136,6 +136,7 @@
       left_entry: "the uninstall entry", left_data: "settings and history", left_files: "the program files",
       ff_note: "Video support will download the next time Tessera opens.",
       ff_skipped: "Video support is off. Turn it on any time in Advanced.",
+      ff_present: "Video support is already installed. Update it any time in Advanced.",
       path: "Add to PATH for terminals",
       path_hint: "Lets you type tessera‑cli in Command Prompt or PowerShell. Most people do not need it.",
       path_note: "PATH updated. Open a new terminal window to use tessera‑cli.",
@@ -176,6 +177,7 @@
       left_entry: "kaldırma kaydı", left_data: "ayarlar ve geçmiş", left_files: "program dosyaları",
       ff_note: "Video desteği Tessera'nın bir sonraki açılışında indirilecek.",
       ff_skipped: "Video desteği kapalı. İstediğin zaman Gelişmiş bölümünden açabilirsin.",
+      ff_present: "Video desteği zaten kurulu. İstediğin zaman Gelişmiş bölümünden güncelleyebilirsin.",
       path: "Terminaller için PATH'e ekle",
       path_hint: "Komut İstemi ve PowerShell'de tessera‑cli yazabilirsin. Çoğu kişiye gerekmez.",
       path_note: "PATH güncellendi. tessera‑cli için yeni bir terminal penceresi aç.",
@@ -324,7 +326,7 @@
       const items = (e.payload || []).map((k) => t("left_" + k)).join(", ");
       document.getElementById("leftNote").textContent = items ? t("left_note").replace("{items}", items) : "";
     });
-    T.event.listen("install-done", (e) => { document.getElementById("ffNote").textContent = e.payload === "failed" ? t("ff_note") : e.payload === "skipped" ? t("ff_skipped") : ""; });
+    T.event.listen("install-done", (e) => { document.getElementById("ffNote").textContent = e.payload === "failed" ? t("ff_note") : e.payload === "skipped" ? t("ff_skipped") : e.payload === "present" ? t("ff_present") : ""; });
     T.core.invoke("install_defaults").then((d) => {
       applyLang(d.lang);
       if (d.mode === "uninstall") {

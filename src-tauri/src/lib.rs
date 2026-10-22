@@ -1169,6 +1169,7 @@ async fn pick_install_dir(app: AppHandle) -> Option<String> {
 #[tauri::command]
 fn install_start(app: AppHandle, req: install::Request) -> Result<String, String> {
     let dir = install::normalize_dir(&req.dir)?;
+    let target = dir.clone();
     std::thread::spawn(move || {
         match install::run_install(&req, |p| {
             let _ = app.emit("install-progress", p);
@@ -1178,6 +1179,7 @@ fn install_start(app: AppHandle, req: install::Request) -> Result<String, String
                 let how = match done.ffmpeg {
                     Some(true) => "ok",
                     Some(false) => "failed",
+                    None if install::ffmpeg_present(&target) => "present",
                     None => "skipped",
                 };
                 let _ = app.emit("install-done", how);

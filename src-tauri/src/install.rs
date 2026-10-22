@@ -109,9 +109,8 @@ pub fn default_dir() -> PathBuf {
         .join(APP_NAME)
 }
 
-pub fn defaults(mode: Mode) -> Defaults {
-    let installed = installed_dir().filter(|d| d.join(EXE_NAME).is_file());
-    let dir = installed.clone().unwrap_or_else(default_dir);
+/// A working ffmpeg already sits in the data folder this install uses (`<dir>\data` or `%APPDATA%\Tessera`).
+pub fn ffmpeg_present(dir: &Path) -> bool {
     let data = if dir.join("data").is_dir() {
         dir.join("data")
     } else {
@@ -120,8 +119,13 @@ pub fn defaults(mode: Mode) -> Defaults {
             .unwrap_or_else(std::env::temp_dir)
             .join(APP_NAME)
     };
-    let ffmpeg =
-        installed.is_some() && crate::ffmpeg::is_working(&data.join("ffmpeg").join("ffmpeg.exe"));
+    crate::ffmpeg::is_working(&data.join("ffmpeg").join("ffmpeg.exe"))
+}
+
+pub fn defaults(mode: Mode) -> Defaults {
+    let installed = installed_dir().filter(|d| d.join(EXE_NAME).is_file());
+    let dir = installed.clone().unwrap_or_else(default_dir);
+    let ffmpeg = installed.is_some() && ffmpeg_present(&dir);
     Defaults {
         ffmpeg,
         lang: if crate::i18n::system_lang() == crate::i18n::Lang::Tr {
