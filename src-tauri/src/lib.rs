@@ -1045,7 +1045,10 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             let a = shell::set_autostart(false);
             Some(code(shell::remove().and(a)))
         }
-        Cli::Uninstall => Some(install::uninstall()),
+        Cli::Uninstall {
+            quiet: true,
+            keep_data,
+        } => Some(install::uninstall_quiet(*keep_data)),
         Cli::Install { dir, portable } => {
             let req = install::Request {
                 dir: dir.clone(),
@@ -1057,11 +1060,14 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
     }
 }
 
-struct SetupState(Mutex<Option<PathBuf>>);
+struct SetupState {
+    mode: install::Mode,
+    exe: Mutex<Option<PathBuf>>,
+}
 
 #[tauri::command]
-fn install_defaults() -> install::Defaults {
-    install::defaults()
+fn install_defaults(state: State<SetupState>) -> install::Defaults {
+    install::defaults(state.mode)
 }
 
 /// Folder picker for the installer; the result already ends in `Tessera`.
@@ -1086,7 +1092,7 @@ fn install_start(app: AppHandle, req: install::Request) -> Result<String, String
             let _ = app.emit("install-progress", p);
         }) {
             Ok(exe) => {
-                *app.state::<SetupState>().0.lock().unwrap() = Some(exe);
+                *app.state::<SetupState>().exe.lock().unwrap() = Some(exe);
                 let _ = app.emit("install-done", ());
             }
             Err(message) => {
@@ -1097,10 +1103,25 @@ fn install_start(app: AppHandle, req: install::Request) -> Result<String, String
     Ok(dir.to_string_lossy().into_owned())
 }
 
+#[tauri::command]
+fn uninstall_start(app: AppHandle, keep_data: bool) -> Result<(), String> {
+    std::thread::spawn(move || {
+        match install::run_uninstall(keep_data, |p| {
+            let _ = app.emit("install-progress", p);
+        }) {
+            Ok(()) => {}
+            Err(message) => {
+                let _ = app.emit("install-error", message);
+            }
+        }
+    });
+    Ok(())
+}
+
 /// "Open Tessera" on the last screen: start the installed copy and quit the installer.
 #[tauri::command]
 fn install_open(app: AppHandle, state: State<SetupState>) {
-    if let Some(exe) = state.0.lock().unwrap().clone() {
+    if let Some(exe) = state.exe.lock().unwrap().clone() {
         let _ = std::process::Command::new(exe).spawn();
     }
     app.exit(0);
@@ -1112,7 +1133,7 @@ fn install_close(app: AppHandle) {
 }
 
 /// The installer window: nothing else of the app (tray, watchers, queue) starts.
-fn run_setup() {
+fn run_setup(mode: install::Mode) {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
@@ -1120,12 +1141,20 @@ fn run_setup() {
             pick_install_dir,
             install_start,
             install_open,
-            install_close
+            install_close,
+            uninstall_start
         ])
-        .setup(|app| {
-            app.manage(SetupState(Mutex::new(None)));
+        .setup(move |app| {
+            app.manage(SetupState {
+                mode,
+                exe: Mutex::new(None),
+            });
             if let Some(cfg) = app.config().app.windows.iter().find(|c| c.label == "setup") {
-                tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?.build()?;
+                let mut w = tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?;
+                if mode == install::Mode::Uninstall {
+                    w = w.title("Uninstall Tessera");
+                }
+                w.build()?;
             }
             Ok(())
         })
@@ -1144,8 +1173,8 @@ pub fn run() {
     if let Some(code) = run_headless(&cmd) {
         std::process::exit(code);
     }
-    if install::needs_setup(&cmd) {
-        return run_setup();
+    if let Some(mode) = install::setup_mode(&cmd) {
+        return run_setup(mode);
     }
 
     tauri::Builder::default()

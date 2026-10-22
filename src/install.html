@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-state="welcome">
+<html lang="en" data-state="welcome" data-mode="install">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -37,12 +37,28 @@
           </span>
         </label>
       </div>
+      <div class="view v-remove">
+        <h1>Remove Tessera?</h1>
+        <p class="lead">It leaves the Explorer menu and the app folder is deleted.</p>
+        <p class="fine err" id="err2" role="alert"></p>
+        <label class="check">
+          <input type="checkbox" id="wipe" checked>
+          <span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg></span>
+          <span class="check-t">Also delete my settings and history
+            <small>Presets, history and the downloaded ffmpeg. Converted files are never touched.</small>
+          </span>
+        </label>
+      </div>
       <div class="view v-run">
         <h1 id="label" aria-live="polite">Copying files</h1>
         <p class="lead"><span id="step">1</span> of 4</p>
         <div class="bar" id="bar" role="progressbar" aria-label="Installing" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="bar-fill"><div class="bar-ink"></div></div>
         </div>
+      </div>
+      <div class="view v-gone">
+        <h1>Tessera is removed</h1>
+        <p class="lead">Your converted files were not touched.</p>
       </div>
       <div class="view v-done">
         <h1>Tessera is ready</h1>
@@ -54,8 +70,9 @@
     <div class="foot">
       <div class="actions">
         <button class="btn primary" id="go" type="button">Install</button>
-        <button class="btn primary" id="open" type="button" tabindex="-1">Open Tessera</button>
-        <button class="btn ghost" id="close" type="button" tabindex="-1">Close</button>
+        <button class="btn ghost" id="cancel" type="button">Cancel</button>
+        <button class="btn primary" id="open" type="button">Open Tessera</button>
+        <button class="btn ghost" id="close" type="button">Close</button>
       </div>
     </div>
   </section>

@@ -50,7 +50,7 @@ body{
 .views{display:grid;min-height:0;padding-bottom:26px}
 .view{grid-area:1/1;align-self:center;opacity:0;translate:0 14px;pointer-events:none;
   transition:opacity .45s var(--ease),translate .6s var(--ease)}
-[data-state=welcome] .v-welcome,[data-state=run] .v-run,[data-state=done] .v-done{
+[data-state=welcome][data-mode=install] .v-welcome,[data-state=welcome][data-mode=uninstall] .v-remove,[data-state=run] .v-run,[data-state=done][data-mode=install] .v-done,[data-state=done][data-mode=uninstall] .v-gone{
   opacity:1;translate:0 0;pointer-events:auto;transition-delay:.15s}
 h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.01em}
 .lead{margin:0;color:var(--ink);opacity:.82;font-size:14px}
@@ -134,3 +134,8 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 
 .err{color:#ff8a80;margin:8px 0 0;min-height:0}
 .err:empty{display:none}
+
+/* uninstall: Cancel beside the main button, no "Open" on the last screen */
+#cancel{opacity:0;translate:0 14px;pointer-events:none;visibility:hidden}
+[data-state=welcome][data-mode=uninstall] #cancel{opacity:1;translate:0 0;pointer-events:auto;visibility:visible;transition-delay:.15s}
+[data-mode=uninstall] #open{display:none}

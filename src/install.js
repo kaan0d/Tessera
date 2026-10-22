@@ -23,23 +23,24 @@
   const clamp = (v) => Math.max(0, Math.min(1, v));
   const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
-  let tp = 0, dp = 0, last = performance.now(), state = "welcome", doneAt = 0;
+  let mode = "install", tp = 0, dp = 0, last = performance.now(), state = "welcome", doneAt = 0;
   const popAt = new Array(9).fill(0);
 
   function tile(i, t, now) {
     const col = Math.floor(i / 3), row = i % 3;
-    const f = reduce ? clamp(dp * 9 - i) : clamp(dp * 9 - i);
+    const raw = clamp(dp * 9 - i);
+    const f = mode === "uninstall" ? 1 - raw : raw; // removing drains the mark
     let x = OFF + col * (TILE + GAP), y = OFF + row * (TILE + GAP);
     const cx = x + TILE / 2, cy = y + TILE / 2;
 
     // pop when a tile completes
-    if (f >= 0.999 && !popAt[i]) popAt[i] = now;
+    if (mode === "install" && f >= 0.999 && !popAt[i]) popAt[i] = now;
     let sc = 1;
     if (popAt[i] && !reduce) { const d = (now - popAt[i]) / 1000; sc = 1 + 0.12 * Math.exp(-6 * d) * Math.sin(16 * d + 1.2); }
 
     // idle breathing while waiting
     let idle = 0;
-    if (state === "welcome" && !reduce) idle = 0.5 + 0.5 * Math.sin(t * 1.4 - (col + row) * 0.7);
+    if (state === "welcome" && mode === "install" && !reduce) idle = 0.5 + 0.5 * Math.sin(t * 1.4 - (col + row) * 0.7);
 
     const r = TILE * lerp(R0, RT[col], easeOut(f));
     ctx.save();
@@ -110,8 +111,8 @@
 
   function setState(s) { state = s; root.dataset.state = s; }
   function finish(now) {
-    setState("done"); doneAt = now + 250;
-    setTimeout(() => document.getElementById("open").focus(), 1100);
+    setState("done"); doneAt = mode === "install" ? now + 250 : 0;
+    setTimeout(() => document.getElementById(mode === "install" ? "open" : "close").focus(), 1100);
   }
 
   let curLabel = "";
@@ -127,16 +128,19 @@
   }
 
   const api = {
-    start() { if (state !== "welcome") return; setState("run"); setLabel("Copying files", 1); },
+    start() { if (state !== "welcome") return; setState("run"); setLabel(mode === "install" ? "Copying files" : "Closing Tessera", 1); },
+    setMode(m) { mode = m; root.dataset.mode = m; if (m === "uninstall") popAt.fill(1); },
     set(p, label, step) { tp = clamp(p); setLabel(label, step); },
   };
   window.tesseraInstall = api;
 
   // preview simulation: irregular, like real file copying
-  const STAGES = [[0.55, "Copying files", 1, 3600], [0.76, "Registering the menu", 2, 1500], [0.93, "Adding icons and shortcuts", 3, 1400], [1, "Finishing up", 4, 900]];
+  const STAGES_UN = [[0.2, "Closing Tessera", 1, 1200], [0.5, "Removing the menu", 2, 1400], [0.75, "Removing shortcuts and entries", 3, 1400], [1, "Deleting files", 4, 1800]];
+  const STAGES_IN = [[0.55, "Copying files", 1, 3600], [0.76, "Registering the menu", 2, 1500], [0.93, "Adding icons and shortcuts", 3, 1400], [1, "Finishing up", 4, 900]];
   function demo() {
     api.start();
     let from = 0, k = 0;
+    const STAGES = mode === "install" ? STAGES_IN : STAGES_UN;
     const next = () => {
       if (k >= STAGES.length) return;
       const [to, label, step, ms] = STAGES[k++];
@@ -159,12 +163,16 @@
   const SAMPLE = [String.raw`D:\Apps\Tessera`, String.raw`C:\Users\you\AppData\Local\Tessera`]; // preview only
 
   function showError(msg) {
-    errEl.textContent = msg;
-    setState("welcome"); tp = dp = 0; popAt.fill(0); curLabel = "";
+    errEl.textContent = document.getElementById("err2").textContent = msg;
+    setState("welcome"); tp = dp = 0; popAt.fill(mode === "install" ? 0 : 1); curLabel = "";
   }
 
   document.getElementById("go").addEventListener("click", () => {
-    errEl.textContent = "";
+    errEl.textContent = document.getElementById("err2").textContent = "";
+    if (mode === "uninstall") {
+      if (!T) return demo();
+      return T.core.invoke("uninstall_start", { keepData: !document.getElementById("wipe").checked }).then(() => api.start()).catch((e) => showError(String(e)));
+    }
     const dir = dirEl.value.trim();
     document.getElementById("doneDir").textContent = "Installed to " + dir;
     if (!T) return demo();
@@ -176,6 +184,7 @@
     if (T) T.core.invoke("pick_install_dir").then((p) => { if (p) dirEl.value = p; }).catch(() => {});
     else dirEl.value = SAMPLE[(SAMPLE.indexOf(dirEl.value) + 1) % SAMPLE.length];
   });
+  document.getElementById("cancel").addEventListener("click", () => { if (T) T.core.invoke("install_close"); else location.reload(); });
   document.getElementById("close").addEventListener("click", () => { if (T) T.core.invoke("install_close"); else location.reload(); });
   document.getElementById("open").addEventListener("click", () => { if (T) T.core.invoke("install_open"); else location.reload(); });
 
@@ -183,6 +192,11 @@
     T.event.listen("install-progress", (e) => api.set(e.payload.p, e.payload.label, e.payload.step));
     T.event.listen("install-error", (e) => showError(String(e.payload)));
     T.core.invoke("install_defaults").then((d) => {
+      if (d.mode === "uninstall") {
+        api.setMode("uninstall");
+        document.getElementById("go").textContent = "Uninstall";
+        return;
+      }
       dirEl.value = d.dir;
       document.getElementById("portable").checked = d.portable;
       if (d.installed) {
@@ -196,6 +210,7 @@
   const q = new URLSearchParams(location.search);
   if (q.get("state") === "run") { setState("run"); tp = dp = parseFloat(q.get("p") || "0.5"); curLabel = "Registering the menu"; labelEl.textContent = curLabel; stepEl.textContent = "2"; }
   if (q.get("state") === "done") { setState("done"); tp = dp = 1; Object.assign(popAt, new Array(9).fill(1)); }
+  if (!T && q.get("mode") === "uninstall") { api.setMode("uninstall"); document.getElementById("go").textContent = "Uninstall"; }
   if (q.get("auto")) setTimeout(demo, 800);
 
   requestAnimationFrame(frame);

@@ -1,4 +1,4 @@
-//! Self-installer: the release exe is its own setup. `needs_setup` decides at launch, the
+//! Self-installer: the release exe is its own setup. `setup_mode` decides at launch, the
 //! installer window (`install.html`) drives `install_start`, `--uninstall` undoes it.
 //! Everything is per-user (HKCU, %LOCALAPPDATA%, %APPDATA%): no admin rights.
 
@@ -24,6 +24,7 @@ const MIN_STEP: Duration = Duration::from_millis(700);
 
 #[derive(Serialize)]
 pub struct Defaults {
+    pub mode: &'static str,
     pub dir: String,
     pub installed: bool,
     pub portable: bool,
@@ -63,16 +64,26 @@ fn exe_dir() -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-/// A plain launch of an exe that is not the installed copy opens the installer. Debug builds
-/// skip it (`--setup` forces it) so the dev workflow keeps starting the app.
-pub fn needs_setup(cmd: &Cli) -> bool {
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Mode {
+    Install,
+    Uninstall,
+}
+
+/// Which setup window a launch opens, if any. A plain launch of an exe that is not the
+/// installed copy opens the installer; debug builds skip that (`--setup` forces it) so the
+/// dev workflow keeps starting the app. `--uninstall` always shows its window unless `--quiet`.
+pub fn setup_mode(cmd: &Cli) -> Option<Mode> {
     match cmd {
-        Cli::Setup => true,
+        Cli::Setup => Some(Mode::Install),
+        Cli::Uninstall { quiet: false, .. } => Some(Mode::Uninstall),
         Cli::Normal if !cfg!(debug_assertions) => {
             let here = exe_dir();
-            !matches!((here, installed_dir()), (Some(h), Some(i)) if same_path(&h, &i))
+            let installed =
+                matches!((here, installed_dir()), (Some(h), Some(i)) if same_path(&h, &i));
+            (!installed).then_some(Mode::Install)
         }
-        _ => false,
+        _ => None,
     }
 }
 
@@ -83,10 +94,15 @@ pub fn default_dir() -> PathBuf {
         .join(APP_NAME)
 }
 
-pub fn defaults() -> Defaults {
+pub fn defaults(mode: Mode) -> Defaults {
     let installed = installed_dir().filter(|d| d.join(EXE_NAME).is_file());
     let dir = installed.clone().unwrap_or_else(default_dir);
     Defaults {
+        mode: if mode == Mode::Uninstall {
+            "uninstall"
+        } else {
+            "install"
+        },
         portable: dir.join("data").is_dir(),
         installed: installed.is_some(),
         dir: dir.to_string_lossy().into_owned(),
@@ -164,31 +180,34 @@ fn write_uninstall_entry(dir: &Path, exe: &Path) -> io::Result<()> {
         .create_subkey_with_flags(UNINSTALL_KEY, KEY_ALL_ACCESS)?;
     let size_kb = fs::metadata(exe).map_or(0, |m| (m.len() / 1024) as u32);
     let uninstall = format!(r#""{}" --uninstall"#, exe.display());
+    let quiet = format!(r#""{}" --uninstall --quiet"#, exe.display());
     k.set_value("DisplayName", &APP_NAME.to_string())?;
     k.set_value("DisplayVersion", &env!("CARGO_PKG_VERSION").to_string())?;
     k.set_value("Publisher", &"kaan0d".to_string())?;
     k.set_value("InstallLocation", &dir.to_string_lossy().to_string())?;
     k.set_value("DisplayIcon", &exe.to_string_lossy().to_string())?;
     k.set_value("UninstallString", &uninstall)?;
-    k.set_value("QuietUninstallString", &uninstall)?;
+    k.set_value("QuietUninstallString", &quiet)?;
     k.set_value("EstimatedSize", &size_kb)?;
     k.set_value("NoModify", &1u32)?;
     k.set_value("NoRepair", &1u32)
 }
 
-/// Runs the install, reporting each step through `emit`. Returns the installed exe.
-pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<PathBuf, String> {
-    let dir = normalize_dir(&req.dir)?;
-    let src = std::env::current_exe().map_err(|e| e.to_string())?;
-    let dst = dir.join(EXE_NAME);
-
-    let mut step = |n: u8, label: &'static str, from: f32, to: f32, work: Work| {
-        let t0 = Instant::now();
-        emit(Progress {
-            p: from,
-            label,
-            step: n,
-        });
+/// One step with a minimum on-screen time; `work` reports its own 0..1 progress.
+fn run_step(
+    emit: &mut dyn FnMut(Progress),
+    n: u8,
+    label: &'static str,
+    (from, to): (f32, f32),
+    work: Work,
+) -> Result<(), String> {
+    let t0 = Instant::now();
+    emit(Progress {
+        p: from,
+        label,
+        step: n,
+    });
+    let r = {
         let mut sub = |f: f32| {
             emit(Progress {
                 p: from + (to - from) * f.clamp(0.0, 1.0),
@@ -196,19 +215,27 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Path
                 step: n,
             })
         };
-        let r = work(&mut sub);
-        if let Some(rest) = MIN_STEP.checked_sub(t0.elapsed()) {
-            std::thread::sleep(rest);
-        }
-        emit(Progress {
-            p: to,
-            label,
-            step: n,
-        });
-        r
+        work(&mut sub)
     };
+    if let Some(rest) = MIN_STEP.checked_sub(t0.elapsed()) {
+        std::thread::sleep(rest);
+    }
+    emit(Progress {
+        p: to,
+        label,
+        step: n,
+    });
+    r
+}
 
-    step(1, "Copying files", 0.0, 0.55, &mut |sub| {
+/// Runs the install, reporting each step through `emit`. Returns the installed exe.
+pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<PathBuf, String> {
+    let dir = normalize_dir(&req.dir)?;
+    let src = std::env::current_exe().map_err(|e| e.to_string())?;
+    let dst = dir.join(EXE_NAME);
+    let emit: &mut dyn FnMut(Progress) = &mut emit;
+
+    run_step(emit, 1, "Copying files", (0.0, 0.55), &mut |sub| {
         stop_running();
         fs::create_dir_all(&dir).map_err(fail("Cannot create the folder"))?;
         if req.portable {
@@ -219,7 +246,7 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Path
         }
         Ok(())
     })?;
-    step(2, "Registering the menu", 0.55, 0.78, &mut |_| {
+    run_step(emit, 2, "Registering the menu", (0.55, 0.78), &mut |_| {
         let ok = Command::new(&dst)
             .arg("--install-menu")
             .creation_flags(CREATE_NO_WINDOW)
@@ -229,45 +256,92 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Path
         ok.then_some(())
             .ok_or_else(|| "Cannot register the menu.".to_string())
     })?;
-    step(3, "Adding icons and shortcuts", 0.78, 0.93, &mut |_| {
-        crate::shell::set_sendto_at(&start_menu_dir(), &dst, true)
-            .map_err(fail("Cannot add the Start menu shortcut"))?;
-        write_uninstall_entry(&dir, &dst).map_err(fail("Cannot register the uninstaller"))
-    })?;
-    step(4, "Finishing up", 0.93, 1.0, &mut |_| Ok(()))?;
+    run_step(
+        emit,
+        3,
+        "Adding icons and shortcuts",
+        (0.78, 0.93),
+        &mut |_| {
+            crate::shell::set_sendto_at(&start_menu_dir(), &dst, true)
+                .map_err(fail("Cannot add the Start menu shortcut"))?;
+            write_uninstall_entry(&dir, &dst).map_err(fail("Cannot register the uninstaller"))
+        },
+    )?;
+    run_step(emit, 4, "Finishing up", (0.93, 1.0), &mut |_| Ok(()))?;
     Ok(dst)
 }
 
-/// `--uninstall`: undo everything `run_install` did. The exe cannot delete itself, so a
-/// detached `cmd` removes it (and the then-empty folder) a moment after this process exits.
-pub fn uninstall() -> i32 {
-    let Some(dir) = exe_dir() else { return 1 };
-    let exe = dir.join(EXE_NAME);
-    let is_ours = installed_dir().is_some_and(|d| same_path(&d, &dir))
+/// The folder this exe runs from, when it is the installed copy (and so safe to delete).
+fn installed_self() -> Result<(PathBuf, PathBuf), String> {
+    let dir = exe_dir().ok_or("Cannot find the app folder.")?;
+    let ours = installed_dir().is_some_and(|d| same_path(&d, &dir))
         && dir
             .file_name()
             .is_some_and(|n| n.to_string_lossy().eq_ignore_ascii_case("tessera"));
-    if !is_ours {
-        return 1; // refuse to delete a folder we did not create
-    }
-    stop_running();
-    let data = crate::settings::data_dir();
-    let _ = crate::shell::set_autostart(false);
-    let _ = crate::shell::remove();
-    let _ = crate::shell::set_sendto_at(&start_menu_dir(), Path::new(""), false);
-    let _ = RegKey::predef(HKEY_CURRENT_USER).delete_subkey_all(UNINSTALL_KEY);
-    let _ = fs::remove_dir_all(&data);
+    // refuse to delete a folder we did not create
+    ours.then(|| (dir.join(EXE_NAME), dir))
+        .ok_or_else(|| "This is not an installed copy of Tessera.".into())
+}
+
+/// Undoes everything `run_install` did. Failures of single removals are ignored on purpose:
+/// a half-removed app is worse than one with a stray key. `keep_data` leaves settings, history
+/// and the downloaded ffmpeg in place.
+pub fn run_uninstall(keep_data: bool, mut emit: impl FnMut(Progress)) -> Result<(), String> {
+    let (exe, dir) = installed_self()?;
+    let emit: &mut dyn FnMut(Progress) = &mut emit;
+    run_step(emit, 1, "Closing Tessera", (0.0, 0.2), &mut |_| {
+        stop_running();
+        Ok(())
+    })?;
+    run_step(emit, 2, "Removing the menu", (0.2, 0.5), &mut |_| {
+        let _ = crate::shell::set_autostart(false);
+        let _ = crate::shell::remove();
+        Ok(())
+    })?;
+    run_step(
+        emit,
+        3,
+        "Removing shortcuts and entries",
+        (0.5, 0.75),
+        &mut |_| {
+            let _ = crate::shell::set_sendto_at(&start_menu_dir(), Path::new(""), false);
+            let _ = RegKey::predef(HKEY_CURRENT_USER).delete_subkey_all(UNINSTALL_KEY);
+            Ok(())
+        },
+    )?;
+    run_step(emit, 4, "Deleting files", (0.75, 1.0), &mut |_| {
+        if !keep_data {
+            let _ = fs::remove_dir_all(crate::settings::data_dir());
+        }
+        schedule_cleanup(&exe, &dir)
+    })
+}
+
+/// The exe cannot delete itself while it runs: a detached `cmd` waits (up to a minute, the
+/// uninstall window may stay open) until the exe is gone, then removes the empty folder and
+/// the WebView2 cache the app created in %LOCALAPPDATA%.
+fn schedule_cleanup(exe: &Path, dir: &Path) -> Result<(), String> {
+    let web = std::env::var_os("LOCALAPPDATA")
+        .map(|b| PathBuf::from(b).join("com.tessera.app"))
+        .unwrap_or_default();
     // raw_arg: cmd does its own quote parsing and rejects the backslash-escaped quotes `arg` adds
     let script = format!(
-        r#"/C "ping -n 3 127.0.0.1 >nul & del /f /q "{exe}" & rmdir "{dir}"""#,
+        r#"/C "for /l %i in (1,1,60) do (if exist "{exe}" (del /f /q "{exe}" 2>nul & ping -n 2 127.0.0.1 >nul)) & rmdir "{dir}" & rmdir /s /q "{web}"""#,
         exe = exe.display(),
-        dir = dir.display()
+        dir = dir.display(),
+        web = web.display()
     );
-    let spawned = Command::new("cmd")
+    Command::new("cmd")
         .raw_arg(script)
         .creation_flags(CREATE_NO_WINDOW)
-        .spawn();
-    i32::from(spawned.is_err())
+        .spawn()
+        .map(|_| ())
+        .map_err(fail("Cannot finish the removal"))
+}
+
+/// `--uninstall --quiet`: no window, exit code only.
+pub fn uninstall_quiet(keep_data: bool) -> i32 {
+    i32::from(run_uninstall(keep_data, |_| {}).is_err())
 }
 
 #[cfg(test)]

@@ -15,8 +15,12 @@ pub enum Cli {
         dir: String,
         portable: bool,
     },
-    /// Remove the installed app (menu, shortcuts, uninstall entry, files).
-    Uninstall,
+    /// Remove the installed app (menu, shortcuts, uninstall entry, files). Shows a window
+    /// unless `--quiet`; `--keep-data` leaves settings and history.
+    Uninstall {
+        quiet: bool,
+        keep_data: bool,
+    },
     InstallSendTo,
     RemoveSendTo,
     Convert {
@@ -115,7 +119,10 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
             },
             _ => Cli::Normal,
         },
-        Some("--uninstall") => Cli::Uninstall,
+        Some("--uninstall") => Cli::Uninstall {
+            quiet: args.iter().any(|a| a == "--quiet"),
+            keep_data: args.iter().any(|a| a == "--keep-data"),
+        },
         Some("--background") => Cli::Background,
         Some("--convert") => {
             let Some(target) = args.get(1).and_then(|t| Format::from_ext(t)) else {
@@ -307,7 +314,20 @@ mod tests {
             }
         );
         assert_eq!(parse(&a(&["--install"]), None), Cli::Normal);
-        assert_eq!(parse(&a(&["--uninstall"]), None), Cli::Uninstall);
+        assert_eq!(
+            parse(&a(&["--uninstall"]), None),
+            Cli::Uninstall {
+                quiet: false,
+                keep_data: false
+            }
+        );
+        assert_eq!(
+            parse(&a(&["--uninstall", "--quiet", "--keep-data"]), None),
+            Cli::Uninstall {
+                quiet: true,
+                keep_data: true
+            }
+        );
         assert_eq!(parse(&a(&["--background"]), None), Cli::Background);
         assert_eq!(parse(&a(&["--bogus"]), None), Cli::Normal);
     }
