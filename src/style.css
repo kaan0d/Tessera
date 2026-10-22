@@ -890,3 +890,25 @@ body.settings{
 .dr-cards{gap:8px}
 .dr-card{padding:14px 16px}
 .dr-skip{margin:0 28px 8px}
+
+/* ---------- progress card, installer look ----------
+   Always the dark palette (it floats over any desktop), the tile mark fills with the job,
+   the percentage is light and large, the bar carries the pale-to-mint ramp. */
+.p-card{
+  --ink:#edf2f1;--muted:#a1aba9;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.15);
+  --surface:#151b1a;--surface-2:#1b2221;--track:rgba(255,255,255,.12);
+  --accent:#46d3b6;--accent-hover:#6be0c8;--on-accent:#04231d;--accent-soft:rgba(70,211,182,.14);--accent-ink:rgba(70,211,182,.32);
+  --danger:#ff8a80;--danger-soft:rgba(255,138,128,.12);--on-danger:#2d0704;
+  --acrylic:rgba(14,19,18,.96);--card-line:rgba(255,255,255,.1);
+  color:var(--ink);--pp:0;--mark0:#f2f7f6;
+  background:radial-gradient(90% 120% at 0% 100%,rgba(70,211,182,.16),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.04),transparent 40%),var(--acrylic);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 1px 2px rgba(0,0,0,.4),0 8px 24px -4px rgba(0,0,0,.55)}
+.p-head{background:none}
+.p-head .mark-tiles{width:30px;height:30px}
+.p-head .mark-tiles rect{opacity:clamp(.16,calc(var(--pp) * 9 - var(--k,0)),1);transition:opacity var(--d3) var(--ease)}
+.p-head.done .mark-tiles rect{opacity:1}
+.p-pct{font-weight:300;font-size:30px;letter-spacing:-.03em}
+.p-pct small{font-weight:400}
+.p-head .bar{height:3px;background:rgba(255,255,255,.08)}
+.p-head .bar>span{background:linear-gradient(90deg,#f2f7f6,#b7c7c4 14%,#19b59a 55%,#9af5df)}
+.p-timer{height:3px}

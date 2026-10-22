@@ -195,6 +195,7 @@ function paintSummary() {
     ? all.length === 1 ? t('p.sub_one') : t('p.sub_run', { done: all.length - run, total: all.length })
     : err ? t('p.sub_fail', { ok, err }) : cancelled ? t(ok ? 'p.sub_cancel' : 'p.sub_cancel_only', { ok, n: cancelled }) : t('p.sub_ok', { n: ok });
   document.getElementById('p-pct').textContent = Math.round(pct);
+  document.getElementById('card').style.setProperty('--pp', (pct / 100).toFixed(3));
   document.getElementById('p-bar').style.setProperty('--p', pct / 100);
   return { run, any: all.length > 0 };
 }
