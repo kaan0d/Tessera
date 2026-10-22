@@ -12,7 +12,7 @@
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const S = 240, K = S / 256;
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const dpr = Math.min(devicePixelRatio || 1, 2) * 1.8; // drawn sharp enough for the big opening scale
   cv.width = cv.height = S * dpr;
   ctx.scale(dpr, dpr);
 
@@ -323,9 +323,9 @@
     if (opened) return;
     opened = true;
     if (reduce || new URLSearchParams(location.search).get("state")) return;
-    introAt = performance.now();
+    introAt = performance.now() + 150;
     root.classList.add("intro");
-    setTimeout(() => root.classList.remove("intro"), 900);
+    setTimeout(() => root.classList.remove("intro"), 1500);
   };
   const goEl = document.getElementById("go");
   function setGo(key) { goEl.dataset.t = key; goEl.textContent = t(key); }
