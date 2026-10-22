@@ -1007,3 +1007,5 @@ kbd{font-size:12px}
 #p-hint .link{flex:none}
 
 @media (prefers-reduced-motion:reduce){.top{animation:none;background:transparent;border-bottom-color:transparent}}
+
+#error .btn{margin-left:auto;flex:none;align-self:center}

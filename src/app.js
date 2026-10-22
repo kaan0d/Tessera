@@ -753,8 +753,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     render();
     paintNav(); // header text in the saved language
   } catch (e) {
-    showError(t('err.load', { err: e }));
-    $$('main input,main select,main button').forEach((x) => (x.disabled = true));
+    const why = t('err.load', { err: e });
+    showError(`${why}${/[.!?]$/.test(why) ? '' : '.'} ${t('err.load_dim')}`);
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'btn sm';
+    retry.textContent = t('err.retry');
+    retry.onclick = () => location.reload();
+    $('error').append(retry);
+    $$('main input,main select,main button:not(#error .btn)').forEach((x) => (x.disabled = true));
     return;
   }
   await loadCatalog();
