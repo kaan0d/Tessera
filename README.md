@@ -47,7 +47,7 @@ Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OG
 
 Windows 10 or 11. Needs Microsoft Edge WebView2, which both already include.
 
-Get `tessera.exe` from the [Releases page](https://github.com/kaan0d/Tessera/releases) and double-click it. The exe is its own installer, so there is nothing else to download. Pick a folder (default `%LOCALAPPDATA%\Tessera`), choose whether to keep settings next to the app, and let it download video support with a live percentage. It also registers the menu, a Start menu shortcut and an uninstall entry. Uninstall from Settings > Apps > Tessera.
+Get `tessera-setup-v0.1.0.exe` from the [latest release](https://github.com/kaan0d/Tessera/releases/latest) and double-click it. Each release lists the exe's SHA-256. The exe is its own installer, so there is nothing else to download. Pick a folder (default `%LOCALAPPDATA%\Tessera`), choose whether to keep settings next to the app, and let it download video support with a live percentage. It also registers the menu, a Start menu shortcut and an uninstall entry. Uninstall from Settings > Apps > Tessera.
 
 The exe is not code-signed yet, so SmartScreen may ask you to confirm once (More info, then Run anyway).
 
@@ -141,4 +141,5 @@ src-tauri/menu-icons/    one .ico per menu verb (embedded in the exe)
 - **No inline styles:** the content security policy is `default-src 'self'`, so style with classes in `style.css` (colors are tokens on `:root`).
 - **Conversion rules:** every converter writes through `output::write_atomic`, never overwrites the source, and honors the size limit through `size::fit` or ffmpeg bitrates. New formats go in `convert/mod.rs` (`Format`, `supported_targets`).
 - **Menu icons:** bump `ICON_REV` in `shell/mod.rs` when you change an icon so Explorer drops its cache.
-- **Releases:** `cargo build --release`, then the exe is the installer. There is no separate bundle step.
+- **Releases:** `cargo build --release` produces `target/release/tessera.exe`, and that exe is the installer, so there is no bundle step. Publish it as `tessera-setup-vX.Y.Z.exe` with its SHA-256 (`gh release create vX.Y.Z tessera-setup-vX.Y.Z.exe`); the in-app update check looks at the latest release of this repo.
+- **Build output:** `src-tauri/target` grows past 10 GB and `src-tauri/gen` is generated. Both are git-ignored and safe to delete; the next build recreates them.
