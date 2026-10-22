@@ -4,7 +4,7 @@ use crate::convert::combine::MergeKind;
 use crate::convert::{Conflict, Format, Resize};
 use crate::folder::Action;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Cli {
     InstallMenu,
     RemoveMenu,
@@ -57,7 +57,7 @@ pub enum Cli {
 }
 
 /// Arguments of `tessera convert`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct ConvertArgs {
     pub target: Format,
     pub files: Vec<PathBuf>,
@@ -67,9 +67,17 @@ pub struct ConvertArgs {
     pub quality: Option<u8>,
     pub out: Option<PathBuf>,
     pub conflict: Conflict,
+    /// Cut (seconds): keep from `start` to `end`.
+    pub start: Option<f32>,
+    pub end: Option<f32>,
+    pub audio_kbps: Option<u16>,
+    pub mono: bool,
+    pub no_audio: bool,
+    pub gif_fps: Option<u8>,
+    pub gif_width: Option<u16>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Command {
     Help,
     Version,
@@ -82,6 +90,23 @@ pub enum Command {
     },
     /// Bad command line (exit code 2); the text says what is wrong.
     Usage(String),
+}
+
+/// "90", "1.5", "1:30" or "1:02:03.5" -> seconds. Negative, empty or malformed input gives None.
+pub fn parse_time(s: &str) -> Option<f32> {
+    let mut total = 0.0f64;
+    let parts: Vec<&str> = s.trim().split(':').collect();
+    if parts.len() > 3 {
+        return None;
+    }
+    for p in &parts {
+        let n: f64 = p
+            .parse()
+            .ok()
+            .filter(|n: &f64| n.is_finite() && *n >= 0.0)?;
+        total = total * 60.0 + n;
+    }
+    Some(total as f32)
 }
 
 /// "8MB", "500KB", "1.5 GB", "1024" (bytes). KB/MB/GB are decimal like the presets,
@@ -217,6 +242,8 @@ fn parse_convert(args: &[String]) -> Command {
 fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
     let (mut files, mut to, mut resize, mut max_bytes) = (vec![], None, None, None);
     let (mut strip, mut quality, mut out) = (false, None, None);
+    let (mut start, mut end, mut audio_kbps) = (None, None, None);
+    let (mut mono, mut no_audio, mut gif_fps, mut gif_width) = (false, false, None, None);
     let mut conflict = Conflict::AutoRename;
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -228,8 +255,12 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
             Some((n, v)) => (n, Some(v.to_string())),
             None => (flag, None),
         };
-        if name == "strip" && inline.is_none() {
-            strip = true;
+        if inline.is_none() && matches!(name, "strip" | "mono" | "no-audio") {
+            match name {
+                "strip" => strip = true,
+                "mono" => mono = true,
+                _ => no_audio = true,
+            }
             continue;
         }
         let v = inline
@@ -253,6 +284,11 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
                 max_bytes = Some(parse_size(&v).ok_or("--max-size must look like 8MB or 500KB")?)
             }
             "quality" => quality = Some(num(1, 100)? as u8),
+            "start" => start = Some(parse_time(&v).ok_or("--start must look like 90 or 1:30")?),
+            "end" => end = Some(parse_time(&v).ok_or("--end must look like 90 or 1:30")?),
+            "audio-bitrate" => audio_kbps = Some(num(8, 512)? as u16),
+            "gif-fps" => gif_fps = Some(num(5, 30)? as u8),
+            "gif-width" => gif_width = Some(num(120, 1280)? as u16),
             "out" => out = Some(PathBuf::from(&v)),
             "conflict" => {
                 conflict = match v.as_str() {
@@ -271,6 +307,9 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
     if files.is_empty() {
         return Err("convert needs at least one file".into());
     }
+    if matches!((start, end), (Some(s), Some(e)) if e <= s) {
+        return Err("--end must be after --start".into());
+    }
     Ok(ConvertArgs {
         target,
         files,
@@ -280,6 +319,13 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
         quality,
         out,
         conflict,
+        start,
+        end,
+        audio_kbps,
+        mono,
+        no_audio,
+        gif_fps,
+        gif_width,
     })
 }
 
@@ -580,5 +626,62 @@ mod tests {
         ] {
             assert_eq!(parse_size(s), None, "{s}");
         }
+    }
+}
+
+#[cfg(test)]
+mod cut_flag_tests {
+    use super::*;
+
+    fn a(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn times_read_as_seconds() {
+        assert_eq!(parse_time("90"), Some(90.0));
+        assert_eq!(parse_time("1:30"), Some(90.0));
+        assert_eq!(parse_time("1:02:03.5"), Some(3723.5));
+        for bad in ["", "x", "-5", "1:2:3:4", "1::2", "inf"] {
+            assert_eq!(parse_time(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn cut_audio_and_gif_flags_reach_the_args() {
+        let Command::Convert(c) = parse_convert(&a(&[
+            "clip.mp4",
+            "--to",
+            "gif",
+            "--start",
+            "1:30",
+            "--end",
+            "95",
+            "--mono",
+            "--no-audio",
+            "--audio-bitrate",
+            "96",
+            "--gif-fps",
+            "15",
+            "--gif-width=640",
+        ])) else {
+            panic!("did not parse");
+        };
+        assert_eq!((c.start, c.end), (Some(90.0), Some(95.0)));
+        assert_eq!((c.mono, c.no_audio, c.audio_kbps), (true, true, Some(96)));
+        assert_eq!((c.gif_fps, c.gif_width), (Some(15), Some(640)));
+    }
+
+    #[test]
+    fn bad_cut_flags_are_usage_errors() {
+        let bad = |extra: &[&str]| {
+            let mut v = vec!["clip.mp4", "--to", "mp3"];
+            v.extend(extra);
+            matches!(parse_convert(&a(&v)), Command::Usage(_))
+        };
+        assert!(bad(&["--start", "20", "--end", "10"]));
+        assert!(bad(&["--start", "soon"]));
+        assert!(bad(&["--audio-bitrate", "4"]));
+        assert!(bad(&["--gif-fps", "60"]));
     }
 }

@@ -39,6 +39,7 @@ tessera.exe --uninstall --quiet            remove without a window (--keep-data 
 tessera convert photo.heic --to jpg
 tessera convert scan.png --to webp --max-edge 1600 --strip
 tessera convert clip.mov --to mp4 --max-size 8MB
+tessera convert talk.mp4 --to mp3 --start 1:30 --end 4:00 --mono
 tessera preset whatsapp beach.jpg
 tessera list-presets
 tessera formats png

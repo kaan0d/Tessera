@@ -33,6 +33,13 @@ Convert options:
   --quality <1-100>   image quality
   --out <dir>         output folder (default: next to the source)
   --conflict <mode>   rename (default) or overwrite
+  --start <time>      cut audio/video: keep from here (90 or 1:30)
+  --end <time>        cut audio/video: keep until here
+  --audio-bitrate <k> audio quality in kbit/s (8-512)
+  --mono              one audio channel
+  --no-audio          video without its sound track
+  --gif-fps <5-30>    frames per second of a GIF
+  --gif-width <px>    width of a GIF (120-1280)
 
 Presets come from `list-presets` and use your saved settings.
 Video, MP3 and OGG need the ffmpeg the app installed; it is never downloaded here.
@@ -145,8 +152,19 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
         resize: a.resize,
         strip_metadata: a.strip,
         max_bytes: a.max_bytes,
+        trim_start: a.start,
+        trim_end: a.end,
+        audio_kbps: a.audio_kbps,
+        mono: a.mono,
+        no_audio: a.no_audio,
         ..Options::default()
     };
+    if let Some(f) = a.gif_fps {
+        opts.quality.gif_fps = f;
+    }
+    if let Some(w) = a.gif_width {
+        opts.quality.gif_width = w;
+    }
     if let Some(q) = a.quality {
         opts.quality.jpeg = q;
         opts.quality.webp = q;
