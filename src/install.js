@@ -127,8 +127,31 @@
     };
   }
 
+  const TIPS = [
+    "Free and open source. MIT licensed, nothing to unlock.",
+    "Paid converters do the same job. You do not need one.",
+    "No account, no ads, no telemetry.",
+    "Your files never leave this computer.",
+    "A modern interface in one small app.",
+    "Right-click any file, pick a format, done.",
+  ];
+  const tipEl = document.getElementById("tip");
+  let tipIdx = -1, tipTimer = 0;
+  function nextTip() {
+    tipIdx = (tipIdx + 1) % TIPS.length;
+    if (reduce || tipIdx === 0) { tipEl.textContent = TIPS[tipIdx]; return; }
+    tipEl.classList.add("out");
+    setTimeout(() => {
+      tipEl.textContent = TIPS[tipIdx];
+      tipEl.classList.remove("out"); tipEl.classList.add("pre");
+      void tipEl.offsetWidth;
+      tipEl.classList.remove("pre");
+    }, 500);
+  }
+  function startTips() { if (mode !== "install" || tipTimer) return; nextTip(); tipTimer = setInterval(nextTip, 2200); }
+
   const api = {
-    start() { if (state !== "welcome") return; setState("run"); setLabel(mode === "install" ? "Copying files" : "Closing Tessera", 1); },
+    start() { if (state !== "welcome") return; setState("run"); startTips(); setLabel(mode === "install" ? "Copying files" : "Closing Tessera", 1); },
     setMode(m) { mode = m; root.dataset.mode = m; if (m === "uninstall") popAt.fill(1); },
     set(p, label, step) { tp = clamp(p); setLabel(label, step); },
   };
