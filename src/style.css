@@ -85,7 +85,7 @@ main{height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
 
 /* sticky section header: title + one line; a hairline settles in once content scrolls under it */
 .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:var(--s3);padding:18px var(--s5) 14px;
-  background:color-mix(in srgb,var(--ground) 90%,transparent);backdrop-filter:blur(20px) saturate(1.4);
+  background:color-mix(in srgb,var(--ground) 50%,transparent);backdrop-filter:blur(24px) saturate(1.4);
   border-bottom:1px solid transparent;animation:lift linear both;animation-timeline:scroll();animation-range:0 28px}
 @keyframes lift{to{border-bottom-color:var(--line);box-shadow:0 10px 24px -18px rgba(10,30,26,.35)}}
 .pane-title{font-family:var(--font-display);font-size:var(--t-xl);font-weight:600;letter-spacing:-.01em;line-height:1.2}
@@ -779,3 +779,68 @@ html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 .cu-hint.err{color:var(--danger)}
 .cu-line .field.plain{flex:1;min-width:0}
 .cu-line .btn{flex:none;min-height:34px}
+
+/* ---------- installer look ----------
+   Shared with install.html: deep ground with a teal light, ink-and-mint ramp, big light numerals,
+   12px buttons whose hover fills from below, soft inset fields. Tokens first, then components. */
+:root{
+  --mark0:#1d2b29;--mark0b:#3b4f4c;
+  --glow:rgba(11,117,100,.10);
+}
+@media (prefers-color-scheme:dark){:root{
+  --ground:#0e1312;--ground-2:#0a0e0d;--surface:#151b1a;--surface-2:#1b2221;
+  --line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.15);
+  --shadow-1:0 1px 2px rgba(0,0,0,.35);
+  --mark0:#f2f7f6;--mark0b:#b7c7c4;
+  --glow:rgba(70,211,182,.16);
+}}
+body.settings{
+  background:
+    radial-gradient(46% 52% at 8% 104%,var(--glow),transparent 70%),
+    radial-gradient(40% 46% at 100% -6%,var(--glow),transparent 70%),
+    linear-gradient(var(--ground),var(--ground-2));
+}
+.side{background:transparent}
+.pane-title{font-size:24px;letter-spacing:-.015em}
+
+/* the tile mark in the sidebar: nine tiles, square to circle, pale ink to mint */
+.mark-tiles{width:36px;height:36px;flex:none;overflow:visible}
+.mark-tiles rect{transform-box:fill-box;transform-origin:center}
+.mark-tiles .m0{fill:var(--mark0)}.mark-tiles .m1{fill:#19b59a}.mark-tiles .m2{fill:#9af5df}
+.enter .mark-tiles rect{animation:tile-in var(--d4) var(--ease) calc(var(--k,0) * 55ms) both}
+.mark-tiles rect:nth-child(1){--k:0}.mark-tiles rect:nth-child(2){--k:1}.mark-tiles rect:nth-child(3){--k:2}.mark-tiles rect:nth-child(4){--k:3}.mark-tiles rect:nth-child(5){--k:4}.mark-tiles rect:nth-child(6){--k:5}.mark-tiles rect:nth-child(7){--k:6}.mark-tiles rect:nth-child(8){--k:7}.mark-tiles rect:nth-child(9){--k:8}
+@keyframes tile-in{from{scale:.2;opacity:0}}
+
+/* buttons: rounder, glow on the main one, a lighter sheet rising on hover */
+.btn{position:relative;overflow:hidden;min-height:34px;border-radius:var(--r-lg);border-color:transparent;
+  background:color-mix(in srgb,var(--ink) 7%,transparent);box-shadow:inset 0 0 0 1px var(--line)}
+.btn::after{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 9%,transparent);translate:0 101%;
+  transition:translate var(--d3) var(--ease);pointer-events:none}
+.btn.primary{box-shadow:0 8px 24px -10px var(--accent),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn.primary::after{background:rgba(255,255,255,.26)}
+.btn.danger::after{background:rgba(255,255,255,.2)}
+.btn.sm{min-height:30px;border-radius:10px}
+@media (hover:hover){
+  .btn:hover{background:color-mix(in srgb,var(--ink) 7%,transparent);box-shadow:inset 0 0 0 1px var(--line-strong);translate:none}
+  .btn:hover::after{translate:0 0}
+  .btn.primary:hover{background:var(--accent);box-shadow:0 12px 28px -10px var(--accent),inset 0 1px 0 rgba(255,255,255,.35)}
+  .btn.danger:hover{background:var(--danger)}
+}
+.btn:active{box-shadow:inset 0 0 0 1px var(--line)}
+.btn.primary:active{box-shadow:0 6px 16px -10px var(--accent),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn.ghost{background:transparent;box-shadow:none}
+@media (hover:hover){.btn.ghost:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);box-shadow:none}}
+
+/* fields and selects: soft fill, hairline inset, a mint halo on focus */
+.field,.select select{border:0;border-radius:10px;background:color-mix(in srgb,var(--ink) 6%,transparent);box-shadow:inset 0 0 0 1px var(--line)}
+.field:focus{box-shadow:inset 0 0 0 1.5px var(--accent),0 0 0 4px var(--accent-soft)}
+.field[aria-invalid=true]{box-shadow:inset 0 0 0 1.5px var(--danger),0 0 0 4px var(--danger-soft)}
+.search .field{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+@media (hover:hover){.select:hover select{background:color-mix(in srgb,var(--ink) 9%,transparent)}}
+
+/* cards: a little rounder, hairline only */
+.card,.pcard,.rcard{border-radius:14px}
+
+/* numbers read like the installer percentage: light, large, tabular */
+.val{font-weight:300;font-size:22px;letter-spacing:-.02em}
+.val small{font-size:var(--t-xs);font-weight:600}
