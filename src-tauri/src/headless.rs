@@ -18,11 +18,11 @@ pub const EXIT_USAGE: i32 = 2;
 
 pub const HELP: &str = "\
 Usage:
-  tessera convert <files, folders or *.png> --to <ext> [options]
-  tessera preset <id> <files...>
-  tessera list-presets
-  tessera formats <ext>
-  tessera --version | --help
+  {p} convert <files, folders or *.png> --to <ext> [options]
+  {p} preset <id> <files...> [--dry-run --json --quiet --out <dir> --conflict <mode>]
+  {p} list-presets
+  {p} formats <ext>
+  {p} --version | --help
 
 Convert options:
   --to <ext>          target format (png, jpg, webp, pdf, mp3, mp4, ...)
@@ -51,6 +51,24 @@ Video, MP3 and OGG need the ffmpeg the app installed; it is never downloaded her
 Exit codes: 0 ok, 1 a file failed, 2 usage error.
 Scripts: use tessera-cli.exe (next to tessera.exe); it waits for the job and returns the exit code.
 ";
+
+/// The name the user typed: `tessera-cli` when this is the console copy.
+fn prog() -> String {
+    std::env::current_exe()
+        .ok()
+        .and_then(|e| e.file_stem().map(|s| s.to_string_lossy().to_lowercase()))
+        .filter(|s| s == "tessera-cli")
+        .unwrap_or_else(|| "tessera".into())
+}
+
+/// "1.99 MB", "412 KB".
+fn human(bytes: u64) -> String {
+    if bytes >= 1_000_000 {
+        format!("{:.2} MB", bytes as f64 / 1e6)
+    } else {
+        format!("{} KB", bytes.div_ceil(1000))
+    }
+}
 
 fn out(s: &str) {
     let _ = writeln!(std::io::stdout(), "{s}");
@@ -90,7 +108,7 @@ pub fn run(cmd: Command) -> i32 {
     match cmd {
         Command::Help => {
             out(&format!("{}\n", version_line()));
-            out(HELP);
+            out(&HELP.replace("{p}", &prog()));
             EXIT_OK
         }
         Command::Version => {
@@ -99,13 +117,13 @@ pub fn run(cmd: Command) -> i32 {
         }
         Command::Usage(msg) => {
             err(&format!("error: {msg}"));
-            err("Run `tessera --help` for usage.");
+            err(&format!("Run `{} --help` for usage.", prog()));
             EXIT_USAGE
         }
         Command::ListPresets => list_presets(),
         Command::Formats(ext) => formats(&ext),
         Command::Convert(a) => convert_cmd(a),
-        Command::Preset { id, files } => preset_cmd(&id, &files),
+        Command::Preset { id, files, flags } => preset_cmd(&id, &files, flags),
     }
 }
 
@@ -174,6 +192,10 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
         audio_kbps: a.audio_kbps,
         mono: a.mono,
         no_audio: a.no_audio,
+        // the Quality tab's saved values are the defaults, so the app and the CLI agree
+        quality: settings::load_from(&settings::settings_path())
+            .quality
+            .clamped(),
         ..Options::default()
     };
     if let Some(f) = a.gif_fps {
@@ -351,17 +373,29 @@ fn wildcard(pat: &str, name: &str) -> bool {
     p[pi..].iter().all(|&c| c == '*')
 }
 
-fn preset_cmd(id: &str, files: &[PathBuf]) -> i32 {
+fn preset_cmd(id: &str, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
     let s = settings::load_from(&settings::settings_path());
     let Some(p) = preset::find(&s, id) else {
         err(&format!(
-            "unknown preset: {id} (see `tessera list-presets`)"
+            "unknown preset: {id} (see `{} list-presets`)",
+            prog()
         ));
         return EXIT_USAGE;
     };
-    let opts = p.options_for(&s);
+    let mut opts = p.options_for(&s);
+    if let Some(d) = flags.out {
+        opts.output.dir = OutDir::Fixed(d);
+    }
+    if flags.overwrite {
+        opts.output.conflict = crate::convert::Conflict::Overwrite;
+    }
+    let style = Style {
+        dry_run: flags.dry_run,
+        json: flags.json,
+        quiet: flags.quiet,
+    };
     let files = expand_inputs(files, false);
-    run_files(&files, Style::default(), |path| {
+    run_files(&files, style, |path| {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         p.resolve(ext, &opts)
             .map(|t| (t, opts.clone()))
@@ -393,11 +427,22 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i
                 continue;
             }
         };
+        // the same checks a real run makes, so a dry run never promises what would fail
+        if let Err(why) = precheck(path, target, &mut ffmpeg_ok) {
+            if style.json {
+                json_line(path, false, "error", &why);
+            } else {
+                err(&format!("{tag}: {why}"));
+            }
+            failed += 1;
+            continue;
+        }
         if style.dry_run {
+            let name = path.with_extension(target.ext());
             if style.json {
                 json_line(path, true, "would_convert_to", target.ext());
             } else {
-                out(&format!("{tag} -> .{} (dry run)", target.ext()));
+                out(&format!("{tag} -> {} (dry run)", name.display()));
             }
             done += 1;
             continue;
@@ -416,7 +461,13 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i
                 if style.json {
                     json_line(path, true, "output", &dest.display().to_string());
                 } else if !style.quiet {
-                    out(&format!("{tag} -> {}", dest.display()));
+                    let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).ok();
+                    let note = match (size(&dest), size(path)) {
+                        (Some(n), Some(o)) => format!(" ({}, was {})", human(n), human(o)),
+                        (Some(n), None) => format!(" ({})", human(n)),
+                        _ => String::new(),
+                    };
+                    out(&format!("{tag} -> {}{note}", dest.display()));
                 }
                 let big = std::fs::metadata(&dest).is_ok_and(|m| m.len() > 20_000_000);
                 if big && target == Format::Gif {
@@ -447,6 +498,35 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i
     } else {
         EXIT_OK
     }
+}
+
+/// Why a file cannot be converted to `target`, found before any work starts.
+fn precheck(path: &Path, target: Format, ffmpeg_ok: &mut Option<bool>) -> Result<(), String> {
+    if !path.is_file() {
+        return Err("File not found".into());
+    }
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let Some(from) = Format::from_ext(ext) else {
+        return Err(format!(
+            "cannot read .{ext} files (see `{} formats <ext>`)",
+            prog()
+        ));
+    };
+    if from != target && !supported_targets(ext).contains(&target) {
+        return Err(format!(
+            "cannot convert .{} to .{}: run `{} formats {}` to see what it can become",
+            ext.to_lowercase(),
+            target.ext(),
+            prog(),
+            ext.to_lowercase()
+        ));
+    }
+    if (uses_ffmpeg(from, target) || needs_ffmpeg(target))
+        && !*ffmpeg_ok.get_or_insert_with(|| ffmpeg::is_working(&ffmpeg::exe_path()))
+    {
+        return Err(t(Lang::En, "cli.no_ffmpeg").into());
+    }
+    Ok(())
 }
 
 /// `ffmpeg_ok` caches whether the installed ffmpeg works (checked on first need).
@@ -490,7 +570,13 @@ fn convert_one(
     } else {
         convert(path, target, opts, progress)
     };
-    r.map_err(|e| e.message(lang))
+    r.map_err(|e| match e {
+        crate::convert::ConvertError::TargetSize => format!(
+            "{} (try a smaller --max-edge or a larger --max-size)",
+            e.message(lang)
+        ),
+        e => e.message(lang),
+    })
 }
 
 #[cfg(test)]

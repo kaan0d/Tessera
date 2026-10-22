@@ -394,6 +394,32 @@ impl Options {
             || self.cuts_media()
     }
 
+    /// A same-format job whose only goal is a size limit the file already meets: the result is a
+    /// plain copy, because re-encoding could only make it bigger.
+    pub fn already_fits(&self, src: &Path, from: Format, target: Format) -> bool {
+        from == target
+            && self.resize.is_none()
+            && !self.strip_metadata
+            && !self.no_audio
+            && !self.cuts_media()
+            && self
+                .max_bytes
+                .zip(std::fs::metadata(src).ok())
+                .is_some_and(|(max, m)| m.len() <= max)
+    }
+
+    /// Writes the copy for [`Options::already_fits`] and finishes the job like a conversion.
+    pub fn copy_as_result(&self, src: &Path, dest: &Path) -> Result<PathBuf, ConvertError> {
+        output::write_atomic(dest, |w| {
+            std::io::copy(&mut std::fs::File::open(src)?, w)?;
+            Ok(())
+        })?;
+        if self.output.conflict == Conflict::ReplaceOriginal {
+            output::recycle(src)?;
+        }
+        Ok(dest.to_path_buf())
+    }
+
     /// Options only ffmpeg applies: a cut, a bitrate, mono.
     fn cuts_media(&self) -> bool {
         self.audio_kbps.is_some()
@@ -483,6 +509,11 @@ pub fn convert(
     opts.check_cancel()?;
     let dest = output::plan(&src, target.ext(), &opts.output)?;
     progress(0.0);
+    if opts.already_fits(&src, from, target) {
+        let done = opts.copy_as_result(&src, &dest)?;
+        progress(1.0);
+        return Ok(done);
+    }
     output::write_atomic(&dest, |w| {
         if from.is_image() || from == Format::Pdf {
             let photo = matches!(from, Format::Jpg | Format::Raw);

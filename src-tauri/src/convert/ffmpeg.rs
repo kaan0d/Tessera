@@ -432,6 +432,11 @@ pub fn convert_with_ffmpeg(
     }
     let dest = output::plan(&src, target.ext(), &opts.output)?;
     progress(0.0);
+    if opts.already_fits(&src, from, target) {
+        let done = opts.copy_as_result(&src, &dest)?;
+        progress(1.0);
+        return Ok(done);
+    }
     if matches!(from, Format::Heic | Format::Avif) {
         output::write_atomic(&dest, |w| {
             let nanos = std::time::SystemTime::now()

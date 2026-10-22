@@ -128,10 +128,12 @@ pub fn choices(files: &[PathBuf], s: &Settings) -> Choices {
             .iter()
             .copied()
             .filter(|t| s.target_enabled(*t))
+            // a file already in the target format is simply left out of that run
             .filter(|t| {
                 known
                     .iter()
-                    .all(|(p, _)| supported_targets(ext_of(p)).contains(t))
+                    .all(|(p, f)| f == t || supported_targets(ext_of(p)).contains(t))
+                    && known.iter().any(|(_, f)| f != t)
             })
             .map(|t| {
                 let ff = needs_ffmpeg(t) || known.iter().any(|(_, f)| uses_ffmpeg(*f, t));
@@ -188,10 +190,10 @@ mod tests {
         let c = choices(&p(&["a.png", "b.JPG", "c.txt"]), &ready());
         assert_eq!((c.count, c.skipped), (2, 1));
         assert_eq!(c.kinds, ["image"]);
-        // png and jpg only share the formats that are neither of them
+        // a file already in the target format is skipped in that run, so both stay on offer
         assert_eq!(
             exts(&c),
-            ["webp", "bmp", "gif", "tiff", "ico", "avif", "pdf"]
+            ["png", "jpg", "webp", "bmp", "gif", "tiff", "ico", "avif", "pdf"]
         );
         assert!(c.targets.iter().all(|t| t.allowed && !t.needs_ffmpeg));
         assert!(c.preset_ids.contains(&"web".to_string()));

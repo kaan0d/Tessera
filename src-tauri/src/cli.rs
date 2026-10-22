@@ -95,6 +95,7 @@ pub enum Command {
     Preset {
         id: String,
         files: Vec<PathBuf>,
+        flags: RunFlags,
     },
     /// Bad command line (exit code 2); the text says what is wrong.
     Usage(String),
@@ -212,15 +213,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
             }
         }
         Some("convert") => Cli::Cmd(parse_convert(&args[1..])),
-        Some("preset") => Cli::Cmd(match (args.get(1), &args[args.len().min(2)..]) {
-            (Some(id), rest) if !rest.is_empty() && !rest.iter().any(|a| a.starts_with("--")) => {
-                Command::Preset {
-                    id: id.clone(),
-                    files: rest.iter().map(PathBuf::from).collect(),
-                }
-            }
-            _ => usage("preset needs an id and at least one file"),
-        }),
+        Some("preset") => Cli::Cmd(parse_preset(&args[1..])),
         Some("list-presets") => Cli::Cmd(Command::ListPresets),
         Some("formats") => Cli::Cmd(match args.get(1) {
             Some(e) if args.len() == 2 => Command::Formats(e.clone()),
@@ -242,12 +235,70 @@ fn usage(msg: &str) -> Command {
     Command::Usage(msg.into())
 }
 
+/// How a `preset` run reports itself and where it writes (flags may come before or after the files).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct RunFlags {
+    pub dry_run: bool,
+    pub json: bool,
+    pub quiet: bool,
+    pub out: Option<PathBuf>,
+    pub overwrite: bool,
+}
+
+fn parse_preset(args: &[String]) -> Command {
+    let (mut id, mut files, mut flags) = (None, vec![], RunFlags::default());
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--dry-run" => flags.dry_run = true,
+            "--json" => flags.json = true,
+            "--quiet" => flags.quiet = true,
+            "--out" => match it.next() {
+                Some(d) => flags.out = Some(PathBuf::from(d)),
+                None => return usage("--out needs a folder"),
+            },
+            "--conflict" => match it.next().map(String::as_str) {
+                Some("rename") => flags.overwrite = false,
+                Some("overwrite") => flags.overwrite = true,
+                _ => return usage("--conflict must be rename or overwrite"),
+            },
+            f if f.starts_with("--") => {
+                return usage(&format!(
+                    "unknown option {f} (presets take --dry-run, --json, --quiet, --out and --conflict)"
+                ))
+            }
+            _ if id.is_none() => id = Some(a.clone()),
+            _ => files.push(PathBuf::from(a)),
+        }
+    }
+    match id {
+        Some(id) if !files.is_empty() => Command::Preset { id, files, flags },
+        _ => usage("preset needs an id and at least one file"),
+    }
+}
+
 fn parse_convert(args: &[String]) -> Command {
     match convert_args(args) {
         Ok(c) => Command::Convert(c),
         Err(e) => Command::Usage(e),
     }
 }
+
+const VALUE_FLAGS: [&str; 13] = [
+    "to",
+    "max-edge",
+    "percent",
+    "max-size",
+    "quality",
+    "start",
+    "end",
+    "audio-bitrate",
+    "gif-fps",
+    "gif-width",
+    "video-mbps",
+    "out",
+    "conflict",
+];
 
 fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
     let (mut files, mut to, mut resize, mut max_bytes) = (vec![], None, None, None);
@@ -283,6 +334,9 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
                 _ => quiet = true,
             }
             continue;
+        }
+        if !VALUE_FLAGS.contains(&name) {
+            return Err(format!("unknown option --{name}"));
         }
         let v = inline
             .or_else(|| it.next().cloned())
@@ -559,9 +613,24 @@ mod tests {
             cmd(&["preset", "web", "a.png", "b.png"]),
             Command::Preset {
                 id: "web".into(),
-                files: vec!["a.png".into(), "b.png".into()]
+                files: vec!["a.png".into(), "b.png".into()],
+                flags: RunFlags::default()
             }
         );
+        // flags may sit anywhere, as with `convert`
+        let Command::Preset { id, files, flags } = cmd(&[
+            "preset",
+            "--json",
+            "web",
+            "a.png",
+            "--dry-run",
+            "--out",
+            "o",
+        ]) else {
+            panic!("not a preset");
+        };
+        assert_eq!((id.as_str(), files.len()), ("web", 1));
+        assert!(flags.json && flags.dry_run && flags.out.is_some());
         usage_err(&["preset"]);
         usage_err(&["preset", "web"]);
         usage_err(&["preset", "web", "--x", "a.png"]);

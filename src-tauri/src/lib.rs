@@ -872,7 +872,14 @@ fn run_drop(
             if !c.targets.iter().any(|x| x.ext == t.ext() && x.allowed) {
                 return bad();
             }
-            start_convert(&app, t, known);
+            // files already in the target format have nothing to convert
+            let todo: Vec<PathBuf> = dropped::split(&files)
+                .0
+                .into_iter()
+                .filter(|(_, f)| *f != t)
+                .map(|(p, _)| p.clone())
+                .collect();
+            start_convert(&app, t, todo);
         }
         dropped::Choice::Preset { id } => {
             if !c.preset_ids.contains(&id) {
