@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-state="welcome">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install Tessera</title>
+<link rel="stylesheet" href="install.css">
+</head>
+<body>
+<main class="stage" id="stage">
+  <canvas id="mark" class="mark-cv" width="240" height="240" aria-hidden="true"></canvas>
+
+  <section class="col">
+
+    <div class="pct" id="pct" aria-hidden="true">
+      <span class="dg dg-h"><span class="strip"><i>0</i><i>1</i></span></span>
+      <span class="dg dg-t"><span class="strip"><i>0</i><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i><i>9</i></span></span>
+      <span class="dg"><span class="strip"><i>0</i><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i><i>9</i></span></span>
+      <span class="sign">%</span>
+    </div>
+
+    <div class="views">
+      <div class="view v-welcome">
+        <h1>Install Tessera</h1>
+        <p class="lead">Right-click any file, pick a format, done.</p>
+        <label class="lbl" for="dir">Install to <span>no admin rights needed</span></label>
+        <div class="field">
+          <input id="dir" type="text" value="C:\Users\you\AppData\Local\Tessera" spellcheck="false" autocomplete="off">
+          <button class="btn ghost small" id="browse" type="button">Browse</button>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="portable">
+          <span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg></span>
+          <span class="check-t">Keep settings inside the app folder
+            <small>Settings, history and menu icons go to <b>data</b> next to the app instead of %APPDATA%.</small>
+          </span>
+        </label>
+      </div>
+      <div class="view v-run">
+        <h1 id="label" aria-live="polite">Copying files</h1>
+        <p class="lead"><span id="step">1</span> of 4</p>
+        <div class="bar" id="bar" role="progressbar" aria-label="Installing" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="bar-fill"><div class="bar-ink"></div></div>
+        </div>
+      </div>
+      <div class="view v-done">
+        <h1>Tessera is ready</h1>
+        <p class="lead">Right-click a file and look for Tessera.</p>
+        <p class="fine" id="doneDir"></p>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="actions">
+        <button class="btn primary" id="go" type="button">Install</button>
+        <button class="btn primary" id="open" type="button" tabindex="-1">Open Tessera</button>
+        <button class="btn ghost" id="close" type="button" tabindex="-1">Close</button>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="install.js"></script>
+</body>
+</html>
