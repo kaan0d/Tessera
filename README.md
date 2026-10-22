@@ -1,45 +1,48 @@
 # Tessera
 
-Right-click any file in Windows, pick a format, done. A free, open-source file converter for images, audio, video and PDF. Tauri 2 + Rust, one small exe, no account, no ads, no telemetry, no admin rights.
+**Right-click any file, pick a format, done.** Tessera is a free, open-source file converter that lives in the Windows right-click menu. It turns photos, audio, video and PDFs into the format you need, shrinks them for email or WhatsApp, and never sends a file anywhere. No account, no ads, no telemetry, no admin rights.
 
-Converter apps that cost money, run on subscriptions or bury the exit under upsells do the same job: decode a file, encode it again. This does it from the Explorer menu, on your machine, and your files never leave it. MIT licensed, so there is nothing to buy and nothing to unlock.
+Most converter apps cost money, run on subscriptions or bury the exit under upsells, and all of them do the same job: decode a file and encode it again. Tessera does that on your own machine, from the Explorer menu you already use. MIT licensed, so there is nothing to buy and nothing to unlock.
 
-## Features
+## How it works
 
-- **Explorer menu:** cascading "Tessera" menu per file type and per folder, with one icon per kind. Lives in your user registry only.
-- **Formats:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. Also reads SVG, HEIC, RAW (embedded preview) and PDF pages, and turns animated GIFs into MP4 or WebM.
-- **Presets:** shrink for web, WhatsApp, email under 10 MB, Discord under 10 MB, strip location data, make a PDF, WebP or an icon. Make your own.
-- **Edit while converting:** resize, strip metadata, fix orientation, compress to a target file size, cut audio and video, audio bitrate, mono, GIF fps and width. Save any custom settings as a menu preset.
-- **Batch:** merge images into one PDF or audio files into one, convert a whole folder, drop files on the window and choose.
-- **Automation:** watch folders with rules, a full CLI for scripts, a Send To entry.
-- **Safe by default:** the original stays, output gets a new name, nothing is overwritten unless you turn it on. History with undo, cancel any running job.
-- **Pure Rust where possible:** images, audio and PDF need no extra tools. Video, MP3, OGG, AAC and HEIC use ffmpeg.
-- **English and Turkish**, light and dark.
+1. Right-click a file (or several, or a folder) and open **Tessera**.
+2. Pick a format or a preset, such as "Email: under 10 MB".
+3. A small panel shows the progress. The original stays untouched and the result lands next to it.
 
-## Setup
+Prefer a window? Drop files on it and choose there. Prefer scripts? There is a full command line.
 
-Windows 10 or 11 (needs Microsoft Edge WebView2, which both already include).
+## What you can do
 
-**Download:** get `tessera.exe` from the [Releases page](https://github.com/kaan0d/Tessera/releases) and double-click it. The exe is its own installer, so there is nothing else to download. It is not code-signed yet, so SmartScreen may ask you to confirm once (More info, then Run anyway).
+- **Convert:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. It also reads SVG, HEIC, RAW (embedded preview) and PDF pages, and turns animated GIFs into MP4 or WebM.
+- **Shrink to a size:** "under 10 MB" or "under 2 MB" for images, video, audio and PDF. A file that already fits is copied as is when its format stays the same.
+- **Presets:** web, WhatsApp, email, Discord (all under 10 MB where it matters), strip location data, PDF, WebP, icon, Instagram, podcast. Save your own from any custom settings.
+- **Edit on the way:** resize, strip metadata, fix orientation, cut audio and video, audio bitrate, mono, GIF fps and width.
+- **Batch:** merge images into one PDF or audio files into one, convert whole folders, drop many files at once.
+- **Automate:** watch folders with rules, a Send To entry, and `tessera-cli` for scripts.
+- **Stay safe:** originals are kept, output gets a new name, nothing is overwritten unless you turn it on. Every job goes into a history with undo, and any running job can be cancelled.
+- **Feel at home:** English and Turkish (follows Windows), light and dark, keyboard friendly.
 
-**Build from source** (Rust stable):
+Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OGG, AAC and HEIC use ffmpeg, which the installer can download for you (see below).
+
+## Install
+
+Windows 10 or 11. Needs Microsoft Edge WebView2, which both already include.
+
+Get `tessera.exe` from the [Releases page](https://github.com/kaan0d/Tessera/releases) and double-click it. The exe is its own installer, so there is nothing else to download. Pick a folder (default `%LOCALAPPDATA%\Tessera`), choose whether to keep settings next to the app, and let it download video support with a live percentage. It also registers the menu, a Start menu shortcut and an uninstall entry. Uninstall from Settings > Apps > Tessera.
+
+The exe is not code-signed yet, so SmartScreen may ask you to confirm once (More info, then Run anyway).
+
+For a silent install:
 
 ```
-cd src-tauri
-cargo build --release
-target\release\tessera.exe
+tessera.exe --install D:\Apps --portable --add-to-path   adds \Tessera to the folder
+tessera.exe --uninstall --quiet                          --keep-data keeps settings
 ```
 
-The release exe opens its own installer: pick a folder (default `%LOCALAPPDATA%\Tessera`), optionally keep settings and history in a `data` folder next to the app instead of `%APPDATA%`, registers the menu, a Start menu shortcut and an uninstall entry, downloads video support (ffmpeg) with a live percentage, and can add the folder to your PATH so `tessera-cli` works in any terminal (off by default). The window follows Windows: Turkish on a Turkish system, English otherwise. Settings > Apps > Tessera > Uninstall opens the same window and removes the menu, shortcuts, entry, files and (optionally) settings and history. No admin rights, no separate setup file.
+Both exit 0 on success and 1 on failure. `--install` downloads ffmpeg unless it is already there; add `--defer-ffmpeg` to skip it.
 
-```
-tessera.exe --install D:\Apps --portable --add-to-path   silent install (adds \Tessera to the folder)
-tessera.exe --uninstall --quiet            remove without a window (--keep-data keeps settings)
-```
-
-Both silent commands exit 0 on success and 1 on failure. Video support (ffmpeg) is downloaded by `--install` unless it is already there; add `--defer-ffmpeg` to skip it.
-
-## Usage
+## Command line
 
 ```
 tessera-cli convert photo.heic --to jpg
@@ -52,39 +55,66 @@ tessera-cli list-presets
 tessera-cli formats png
 ```
 
-Exit codes: 0 ok, 1 a file failed (or every file was skipped, nothing converted), 2 usage error. `tessera-cli merge pdf a.png b.png` joins images into one PDF (`--max-size` keeps it small), `merge audio ... --to mp3` joins audio.
+`tessera-cli.exe` sits next to `tessera.exe` and is the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`. Exit codes: 0 ok, 1 a file failed (or every file was skipped), 2 usage error. `merge audio ... --to mp3` joins audio, `--max-size` keeps a merged PDF small. `tessera-cli --help` lists everything.
 
-In scripts use `tessera-cli.exe` (installed next to `tessera.exe`): the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`.
+## Privacy
 
-## ffmpeg and your data
+Files never leave your computer. Tessera downloads one thing: a pinned LGPL ffmpeg build (about 170 MB, SHA-256 checked) during setup. Untick it there, or choose Later in the app, and nothing is fetched until you press Download. The update check is off until you turn it on.
 
-Video and a few audio and image formats need ffmpeg. Tessera downloads one pinned LGPL build (about 170 MB, SHA-256 checked) during setup, with a live percentage. Untick it there, or choose Later in the app, and nothing is fetched until you press Download now under Advanced. Nothing else is downloaded, and the update check is off until you turn it on.
+On disk, in `%APPDATA%\Tessera` (or the `data` folder next to the app): `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
 
-Files never leave your computer. On disk, in `%APPDATA%\Tessera` (or the `data` folder next to the app): `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most). Uninstalling can delete all of it.
-
-## What it changes on your PC
-
-Per user, no admin rights. Files: the install folder (default `%LOCALAPPDATA%\Tessera`) and `%APPDATA%\Tessera` (or `data` next to the app). Registry, all under `HKCU`: the Explorer menu keys per file type, the uninstall entry, optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
-
-## Contributing
-
-Issues and pull requests are welcome. `cd src-tauri && cargo test && cargo clippy --all-targets` should stay clean. Report security problems privately through GitHub's "Report a vulnerability" on the repository.
+Everything is per user. Files: the install folder and the data folder above. Registry, all under `HKCU`: the Explorer menu keys, the uninstall entry, and optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
 
 ## Limits
 
 - Windows 11 shows classic menus under "Show more options".
-- The window needs Microsoft Edge WebView2, which Windows 11 and current Windows 10 already include.
-- The installer is not code signed, so SmartScreen may warn on first run.
+- The installer is not code-signed, so SmartScreen may warn on first run.
 - A full-screen exclusive game hides the progress panel.
 - RAW files use the embedded JPEG preview, not a full demosaic.
-
-## Layout
-
-```
-src/         UI (vanilla JS, no framework)
-src-tauri/   Rust: convert engine, queue, shell menu, watch, CLI
-```
 
 ## License
 
 MIT. Third-party notices are in `THIRD-PARTY-LICENSES.md`.
+
+---
+
+## For developers
+
+Tessera is Tauri 2 with a Rust backend and a vanilla JS front end (no framework, no bundler). Issues and pull requests are welcome. Report security problems privately through GitHub's "Report a vulnerability" on the repository.
+
+**Build and run** (Windows, Rust stable):
+
+```
+cd src-tauri
+cargo build --release          target\release\tessera.exe, the installer and the app in one exe
+cargo run                      debug build: skips the installer, opens the app (use --setup to force it)
+cargo test
+cargo clippy --all-targets     keep both clean
+```
+
+The UI in `src/` is served as is, so edit it and reload. A running exe locks its file: close Tessera before building. A debug build registers its menu in your user registry on first run and points it at that exe; remove it with `tessera.exe --remove-menu`.
+
+**Layout**
+
+```
+src/                     UI: index.html (settings), drop.html (chooser), progress.html (panel),
+                         install.html (setup window); app.js, drop.js, progress.js, install.js,
+                         features.js, i18n.js, style.css
+src-tauri/src/
+  convert/               engine: image, audio, pdf, svg, raw, ffmpeg, size search, merge, output naming
+  queue.rs  batch.rs     job queue, progress events, history records
+  shell/                 Explorer menu: registry verbs, icons, presets
+  watch.rs  folder.rs    watch folders and folder verbs
+  cli.rs  headless.rs    command-line parsing and the `tessera-cli` commands
+  install.rs             the self-installer and uninstaller
+  settings.rs  preset.rs history.rs  update.rs  log.rs  i18n.rs  ffmpeg.rs
+src-tauri/menu-icons/    one .ico per menu verb (embedded in the exe)
+```
+
+**Things worth knowing**
+
+- **Two languages, two files:** UI strings live in `src/i18n.js`, Rust strings in `src-tauri/src/i18n.rs`. A new key needs both English and Turkish, so keep the two in step.
+- **No inline styles:** the content security policy is `default-src 'self'`, so style with classes in `style.css` (colors are tokens on `:root`).
+- **Conversion rules:** every converter writes through `output::write_atomic`, never overwrites the source, and honors the size limit through `size::fit` or ffmpeg bitrates. New formats go in `convert/mod.rs` (`Format`, `supported_targets`).
+- **Menu icons:** bump `ICON_REV` in `shell/mod.rs` when you change an icon so Explorer drops its cache.
+- **Releases:** `cargo build --release`, then the exe is the installer. There is no separate bundle step.
