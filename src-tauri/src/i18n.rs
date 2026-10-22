@@ -331,6 +331,12 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ),
     ("drop.custom_name", "Custom settings", "Özel ayar"),
     ("menu.custom", "Custom settings...", "Özel ayar..."),
+    ("menu.presets", "Presets", "Hazır ayarlar"),
+    (
+        "menu.folder_presets",
+        "Presets for all images",
+        "Tüm resimler için hazır ayarlar",
+    ),
     // commands
     (
         "cmd.autostart",

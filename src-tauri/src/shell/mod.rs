@@ -129,10 +129,7 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
             .into_iter()
             .filter(|p| !s.hidden_presets.contains(&p.id))
             .filter(|p| p.menu_target("png", s).is_some() && p.applies_to_kind(Format::Png))
-            .map(|p| {
-                let text = i18n::fmt(lang, "menu.folder_preset", &[("name", &p.name(lang))]);
-                (text, Action::Preset(p.id))
-            })
+            .map(|p| (p.name(lang), Action::Preset(p.id)))
             .collect()
     } else {
         vec![]
@@ -142,9 +139,10 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
 
 /// Menu icon files, one per source kind (transparent .ico, brand colours).
 /// Bump when the .ico artwork changes.
-const ICON_REV: u32 = 5;
+const ICON_REV: u32 = 6;
 
-const KIND_ICONS: [(&str, &[u8]); 12] = [
+const KIND_ICONS: [(&str, &[u8]); 13] = [
+    ("presets", include_bytes!("../../menu-icons/presets.ico")),
     ("image", include_bytes!("../../menu-icons/image.ico")),
     ("audio", include_bytes!("../../menu-icons/audio.ico")),
     ("video", include_bytes!("../../menu-icons/video.ico")),
@@ -191,6 +189,7 @@ fn verb_icon(dir: &Path, name: &str) -> String {
     let icon = match name {
         "gif" => "gif",
         "custom" => "sliders",
+        "presets" => "presets",
         "preset_web" => "web",
         "preset_whatsapp" => "chat",
         "preset_email" => "mail",
@@ -204,6 +203,93 @@ fn verb_icon(dir: &Path, name: &str) -> String {
     dir.join(format!("{icon}-{ICON_REV}.ico"))
         .to_string_lossy()
         .into_owned()
+}
+
+/// One menu entry: a verb that runs `command`, or a group (a cascade) that holds `kids`.
+struct Row {
+    /// Registry key suffix; also picks the icon.
+    name: String,
+    text: String,
+    command: String,
+    kids: Vec<Row>,
+    /// A separator above it (CommandFlags 0x20).
+    separator: bool,
+}
+
+impl Row {
+    fn verb(name: &str, text: impl Into<String>, command: String) -> Row {
+        Row {
+            name: name.to_string(),
+            text: text.into(),
+            command,
+            kids: vec![],
+            separator: false,
+        }
+    }
+
+    fn group(name: &str, text: impl Into<String>, kids: Vec<Row>) -> Row {
+        Row {
+            name: name.to_string(),
+            text: text.into(),
+            command: String::new(),
+            kids,
+            separator: false,
+        }
+    }
+}
+
+/// Presets as one cascade ("Presets"): a menu with six recipes would otherwise double its length.
+/// One preset alone stays a plain entry. `plain` is the entry text when there is no cascade.
+fn preset_rows(
+    items: Vec<(String, String, String)>,
+    parent: String,
+    plain: impl Fn(&str) -> String,
+) -> Vec<Row> {
+    if items.len() >= 2 {
+        let kids = items
+            .into_iter()
+            .map(|(id, name, cmd)| Row::verb(&format!("preset_{id}"), name, cmd))
+            .collect();
+        return vec![Row::group("presets", parent, kids)];
+    }
+    items
+        .into_iter()
+        .map(|(id, name, cmd)| Row::verb(&format!("preset_{id}"), plain(&name), cmd))
+        .collect()
+}
+
+/// Groups of rows in menu order, a separator above each group but the first.
+fn flatten(groups: Vec<Vec<Row>>) -> Vec<Row> {
+    let mut rows: Vec<Row> = vec![];
+    for group in groups.into_iter().filter(|g| !g.is_empty()) {
+        for (n, mut r) in group.into_iter().enumerate() {
+            r.separator = !rows.is_empty() && n == 0;
+            rows.push(r);
+        }
+    }
+    rows
+}
+
+/// Writes `rows` as the `shell` verbs under `parent`; groups become nested cascades.
+fn write_rows(parent: &RegKey, rows: &[Row], icons: Option<&Path>) -> io::Result<()> {
+    for (i, r) in rows.iter().enumerate() {
+        let (verb, _) = parent.create_subkey(format!(r"shell\{i:02}_{}", r.name))?;
+        verb.set_value("MUIVerb", &r.text)?;
+        if r.separator {
+            verb.set_value("CommandFlags", &0x20u32)?;
+        }
+        if let Some(dir) = icons {
+            verb.set_value("Icon", &verb_icon(dir, &r.name))?;
+        }
+        if r.kids.is_empty() {
+            let (cmd, _) = verb.create_subkey("command")?;
+            cmd.set_value("", &r.command)?;
+        } else {
+            verb.set_value("SubCommands", &"")?;
+            write_rows(&verb, &r.kids, icons)?;
+        }
+    }
+    Ok(())
 }
 
 /// Registers the cascading menu under `root` (idempotent: starts from a clean slate).
@@ -220,6 +306,8 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
         write_kind_icons(&icons);
     }
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let icon_dir = s.menu.icons.then_some(icons.as_path());
+    let lang = s.language;
     for ext in EXTS {
         let targets = verbs(ext, s);
         let presets = preset_verbs(ext, s);
@@ -233,68 +321,53 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
         if s.menu.icons {
             menu.set_value("Icon", &icon)?;
         }
-        // (verb name, label, command arguments); a group's first verb gets a separator above
-        // it (CommandFlags 0x20) unless the menu starts with that group
-        let mut groups: Vec<Vec<(String, String, String)>> = vec![];
+        let cmd = |args: &str| format!(r#""{exe}" {args} "%1""#);
+        let mut groups: Vec<Vec<Row>> = vec![];
         groups.push(
             targets
                 .into_iter()
                 .map(|t| {
-                    (
-                        t.ext().to_string(),
-                        label(t, s.language),
-                        format!("--convert {}", t.ext()),
+                    Row::verb(
+                        t.ext(),
+                        label(t, lang),
+                        cmd(&format!("--convert {}", t.ext())),
                     )
                 })
                 .collect(),
         );
-        groups.push(
+        groups.push(preset_rows(
             presets
                 .into_iter()
-                .map(|(id, name)| (format!("preset_{id}"), name, format!("--preset {id}")))
+                .map(|(id, name)| {
+                    let c = cmd(&format!("--preset {id}"));
+                    (id, name, c)
+                })
                 .collect(),
-        );
+            i18n::t(lang, "menu.presets").to_string(),
+            |name| name.to_string(),
+        ));
         groups.push(
             merge
                 .into_iter()
                 .map(|(k, name)| {
-                    (
-                        format!("merge_{}", k.arg()),
+                    Row::verb(
+                        &format!("merge_{}", k.arg()),
                         name,
-                        format!("--merge {}", k.arg()),
+                        cmd(&format!("--merge {}", k.arg())),
                     )
                 })
                 .collect(),
         );
         // one-off settings: opens the chooser on its custom page (not for documents)
         if Format::from_ext(ext).is_some_and(|f| f.kind() != "document") {
-            groups.push(vec![(
-                "custom".to_string(),
-                i18n::t(s.language, "menu.custom").to_string(),
-                "--custom".to_string(),
+            groups.push(vec![Row::verb(
+                "custom",
+                i18n::t(lang, "menu.custom"),
+                cmd("--custom"),
             )]);
         }
-        let mut i = 0;
-        for group in groups.into_iter().filter(|g| !g.is_empty()) {
-            for (n, (name, text, args)) in group.into_iter().enumerate() {
-                let (verb, _) = menu.create_subkey(format!(r"shell\{i:02}_{name}"))?;
-                verb.set_value("MUIVerb", &text)?;
-                if i > 0 && n == 0 {
-                    verb.set_value("CommandFlags", &0x20u32)?;
-                }
-                if s.menu.icons {
-                    verb.set_value("Icon", &verb_icon(&icons, &name))?;
-                }
-                let (cmd, _) = verb.create_subkey("command")?;
-                cmd.set_value("", &format!(r#""{exe}" {args} "%1""#))?;
-                i += 1;
-            }
-        }
+        write_rows(&menu, &flatten(groups), icon_dir)?;
     }
-    let groups: Vec<_> = folder_verbs(s)
-        .into_iter()
-        .filter(|g| !g.is_empty())
-        .collect();
     if s.menu.folder {
         let (menu, _) = hkcu.create_subkey(folder_key(root))?;
         menu.set_value("MUIVerb", &APP_NAME)?;
@@ -302,34 +375,40 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
         if s.menu.icons {
             menu.set_value("Icon", &icon)?;
         }
-        let mut i = 0;
-        for group in groups {
-            for (n, (text, action)) in group.into_iter().enumerate() {
-                let name = action.arg().replace(':', "_");
-                let (verb, _) = menu.create_subkey(format!(r"shell\{i:02}_{name}"))?;
-                verb.set_value("MUIVerb", &text)?;
-                if i > 0 && n == 0 {
-                    verb.set_value("CommandFlags", &0x20u32)?;
-                }
-                if s.menu.icons {
-                    verb.set_value("Icon", &verb_icon(&icons, &name))?;
-                }
-                let (cmd, _) = verb.create_subkey("command")?;
-                cmd.set_value("", &format!(r#""{exe}" --folder {} "%1""#, action.arg()))?;
-                i += 1;
+        let fcmd = |arg: &str| format!(r#""{exe}" --folder {arg} "%1""#);
+        let mut groups: Vec<Vec<Row>> = vec![];
+        for group in folder_verbs(s).into_iter().filter(|g| !g.is_empty()) {
+            if group.iter().all(|(_, a)| matches!(a, Action::Preset(_))) {
+                let items = group
+                    .iter()
+                    .map(|(text, a)| match a {
+                        Action::Preset(id) => (id.clone(), text.clone(), fcmd(&a.arg())),
+                        _ => unreachable!("checked above"),
+                    })
+                    .collect();
+                groups.push(preset_rows(
+                    items,
+                    i18n::t(lang, "menu.folder_presets").to_string(),
+                    |name| i18n::fmt(lang, "menu.folder_preset", &[("name", name)]),
+                ));
+            } else {
+                groups.push(
+                    group
+                        .into_iter()
+                        .map(|(text, a)| {
+                            Row::verb(&a.arg().replace(':', "_"), text, fcmd(&a.arg()))
+                        })
+                        .collect(),
+                );
             }
         }
         // one-off settings for the files in the folder: the chooser opens on its custom page
-        let (verb, _) = menu.create_subkey(format!(r"shell\{i:02}_custom"))?;
-        verb.set_value("MUIVerb", &i18n::t(s.language, "menu.custom"))?;
-        if i > 0 {
-            verb.set_value("CommandFlags", &0x20u32)?;
-        }
-        if s.menu.icons {
-            verb.set_value("Icon", &verb_icon(&icons, "custom"))?;
-        }
-        let (cmd, _) = verb.create_subkey("command")?;
-        cmd.set_value("", &format!(r#""{exe}" --custom "%1""#))?;
+        groups.push(vec![Row::verb(
+            "custom",
+            i18n::t(lang, "menu.custom"),
+            format!(r#""{exe}" --custom "%1""#),
+        )]);
+        write_rows(&menu, &flatten(groups), icon_dir)?;
     }
     Ok(())
 }
@@ -514,7 +593,7 @@ mod tests {
         assert!(verb
             .get_value::<String, _>("Icon")
             .unwrap()
-            .ends_with(r"menu-icons\image-5.ico"));
+            .ends_with(r"menu-icons\image-6.ico"));
         assert_eq!(
             verb.open_subkey("command")
                 .unwrap()
@@ -537,9 +616,11 @@ mod tests {
         );
         let mp4 = hkcu.open_subkey(menu_key(&root, "mp4")).unwrap();
         let names = verb_names(&mp4);
-        // 10 formats, then email/discord/strip presets
-        assert_eq!((names[0].as_str(), names.len()), ("00_mkv", 14));
-        assert_eq!(names[10], "10_preset_email");
+        // 10 formats, then one cascade holding the email/discord/strip presets, then custom
+        assert_eq!((names[0].as_str(), names.len()), ("00_mkv", 12));
+        assert_eq!(names[10], "10_presets");
+        let cascade = mp4.open_subkey(r"shell\10_presets").unwrap();
+        assert_eq!(verb_names(&cascade).len(), 3);
 
         remove_at(&root).unwrap();
         remove_at(&root).unwrap();
@@ -582,7 +663,7 @@ mod tests {
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         assert!(png.get_value::<String, _>("Icon").is_err());
         assert!(png
-            .open_subkey(r"shell _avif")
+            .open_subkey(r"shell\00_avif")
             .unwrap()
             .get_value::<String, _>("Icon")
             .is_err());
@@ -627,20 +708,19 @@ mod tests {
         install_at(&root, exe, &ready(false)).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         let names = verb_names(&png);
-        // 8 formats, 6 presets, merge, custom
-        assert_eq!(names.len(), 16);
-        assert_eq!(names[8], "08_preset_web");
-        assert_eq!(names[14], "14_merge_pdf");
-        assert_eq!(names[15], "15_custom");
+        // 8 formats, one "Presets" cascade, merge, custom
+        assert_eq!(names.len(), 11);
+        assert_eq!(names[8], "08_presets");
+        assert_eq!(names[9], "09_merge_pdf");
+        assert_eq!(names[10], "10_custom");
         let flags = |n: &str| {
             png.open_subkey(format!(r"shell\{n}"))
                 .unwrap()
                 .get_value::<u32, _>("CommandFlags")
                 .ok()
         };
-        assert_eq!(flags("08_preset_web"), Some(0x20));
-        assert_eq!(flags("14_merge_pdf"), Some(0x20));
-        assert_eq!(flags("09_preset_whatsapp"), None);
+        assert_eq!(flags("08_presets"), Some(0x20));
+        assert_eq!(flags("09_merge_pdf"), Some(0x20));
         assert_eq!(flags("00_jpg"), None);
         let cmd = |n: &str| {
             png.open_subkey(format!(r"shell\{n}\command"))
@@ -648,13 +728,29 @@ mod tests {
                 .get_value::<String, _>("")
                 .unwrap()
         };
-        assert_eq!(cmd("10_preset_email"), r#""C:\x.exe" --preset email "%1""#);
-        assert_eq!(cmd("14_merge_pdf"), r#""C:\x.exe" --merge pdf "%1""#);
-        assert_eq!(cmd("15_custom"), r#""C:\x.exe" --custom "%1""#);
+        assert_eq!(cmd("09_merge_pdf"), r#""C:\x.exe" --merge pdf "%1""#);
+        assert_eq!(cmd("10_custom"), r#""C:\x.exe" --custom "%1""#);
+        // the cascade holds the six presets, each with its own command
+        let cascade = png.open_subkey(r"shell\08_presets").unwrap();
+        assert_eq!(
+            cascade.get_value::<String, _>("MUIVerb").unwrap(),
+            "Presets"
+        );
+        assert_eq!(cascade.get_value::<String, _>("SubCommands").unwrap(), "");
+        assert!(cascade.open_subkey("command").is_err());
+        let kids = verb_names(&cascade);
+        assert_eq!(kids.len(), 6);
+        assert_eq!(kids[0], "00_preset_web");
+        assert_eq!(
+            cmd(r"08_presets\shell\02_preset_email"),
+            r#""C:\x.exe" --preset email "%1""#
+        );
+        let first = cascade.open_subkey(r"shell\00_preset_web").unwrap();
+        assert!(first.get_value::<u32, _>("CommandFlags").is_err());
         // ffmpeg-less menu hides video presets; mp4 has no verbs at all
         assert!(hkcu.open_subkey(menu_key(&root, "mp4")).is_err());
 
-        // switches: no presets, no merge, hidden preset, source off
+        // switches: no presets, no merge, hidden presets, source off
         let mut st = ready(true);
         st.menu.presets_enabled = false;
         st.menu.merge = false;
@@ -667,19 +763,34 @@ mod tests {
         install_at(&root, exe, &st).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         let names = verb_names(&png);
-        assert_eq!(names[8], "08_preset_whatsapp");
-        assert_eq!(names.len(), 8 + 4 + 1);
+        assert_eq!(names[8], "08_presets");
+        assert_eq!(names.len(), 8 + 1 + 1);
+        let cascade = png.open_subkey(r"shell\08_presets").unwrap();
+        let kids = verb_names(&cascade);
+        assert_eq!((kids.len(), kids[0].as_str()), (4, "00_preset_whatsapp"));
         // heic: no format verbs ... presets and no merge verb
         let heic = hkcu.open_subkey(menu_key(&root, "heic")).unwrap();
         assert!(verb_names(&heic).iter().all(|n| !n.contains("merge")));
         assert!(hkcu.open_subkey(menu_key(&root, "jpg")).is_err());
+        // one visible preset stays a plain entry, not a cascade of one
+        st.hidden_presets = ["whatsapp", "email", "discord", "strip", "pdf"]
+            .map(String::from)
+            .to_vec();
+        install_at(&root, exe, &st).unwrap();
+        let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
+        let single = png.open_subkey(r"shell\08_preset_web").unwrap();
+        assert_eq!(
+            single.get_value::<String, _>("MUIVerb").unwrap(),
+            "Shrink for web"
+        );
+        assert!(single.open_subkey("command").is_ok());
         // only presets: no separator flag on the first verb of the menu
         let mut only = ready(false);
         only.enabled_targets.clear();
         only.menu.merge = false;
         install_at(&root, exe, &only).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
-        let first = png.open_subkey(r"shell\00_preset_web").unwrap();
+        let first = png.open_subkey(r"shell\00_presets").unwrap();
         assert!(first.get_value::<u32, _>("CommandFlags").is_err());
         remove_at(&root).unwrap();
         cleanup(&root);
@@ -730,10 +841,10 @@ mod tests {
         let menu = hkcu.open_subkey(folder_key(&root)).unwrap();
         assert_eq!(menu.get_value::<String, _>("MUIVerb").unwrap(), APP_NAME);
         let names = verb_names(&menu);
-        // 8 image formats, 6 presets, wav + flac
-        assert_eq!((names[0].as_str(), names.len()), ("00_png", 8 + 6 + 2 + 1));
+        // 8 image formats, one presets cascade, wav + flac, custom
+        assert_eq!((names[0].as_str(), names.len()), ("00_png", 8 + 1 + 2 + 1));
         assert!(names.last().unwrap().ends_with("_custom"));
-        assert!(names.contains(&"08_preset_web".to_string()));
+        assert!(names.contains(&"08_presets".to_string()));
         assert!(names.iter().any(|n| n.ends_with("_wav")));
         // no ffmpeg: no mp3/ogg
         assert!(!names
@@ -747,15 +858,20 @@ mod tests {
         };
         assert_eq!(cmd("00_png"), r#""C:\x.exe" --folder png "%1""#);
         assert_eq!(
-            cmd("08_preset_web"),
+            cmd(r"08_presets\shell\00_preset_web"),
             r#""C:\x.exe" --folder preset:web "%1""#
         );
-        let verb = menu.open_subkey(r"shell\08_preset_web").unwrap();
+        let verb = menu.open_subkey(r"shell\08_presets").unwrap();
         assert_eq!(
             verb.get_value::<String, _>("MUIVerb").unwrap(),
-            "Shrink for web (all images)"
+            "Presets for all images"
         );
         assert_eq!(verb.get_value::<u32, _>("CommandFlags").unwrap(), 0x20);
+        let kid = verb.open_subkey(r"shell\00_preset_web").unwrap();
+        assert_eq!(
+            kid.get_value::<String, _>("MUIVerb").unwrap(),
+            "Shrink for web"
+        );
 
         // ffmpeg ready adds mp3 and ogg
         install_at(&root, exe, &ready(true)).unwrap();
