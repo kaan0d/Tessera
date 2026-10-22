@@ -26,23 +26,23 @@ cargo build --release
 target\release\tessera.exe
 ```
 
-Run the release exe and it opens its own installer: pick a folder (default `%LOCALAPPDATA%\Tessera`), optionally keep settings and history in a `data` folder next to the app instead of `%APPDATA%`, registers the menu, a Start menu shortcut and an uninstall entry, and downloads video support (ffmpeg) with a live percentage. The window follows Windows: Turkish on a Turkish system, English otherwise. Settings > Apps > Tessera > Uninstall opens the same window and removes the menu, shortcuts, entry, files and (optionally) settings and history. No admin rights, no separate setup file.
+Run the release exe and it opens its own installer: pick a folder (default `%LOCALAPPDATA%\Tessera`), optionally keep settings and history in a `data` folder next to the app instead of `%APPDATA%`, registers the menu, a Start menu shortcut and an uninstall entry, downloads video support (ffmpeg) with a live percentage, and can add the folder to your PATH so `tessera-cli` works in any terminal (off by default). The window follows Windows: Turkish on a Turkish system, English otherwise. Settings > Apps > Tessera > Uninstall opens the same window and removes the menu, shortcuts, entry, files and (optionally) settings and history. No admin rights, no separate setup file.
 
 ```
-tessera.exe --install D:\Apps --portable   silent install (adds \Tessera to the folder)
+tessera.exe --install D:\Apps --portable --add-to-path   silent install (adds \Tessera to the folder)
 tessera.exe --uninstall --quiet            remove without a window (--keep-data keeps settings)
 ```
 
 ## Usage
 
 ```
-tessera convert photo.heic --to jpg
-tessera convert scan.png --to webp --max-edge 1600 --strip
-tessera convert clip.mov --to mp4 --max-size 8MB
-tessera convert talk.mp4 --to mp3 --start 1:30 --end 4:00 --mono
-tessera preset whatsapp beach.jpg
-tessera list-presets
-tessera formats png
+tessera-cli convert photo.heic --to jpg
+tessera-cli convert scan.png --to webp --max-edge 1600 --strip
+tessera-cli convert clip.mov --to mp4 --max-size 8MB
+tessera-cli convert talk.mp4 --to mp3 --start 1:30 --end 4:00 --mono
+tessera-cli preset whatsapp beach.jpg
+tessera-cli list-presets
+tessera-cli formats png
 ```
 
 Exit codes: 0 ok, 1 a file failed, 2 usage error.

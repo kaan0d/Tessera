@@ -87,8 +87,8 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("preset.discord", "Discord: under 8 MB", "Discord: 8 MB altı"),
     (
         "preset.strip",
-        "Remove location & metadata",
-        "Konum ve üst verileri sil",
+        "Remove location & camera info",
+        "Konum ve kamera bilgisini sil",
     ),
     ("preset.pdf", "Make a PDF", "PDF yap"),
     // preset errors
@@ -124,8 +124,8 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ),
     (
         "preset.same_needs_option",
-        "Keeping the format needs a resize, a size limit or metadata removal",
-        "Biçimi korumak için boyutlandırma, boyut sınırı veya üst veri silme gerekir",
+        "Keeping the format needs a resize, a size limit or removing location and camera info",
+        "Biçimi korumak için boyutlandırma, boyut sınırı ya da konum ve kamera bilgisini silme gerekir",
     ),
     (
         "preset.too_many",

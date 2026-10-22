@@ -1098,11 +1098,16 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             quiet: true,
             keep_data,
         } => Some(install::uninstall_quiet(*keep_data)),
-        Cli::Install { dir, portable } => {
+        Cli::Install {
+            dir,
+            portable,
+            path,
+        } => {
             let req = install::Request {
                 dir: dir.clone(),
                 portable: *portable,
                 ffmpeg: true,
+                path: *path,
             };
             Some(i32::from(install::run_install(&req, |_| {}).is_err()))
         }

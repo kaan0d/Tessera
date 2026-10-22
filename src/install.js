@@ -146,6 +146,10 @@
       left_entry: "the uninstall entry", left_data: "settings and history", left_files: "the program files",
       ff_note: "Video support will download the next time Tessera opens.",
       ff_skipped: "Video support is off. Turn it on any time in Advanced.",
+      path: "Add to PATH for terminals",
+      path_hint: "Lets you type tessera-cli in Command Prompt or PowerShell. Most people do not need it.",
+      path_note: "PATH updated. Open a new terminal window to use tessera-cli.",
+      left_path: "the PATH entry",
       ffdl: "Download video support now (about 170 MB)",
       ffdl_hint: "Needed for video, MP3, OGG and AAC. You can also do it later.",
       "Skipping video support": "Skipping video support",
@@ -181,6 +185,10 @@
       left_entry: "kaldırma kaydı", left_data: "ayarlar ve geçmiş", left_files: "program dosyaları",
       ff_note: "Video desteği Tessera'nın bir sonraki açılışında indirilecek.",
       ff_skipped: "Video desteği kapalı. İstediğin zaman Gelişmiş bölümünden açabilirsin.",
+      path: "Terminaller için PATH'e ekle",
+      path_hint: "Komut İstemi ve PowerShell'de tessera-cli yazabilirsin. Çoğu kişiye gerekmez.",
+      path_note: "PATH güncellendi. tessera-cli için yeni bir terminal penceresi aç.",
+      left_path: "PATH kaydı",
       ffdl: "Video desteğini şimdi indir (yaklaşık 170 MB)",
       ffdl_hint: "Video, MP3, OGG ve AAC için gerekli. Sonra da yapabilirsin.",
       "Skipping video support": "Video desteği atlanıyor",
@@ -290,8 +298,8 @@
     const dir = dirEl.value.trim();
     doneDirPath = dir; document.getElementById("doneDir").textContent = t("installed_to") + " " + dir;
     if (!T) return demo();
-    T.core.invoke("install_start", { req: { dir, portable: document.getElementById("portable").checked, ffmpeg: document.getElementById("ffdl").checked } })
-      .then((real) => { dirEl.value = real; doneDirPath = real; document.getElementById("doneDir").textContent = t("installed_to") + " " + real; api.start(); })
+    T.core.invoke("install_start", { req: { dir, portable: document.getElementById("portable").checked, ffmpeg: document.getElementById("ffdl").checked, path: document.getElementById("pathadd").checked } })
+      .then((real) => { document.getElementById("pathNote").textContent = document.getElementById("pathadd").checked ? t("path_note") : ""; dirEl.value = real; doneDirPath = real; document.getElementById("doneDir").textContent = t("installed_to") + " " + real; api.start(); })
       .catch((e) => showError(String(e)));
   });
   document.getElementById("browse").addEventListener("click", () => {

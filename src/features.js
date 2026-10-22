@@ -704,7 +704,7 @@ function updateBanner(info) {
 
 /* ======================================================================== command line */
 function renderCli() {
-  const exe = document.title;
+  const exe = 'tessera-cli';
   const rows = [
     [`${exe} convert photo.heic --to jpg`, 'cli.c_heic'],
     [`${exe} convert scan.png --to webp --max-edge 1600 --strip`, 'cli.c_web'],

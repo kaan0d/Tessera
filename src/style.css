@@ -963,3 +963,17 @@ body.settings::after,body.drop::after{content:"";position:fixed;inset:0;z-index:
 /* inputs inside an option row sit on its center line and stay inside the hover area */
 .choice .field,.choice .field.short{margin-top:0}
 .field.plain.short,.field.short{height:32px}
+
+/* ---------- review round 2 ---------- */
+/* preset and rule cards: icons and the menu switch share one line instead of stacking */
+.pc-side{flex-direction:row;align-items:center;gap:12px;align-self:flex-start;padding-top:0;margin-top:-2px}
+.pc-acts{order:-1;margin-right:0}
+/* panel position preview: a hint of a desktop, not half the page */
+.screen{aspect-ratio:auto;height:210px;width:100%}
+/* inline links in sentences get a bigger hit area without moving the text */
+.aside .link,.hint .link,.link.inline{padding:5px 3px;margin:-5px -3px}
+/* the big percentage keeps its descenders and digits inside the box */
+.p-pct{line-height:1.15}
+/* the chooser shows its focus ring only once the keyboard is in use */
+body.drop:not(.kb) .chip.dr-choice:focus-visible{outline:none;background-size:100% 0%;color:var(--muted);border-color:color-mix(in srgb,var(--ink) 30%,transparent)}
+body.drop:not(.kb) .dr-card:focus-visible{outline:none;background-size:100% 0%;border-color:var(--line)}

@@ -44,6 +44,9 @@ pub struct Request {
     /// Download ffmpeg during the install (the default); false = later.
     #[serde(default = "yes")]
     pub ffmpeg: bool,
+    /// Add the install folder to the user's PATH so `tessera-cli` works in a terminal.
+    #[serde(default)]
+    pub path: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -336,6 +339,108 @@ fn run_step(
     r
 }
 
+const ENV_KEY: &str = "Environment";
+
+/// Entries are equal when they differ only in case, spaces or a trailing backslash.
+fn same_entry(a: &str, b: &str) -> bool {
+    let norm = |s: &str| s.trim().trim_end_matches(['\\', '/']).to_lowercase();
+    norm(a) == norm(b)
+}
+
+/// `path` with `dir` appended; None when it is already listed.
+pub fn path_with(path: &str, dir: &str) -> Option<String> {
+    if path.split(';').any(|e| same_entry(e, dir)) {
+        return None;
+    }
+    Some(if path.trim().is_empty() {
+        dir.to_string()
+    } else if path.ends_with(';') {
+        format!("{path}{dir}")
+    } else {
+        format!("{path};{dir}")
+    })
+}
+
+/// `path` without `dir`; None when it was not listed. Every other entry stays as it was.
+pub fn path_without(path: &str, dir: &str) -> Option<String> {
+    let parts: Vec<&str> = path.split(';').collect();
+    if !parts.iter().any(|e| same_entry(e, dir)) {
+        return None;
+    }
+    let kept: Vec<&str> = parts.into_iter().filter(|e| !same_entry(e, dir)).collect();
+    Some(kept.join(";"))
+}
+
+/// The user's PATH exactly as stored, with its registry type (so %VARS% survive a rewrite).
+fn read_user_path(key: &RegKey) -> (String, winreg::enums::RegType) {
+    match key.get_raw_value("Path") {
+        Ok(v) => {
+            let units: Vec<u16> = v
+                .bytes
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| u16::from_le_bytes(*c))
+                .collect();
+            let text = String::from_utf16_lossy(&units);
+            (text.trim_end_matches('\0').to_string(), v.vtype)
+        }
+        Err(_) => (String::new(), winreg::enums::REG_EXPAND_SZ),
+    }
+}
+
+fn write_user_path(key: &RegKey, value: &str, vtype: winreg::enums::RegType) -> io::Result<()> {
+    let bytes: Vec<u8> = value
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .flat_map(|u| u.to_le_bytes())
+        .collect();
+    key.set_raw_value("Path", &winreg::RegValue { bytes, vtype })
+}
+
+/// Tells running programs (Explorer, new terminals) that the environment changed.
+fn broadcast_environment_change() {
+    use windows::core::w;
+    use windows::Win32::Foundation::{LPARAM, WPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        SendMessageTimeoutW, HWND_BROADCAST, SMTO_ABORTIFHUNG, WM_SETTINGCHANGE,
+    };
+    // SAFETY: the string literal outlives the call; the result is not used.
+    unsafe {
+        let _ = SendMessageTimeoutW(
+            HWND_BROADCAST,
+            WM_SETTINGCHANGE,
+            WPARAM(0),
+            LPARAM(w!("Environment").as_ptr() as isize),
+            SMTO_ABORTIFHUNG,
+            3000,
+            None,
+        );
+    }
+}
+
+/// Adds the install folder to the user's PATH (no admin rights, once).
+pub fn add_to_path(dir: &Path) -> io::Result<()> {
+    let key = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(ENV_KEY, KEY_ALL_ACCESS)?;
+    let (cur, vtype) = read_user_path(&key);
+    if let Some(new) = path_with(&cur, &dir.to_string_lossy()) {
+        write_user_path(&key, &new, vtype)?;
+        broadcast_environment_change();
+    }
+    Ok(())
+}
+
+/// Takes the install folder out of the user's PATH again; nothing else is touched.
+pub fn remove_from_path(dir: &Path) -> io::Result<()> {
+    let key = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(ENV_KEY, KEY_ALL_ACCESS)?;
+    let (cur, vtype) = read_user_path(&key);
+    if let Some(new) = path_without(&cur, &dir.to_string_lossy()) {
+        write_user_path(&key, &new, vtype)?;
+        broadcast_environment_change();
+    }
+    Ok(())
+}
+
 /// What an install produced: the exe, and whether video support (ffmpeg) is in place.
 pub struct Installed {
     pub exe: PathBuf,
@@ -411,6 +516,11 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Inst
         &mut |_| {
             crate::shell::set_sendto_at(&start_menu_dir(), &dst, true)
                 .map_err(fail("Cannot add the Start menu shortcut"))?;
+            if req.path {
+                if let Err(e) = add_to_path(&dir) {
+                    crate::log::write("warn", &format!("PATH not updated: {e}"));
+                }
+            }
             write_uninstall_entry(&dir, &dst).map_err(fail("Cannot register the uninstaller"))
         },
     )?;
@@ -497,6 +607,9 @@ pub fn run_uninstall(
             }
             if !done(RegKey::predef(HKEY_CURRENT_USER).delete_subkey_all(UNINSTALL_KEY)) {
                 left.push("entry");
+            }
+            if !done(remove_from_path(&dir)) {
+                left.push("path");
             }
             Ok(())
         },
@@ -602,5 +715,37 @@ mod folder_name_tests {
             assert!(normalize_dir(&p).is_err(), "{p}");
         }
         assert!(normalize_dir("D:/apps/My Tools (x86)").is_ok());
+    }
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+
+    #[test]
+    fn adding_is_idempotent_and_keeps_the_rest() {
+        let dir = "C:/Apps/Tessera";
+        assert_eq!(path_with("", dir).as_deref(), Some(dir));
+        assert_eq!(
+            path_with("C:/a;%X%/b", dir).as_deref(),
+            Some("C:/a;%X%/b;C:/Apps/Tessera")
+        );
+        assert_eq!(
+            path_with("C:/a;", dir).as_deref(),
+            Some("C:/a;C:/Apps/Tessera")
+        );
+        // already there, any case, with a trailing slash
+        assert_eq!(path_with("C:/a;c:/apps/tessera/", dir), None);
+    }
+
+    #[test]
+    fn removing_touches_only_our_entry() {
+        let dir = "C:/Apps/Tessera";
+        assert_eq!(
+            path_without("C:/a;C:/Apps/Tessera;%X%/b", dir).as_deref(),
+            Some("C:/a;%X%/b")
+        );
+        assert_eq!(path_without("C:/Apps/Tessera", dir).as_deref(), Some(""));
+        assert_eq!(path_without("C:/a;C:/Apps/Tessera2", dir), None);
     }
 }

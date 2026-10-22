@@ -18,6 +18,7 @@ pub enum Cli {
     Install {
         dir: String,
         portable: bool,
+        path: bool,
     },
     /// Remove the installed app (menu, shortcuts, uninstall entry, files). Shows a window
     /// unless `--quiet`; `--keep-data` leaves settings and history.
@@ -152,6 +153,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
             Some(dir) if !dir.starts_with("--") => Cli::Install {
                 dir: dir.clone(),
                 portable: args.iter().any(|a| a == "--portable"),
+                path: args.iter().any(|a| a == "--add-to-path"),
             },
             _ => Cli::Normal,
         },
@@ -386,7 +388,8 @@ mod tests {
             parse(&a(&["--install", r"D:\Apps", "--portable"]), None),
             Cli::Install {
                 dir: r"D:\Apps".into(),
-                portable: true
+                portable: true,
+                path: false
             }
         );
         assert_eq!(parse(&a(&["--install"]), None), Cli::Normal);
