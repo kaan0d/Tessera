@@ -514,7 +514,7 @@ mod tests {
         assert!(verb
             .get_value::<String, _>("Icon")
             .unwrap()
-            .ends_with(r"menu-icons\image-4.ico"));
+            .ends_with(r"menu-icons\image-5.ico"));
         assert_eq!(
             verb.open_subkey("command")
                 .unwrap()
