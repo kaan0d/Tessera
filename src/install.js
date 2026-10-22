@@ -128,6 +128,7 @@
       wipe: "Also delete my settings and history",
       wipe_hint: "Presets, history and the downloaded ffmpeg. Left unticked, they stay for a later reinstall. Converted files are never touched.",
       done_title: "Tessera is ready", done_lead: "Right-click a file and look for Tessera.",
+      done_w11: "On Windows 11, right-click a file and choose Show more options to find Tessera.",
       done_free: "Free and open source. No account, no ads, no telemetry.", installed_to: "Installed to",
       gone_title: "Tessera is removed", gone_lead: "Your converted files were not touched.",
       gone_fine: "Thanks for trying a free converter.",
@@ -169,6 +170,7 @@
       wipe: "Ayarlarımı ve geçmişimi de sil",
       wipe_hint: "Hazır ayarlar, geçmiş ve indirilen ffmpeg. İşaretlemezsen sonraki kurulum için saklanır. Dönüştürdüğün dosyalara dokunulmaz.",
       done_title: "Tessera hazır", done_lead: "Bir dosyaya sağ tıkla ve Tessera'yı bul.",
+      done_w11: "Windows 11'de bir dosyaya sağ tıkla ve Tessera'yı bulmak için Daha fazla seçenek göster'i seç.",
       done_free: "Ücretsiz ve açık kaynak. Hesap, reklam ve izleme yok.", installed_to: "Kurulum yeri:",
       gone_title: "Tessera kaldırıldı", gone_lead: "Dönüştürdüğün dosyalara dokunulmadı.",
       gone_fine: "Ücretsiz bir dönüştürücüyü denediğin için teşekkürler.",
@@ -329,6 +331,7 @@
     T.event.listen("install-done", (e) => { document.getElementById("ffNote").textContent = e.payload === "failed" ? t("ff_note") : e.payload === "skipped" ? t("ff_skipped") : e.payload === "present" ? t("ff_present") : ""; });
     T.core.invoke("install_defaults").then((d) => {
       applyLang(d.lang);
+      document.getElementById("w11").hidden = !d.win11;
       if (d.mode === "uninstall") {
         api.setMode("uninstall");
         setGo("uninstall");

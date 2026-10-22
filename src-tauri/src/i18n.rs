@@ -91,6 +91,8 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Konum ve kamera bilgisini sil",
     ),
     ("preset.pdf", "Make a PDF", "PDF yap"),
+    ("preset.webp", "Make a WebP", "WebP yap"),
+    ("preset.ico", "Make an icon (ICO)", "Simge yap (ICO)"),
     // preset errors
     (
         "preset.bad_name",

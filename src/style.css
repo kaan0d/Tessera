@@ -1008,7 +1008,8 @@ kbd{font-size:12px}
 
 @media (prefers-reduced-motion:reduce){.top{animation:none;background:transparent;border-bottom-color:transparent}}
 
-#error .btn{margin-left:auto;flex:none;align-self:center}
+#error .btn{flex:none;align-self:center}
+#error .btn:first-of-type{margin-left:auto}
 
 /* the settings scrollbar starts under the window buttons, not behind them */
 main::-webkit-scrollbar-track{margin:52px 0 8px}

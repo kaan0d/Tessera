@@ -761,6 +761,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     retry.textContent = t('err.retry');
     retry.onclick = () => location.reload();
     $('error').append(retry);
+    const where = document.createElement('button');
+    where.type = 'button';
+    where.className = 'btn sm';
+    where.textContent = t('err.open_folder');
+    where.onclick = () => invoke('open_settings_folder').catch(() => {});
+    $('error').append(where);
     $$('main input,main select,main button:not(#error .btn)').forEach((x) => (x.disabled = true));
     return;
   }

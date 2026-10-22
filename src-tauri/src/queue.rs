@@ -31,6 +31,9 @@ struct Done {
     output: Option<String>,
     /// History entry of this job (for Undo); None when history is off or the job failed.
     history_id: Option<u64>,
+    /// Size of the result and of the source, for the "1.9 MB, was 11.5 MB" line.
+    bytes: Option<u64>,
+    from_bytes: Option<u64>,
 }
 
 /// One unit of work for `enqueue_specs`.
@@ -252,6 +255,8 @@ impl Queue {
                     message: t(i18n::lang(), "job.done").into(),
                     output: None,
                     history_id: None,
+                    bytes: None,
+                    from_bytes: None,
                 },
             );
             if ok && active.load(Ordering::Relaxed) == 0 {
@@ -290,6 +295,8 @@ fn worker(
                 message: ConvertError::Corrupt.message(i18n::lang()),
                 output: None,
                 history_id: None,
+                bytes: None,
+                from_bytes: None,
             });
         if !done.ok && done.message != ConvertError::Cancelled.message(i18n::lang()) {
             crate::log::write(
@@ -355,6 +362,8 @@ fn run(app: &AppHandle, job: &Job) -> Done {
         message,
         output: None,
         history_id: None,
+        bytes: None,
+        from_bytes: None,
     };
     if job.cancel.load(Ordering::Relaxed) {
         return fail(t(lang, "job.cancelled").into());
@@ -400,6 +409,13 @@ fn run(app: &AppHandle, job: &Job) -> Done {
             message: t(lang, "job.done").into(),
             output: Some(out.display().to_string()),
             history_id: None,
+            bytes: std::fs::metadata(&out).ok().map(|m| m.len()),
+            // a merge has no single source
+            from_bytes: job
+                .merge
+                .is_none()
+                .then(|| std::fs::metadata(&job.path).ok().map(|m| m.len()))
+                .flatten(),
         },
         Err(ConvertError::NeedsFfmpeg) => fail(t(lang, "job.needs_ffmpeg").into()),
         Err(ConvertError::Cancelled) => fail(t(lang, "job.cancelled").into()),

@@ -142,14 +142,7 @@ pub fn encode(
         Format::Avif => {
             img.write_with_encoder(AvifEncoder::new_with_speed_quality(w, AVIF_SPEED, q))?
         }
-        Format::Ico => {
-            let img = if img.width() > 256 || img.height() > 256 {
-                img.resize(256, 256, image::imageops::FilterType::Lanczos3)
-            } else {
-                img.clone()
-            };
-            DynamicImage::ImageRgba8(img.to_rgba8()).write_to(w, ImageFormat::Ico)?;
-        }
+        Format::Ico => write_ico(img, w)?,
         Format::Png => img.write_to(w, ImageFormat::Png)?,
         Format::Webp => img.write_to(w, ImageFormat::WebP)?, // lossless
         Format::Bmp => img.write_to(w, ImageFormat::Bmp)?,
@@ -170,6 +163,30 @@ pub fn encode(
         Format::Pdf => pdf::write(&pdf::Payload::Pixels(img), w)?,
         _ => return Err(ConvertError::Unsupported),
     }
+    Ok(())
+}
+
+/// A favicon-ready icon: 16, 32, 48 and 256 px entries, each the image scaled to fit a square
+/// of that size and centred on transparency.
+fn write_ico(img: &DynamicImage, w: impl Write) -> Result<(), ConvertError> {
+    use image::codecs::ico::{IcoEncoder, IcoFrame};
+    use image::imageops::{overlay, FilterType};
+    use image::{ExtendedColorType, RgbaImage};
+    let frames = [16u32, 32, 48, 256]
+        .iter()
+        .map(|&s| {
+            let fit = img.resize(s, s, FilterType::Lanczos3).to_rgba8();
+            let mut square = RgbaImage::new(s, s);
+            overlay(
+                &mut square,
+                &fit,
+                i64::from((s - fit.width()) / 2),
+                i64::from((s - fit.height()) / 2),
+            );
+            IcoFrame::as_png(square.as_raw(), s, s, ExtendedColorType::Rgba8)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    IcoEncoder::new(w).encode_images(&frames)?;
     Ok(())
 }
 
@@ -293,4 +310,18 @@ fn flatten_on_white(img: &DynamicImage) -> RgbImage {
         *o = Rgb([mix(p[0]), mix(p[1]), mix(p[2])]);
     }
     out
+}
+
+#[cfg(test)]
+mod ico_tests {
+    use super::*;
+
+    #[test]
+    fn icons_carry_the_four_favicon_sizes() {
+        let img = DynamicImage::ImageRgba8(image::RgbaImage::new(40, 20));
+        let mut out = Vec::new();
+        write_ico(&img, &mut out).unwrap();
+        assert_eq!(&out[..4], [0, 0, 1, 0]);
+        assert_eq!(u16::from_le_bytes([out[4], out[5]]), 4);
+    }
 }

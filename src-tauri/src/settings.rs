@@ -160,7 +160,8 @@ impl Default for Settings {
             ffmpeg_notice_seen: false,
             ffmpeg_later: false,
             presets: vec![],
-            hidden_presets: vec![],
+            // in the chooser and the CLI from the start, in the Explorer menu once switched on
+            hidden_presets: vec!["webp".into(), "ico".into()],
             history_enabled: true,
             updates: Updates::default(),
             watch: Watch::default(),
@@ -281,12 +282,15 @@ pub fn stored_version(path: &Path) -> u32 {
 
 /// Missing or corrupt file gives defaults.
 pub fn load_from(path: &Path) -> Settings {
-    fs::read_to_string(path)
-        .ok()
-        .and_then(|s| serde_json::from_str::<Settings>(&s).ok())
-        .unwrap_or_default()
-        .normalized()
-        .migrate()
+    let text = fs::read_to_string(path).ok();
+    let parsed = text
+        .as_deref()
+        .and_then(|s| serde_json::from_str::<Settings>(s).ok());
+    if let (Some(text), None) = (&text, &parsed) {
+        // an unreadable file starts over with defaults, but what was there stays recoverable
+        let _ = fs::write(path.with_extension("json.bad"), text);
+    }
+    parsed.unwrap_or_default().normalized().migrate()
 }
 
 /// Like `load_from`, but a first run (no file yet) starts in the Windows display language.
@@ -500,7 +504,7 @@ mod tests {
         let s = load_from(&p);
         assert!(s.menu.presets_enabled && s.menu.merge && s.history_enabled);
         assert!(!s.updates.check_on_start && !s.watch.enabled && s.watch.rules.is_empty());
-        assert!(s.presets.is_empty() && s.hidden_presets.is_empty());
+        assert!(s.presets.is_empty() && s.hidden_presets == ["webp", "ico"]);
     }
 
     #[test]

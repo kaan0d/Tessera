@@ -20,6 +20,7 @@ pub const HELP: &str = "\
 Usage:
   {p} convert <files, folders or *.png> --to <ext> [options]
   {p} preset <id> <files...> [--dry-run --json --quiet --out <dir> --conflict <mode>]
+  {p} merge <pdf|audio> <files...> [--out <dir>]  several images into one PDF, or audio files into one
   {p} list-presets
   {p} formats <ext>
   {p} --version | --help
@@ -124,6 +125,7 @@ pub fn run(cmd: Command) -> i32 {
         Command::Formats(ext) => formats(&ext),
         Command::Convert(a) => convert_cmd(a),
         Command::Preset { id, files, flags } => preset_cmd(&id, &files, flags),
+        Command::MergeFiles { kind, files, flags } => merge_cmd(kind, &files, flags),
     }
 }
 
@@ -237,7 +239,7 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
         };
         if Format::from_ext(ext) == Some(target) && !opts.transforms() {
             return Err(format!(
-                "already {}: nothing to convert (add --max-edge, --percent, --max-size ... to change it)",
+                "already {}: nothing to convert (add --strip, --max-edge, --percent or --max-size to change it)",
                 target.ext().to_uppercase()
             ));
         }
@@ -401,6 +403,50 @@ fn preset_cmd(id: &str, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
             .map(|t| (t, opts.clone()))
             .ok_or_else(|| "this preset does not apply to this kind of file".to_string())
     })
+}
+
+fn merge_cmd(kind: crate::MergeKind, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
+    let files = expand_inputs(files, false);
+    if files.len() < 2 {
+        err("error: a merge needs at least two files");
+        return EXIT_USAGE;
+    }
+    let mut opts = settings::load_from(&settings::settings_path()).to_options();
+    if let Some(d) = flags.out {
+        opts.output.dir = OutDir::Fixed(d);
+    }
+    if flags.overwrite {
+        opts.output.conflict = crate::convert::Conflict::Overwrite;
+    }
+    if flags.dry_run {
+        out(&format!(
+            "{} files -> one {} (dry run)",
+            files.len(),
+            kind.arg()
+        ));
+        return EXIT_OK;
+    }
+    match crate::convert::combine::run(kind, &files, &opts, |_| {}) {
+        Ok(dest) => {
+            let size = std::fs::metadata(&dest)
+                .map(|m| human(m.len()))
+                .unwrap_or_default();
+            if flags.json {
+                json_line(&dest, true, "merged", &files.len().to_string());
+            } else if !flags.quiet {
+                out(&format!(
+                    "{} files -> {} ({size})",
+                    files.len(),
+                    dest.display()
+                ));
+            }
+            EXIT_OK
+        }
+        Err(e) => {
+            err(&format!("error: {}", e.message(Lang::En)));
+            EXIT_FAILED
+        }
+    }
 }
 
 /// One line of JSON per file (`--json`).

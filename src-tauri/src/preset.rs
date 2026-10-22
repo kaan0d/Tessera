@@ -132,6 +132,18 @@ pub fn builtins() -> Vec<Preset> {
             },
         ),
         builtin("pdf", &["image"], "pdf", None, o()),
+        builtin(
+            "webp",
+            &["image"],
+            "webp",
+            None,
+            PresetOptions {
+                strip_metadata: true,
+                jpeg_quality: Some(80),
+                ..o()
+            },
+        ),
+        builtin("ico", &["image"], "ico", None, o()),
     ]
 }
 
@@ -314,16 +326,16 @@ mod tests {
         };
         assert_eq!(
             ids("png", &s),
-            ["web", "whatsapp", "email", "discord", "strip", "pdf"]
+            ["web", "whatsapp", "email", "discord", "strip", "pdf", "webp", "ico"]
         );
         // a JPEG stays JPEG for web (same format with transforms); pdf source gets none
-        assert_eq!(ids("jpg", &s).len(), 6);
+        assert_eq!(ids("jpg", &s).len(), 8);
         assert!(ids("pdf", &s).is_empty());
         assert_eq!(ids("mp4", &s), ["email", "discord", "strip"]);
         assert!(ids("mp3", &s).is_empty());
         // source-only image formats cannot keep their format, but can become JPG/PDF
-        assert_eq!(ids("heic", &s), ["web", "whatsapp", "pdf"]);
-        assert_eq!(ids("svg", &s), ["web", "whatsapp", "pdf"]);
+        assert_eq!(ids("heic", &s), ["web", "whatsapp", "pdf", "webp", "ico"]);
+        assert_eq!(ids("svg", &s), ["web", "whatsapp", "pdf", "webp", "ico"]);
     }
 
     #[test]

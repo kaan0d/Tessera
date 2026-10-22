@@ -180,6 +180,13 @@ function setLevel(j, p) {
   j.sheet.style.setProperty('--p', p / 100);
 }
 
+// " · saved 9.6 MB" once every file is done and the results together are smaller
+function savedNote(all) {
+  const rows = all.filter((j) => j.state === 'ok' && j.bytes && j.was);
+  const saved = rows.reduce((a, j) => a + j.was - j.bytes, 0);
+  return rows.length > 1 && saved > 50000 ? ` · ${t('p.saved', { size: fmtBytes(saved) })}` : '';
+}
+
 // text of the header card; state and timers are left alone
 function paintSummary() {
   const all = [...jobs.values()];
@@ -194,7 +201,7 @@ function paintSummary() {
   document.getElementById('p-title').textContent = run ? t('p.running') : err ? t('p.some_failed') : t('p.done');
   document.getElementById('p-sub').textContent = run
     ? all.length === 1 ? t('p.sub_one') : t('p.sub_run', { done: all.length - run, total: all.length })
-    : err ? t('p.sub_fail', { ok, err }) : cancelled ? t(ok ? 'p.sub_cancel' : 'p.sub_cancel_only', { ok, n: cancelled }) : t('p.sub_ok', { n: ok });
+    : err ? t('p.sub_fail', { ok, err }) : cancelled ? t(ok ? 'p.sub_cancel' : 'p.sub_cancel_only', { ok, n: cancelled }) : t('p.sub_ok', { n: ok }) + savedNote(all);
   document.getElementById('p-pct').textContent = Math.round(pct);
   document.getElementById('card').style.setProperty('--pp', (pct / 100).toFixed(3));
   document.getElementById('p-bar').style.setProperty('--p', pct / 100);
@@ -219,8 +226,13 @@ function progress({ id, name, percent }) {
 // the backend reports a stopped job as a failure whose message is exactly "Cancelled" in either language
 const isCancel = (msg) => Object.values(I18N).some((d) => d['p.cancelled'] === msg);
 
-function done({ id, name, ok, message, output, history_id: hid }) {
+// "1.99 MB", "412 KB"
+const fmtBytes = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)} MB` : `${Math.max(1, Math.ceil(n / 1e3))} KB`);
+
+function done({ id, name, ok, message, output, history_id: hid, bytes, from_bytes: was }) {
   const j = getJob(id, name);
+  j.bytes = ok ? bytes : null;
+  j.was = ok ? was : null;
   const cancel = !ok && isCancel(message);
   j.state = ok ? 'ok' : cancel ? 'cancel' : 'err';
   j.li.classList.add(ok ? 'is-ok' : cancel ? 'is-cancel' : 'is-err');
@@ -228,7 +240,7 @@ function done({ id, name, ok, message, output, history_id: hid }) {
   j.sheet.classList.add(ok ? 'ok' : cancel ? 'cancel' : 'err');
   if (ok) setLevel(j, 100);
   // a backend message was composed in the language of the moment and stays as it is
-  j.mk = ok ? ['p.done'] : cancel ? ['p.cancelled'] : message ? null : ['p.fail_default'];
+  j.mk = ok ? (bytes ? (was ? ['p.done_size', { size: fmtBytes(bytes), was: fmtBytes(was) }] : ['p.done_one', { size: fmtBytes(bytes) }]) : ['p.done']) : cancel ? ['p.cancelled'] : message ? null : ['p.fail_default'];
   j.msg.textContent = j.mk ? t(...j.mk) : message;
   j.msg.title = j.msg.textContent;
   j.actions.replaceChildren();

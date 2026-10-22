@@ -97,6 +97,12 @@ pub enum Command {
         files: Vec<PathBuf>,
         flags: RunFlags,
     },
+    /// Several images into one PDF, or several audio files into one.
+    MergeFiles {
+        kind: MergeKind,
+        files: Vec<PathBuf>,
+        flags: RunFlags,
+    },
     /// Bad command line (exit code 2); the text says what is wrong.
     Usage(String),
 }
@@ -214,6 +220,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         }
         Some("convert") => Cli::Cmd(parse_convert(&args[1..])),
         Some("preset") => Cli::Cmd(parse_preset(&args[1..])),
+        Some("merge") => Cli::Cmd(parse_merge(&args[1..])),
         Some("list-presets") => Cli::Cmd(Command::ListPresets),
         Some("formats") => Cli::Cmd(match args.get(1) {
             Some(e) if args.len() == 2 => Command::Formats(e.clone()),
@@ -243,6 +250,17 @@ pub struct RunFlags {
     pub quiet: bool,
     pub out: Option<PathBuf>,
     pub overwrite: bool,
+}
+
+fn parse_merge(args: &[String]) -> Command {
+    match parse_preset(args) {
+        Command::Preset { id, files, flags } => match MergeKind::from_arg(&id) {
+            Some(kind) => Command::MergeFiles { kind, files, flags },
+            None => usage("merge needs pdf or audio first: merge pdf a.png b.png"),
+        },
+        Command::Usage(_) => usage("merge needs pdf or audio and at least one file"),
+        other => other,
+    }
 }
 
 fn parse_preset(args: &[String]) -> Command {
@@ -634,6 +652,20 @@ mod tests {
         usage_err(&["preset"]);
         usage_err(&["preset", "web"]);
         usage_err(&["preset", "web", "--x", "a.png"]);
+    }
+
+    #[test]
+    fn merge_subcommand() {
+        let Command::MergeFiles { kind, files, flags } =
+            cmd(&["merge", "pdf", "a.png", "b.png", "--out", "o"])
+        else {
+            panic!("not a merge");
+        };
+        assert_eq!((kind, files.len()), (MergeKind::Pdf, 2));
+        assert!(flags.out.is_some());
+        usage_err(&["merge"]);
+        usage_err(&["merge", "zip", "a", "b"]);
+        usage_err(&["merge", "pdf"]);
     }
 
     #[test]

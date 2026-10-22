@@ -33,6 +33,8 @@ pub struct Defaults {
     pub portable: bool,
     /// A working ffmpeg is already in the installed copy's data folder.
     pub ffmpeg: bool,
+    /// Windows 11: the classic menu sits under "Show more options".
+    pub win11: bool,
 }
 
 fn yes() -> bool {
@@ -122,12 +124,23 @@ pub fn ffmpeg_present(dir: &Path) -> bool {
     crate::ffmpeg::is_working(&data.join("ffmpeg").join("ffmpeg.exe"))
 }
 
+fn is_win11() -> bool {
+    use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
+    RegKey::predef(HKEY_LOCAL_MACHINE)
+        .open_subkey(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")
+        .and_then(|k| k.get_value::<String, _>("CurrentBuildNumber"))
+        .ok()
+        .and_then(|b| b.parse::<u32>().ok())
+        .is_some_and(|b| b >= 22000)
+}
+
 pub fn defaults(mode: Mode) -> Defaults {
     let installed = installed_dir().filter(|d| d.join(EXE_NAME).is_file());
     let dir = installed.clone().unwrap_or_else(default_dir);
     let ffmpeg = installed.is_some() && ffmpeg_present(&dir);
     Defaults {
         ffmpeg,
+        win11: is_win11(),
         lang: if crate::i18n::system_lang() == crate::i18n::Lang::Tr {
             "tr"
         } else {

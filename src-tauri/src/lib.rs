@@ -608,6 +608,12 @@ fn open_folder(path: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Shows the settings file selected in Explorer (the load-failed banner).
+#[tauri::command]
+fn open_settings_folder() -> Result<(), String> {
+    open_folder(settings::settings_path().to_string_lossy().into_owned())
+}
+
 /// Makes sure the log exists and shows it selected in Explorer (for "Open log" and bug reports).
 #[tauri::command]
 fn open_log() -> Result<(), String> {
@@ -1335,7 +1341,8 @@ pub fn run() {
             close_drop_window,
             get_licenses,
             app_info,
-            open_log
+            open_log,
+            open_settings_folder
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {
