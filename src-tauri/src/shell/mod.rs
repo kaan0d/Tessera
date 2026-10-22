@@ -142,7 +142,7 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
 
 /// Menu icon files, one per source kind (transparent .ico, brand colours).
 /// Bump when the .ico artwork changes.
-const ICON_REV: u32 = 4;
+const ICON_REV: u32 = 5;
 
 const KIND_ICONS: [(&str, &[u8]); 12] = [
     ("image", include_bytes!("../../menu-icons/image.ico")),
