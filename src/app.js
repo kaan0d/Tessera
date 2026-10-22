@@ -202,7 +202,7 @@ function buildKinds(box, items, sources) {
       c.append(it.ext.toUpperCase());
       if (sources ? srcNeedsFf(it) : it.needs_ffmpeg) {
         c.dataset.ff = '';
-        c.append(icon('i-download', 'ic badge'));
+        c.append(ffTag());
       }
       if (sources) c.title = srcNeedsFf(it) ? t('chip.src_ff') : RAW.includes(it.ext) ? t('chip.raw') : '';
       c.onclick = () => (sources ? toggleSource(it.ext) : toggleTarget(it, c));
@@ -288,7 +288,7 @@ function paintHints(flash) {
   } else if (!s.enabled_targets.length) {
     hint(th, 'warn', [icon('i-alert'), t('hint.none_targets')]);
   } else if (anyFf && !ffReady) {
-    const wait = [icon('i-download', 'ic badge'), t('hint.ff_wait'), gotoLink(t('hint.see_status'), 't-ileri')];
+    const wait = [t('hint.ff_wait'), gotoLink(t('hint.see_status'), 't-ileri')];
     if (ffPct !== null) {
       const bar = document.createElement('span');
       bar.className = 'hint-bar';
@@ -305,13 +305,13 @@ function paintHints(flash) {
     }
     hint(th, '', wait);
   } else if (anyFf) {
-    hint(th, '', [icon('i-download', 'ic badge'), t('hint.ff_ready')]);
+    hint(th, '', [t('hint.ff_ready')]);
   } else hint(th, '', []);
   th.hidden = !th.childNodes.length;
   const n = s.menu_sources.length;
   const raw = s.menu_sources.some((e) => RAW.includes(e));
   hint($('s-hint'), n ? '' : 'warn', n
-    ? [t('hint.sources', { n }), ' ', icon('i-download', 'ic badge'), t('hint.src_ff'), ...(raw ? [' ' + t('hint.raw')] : [])]
+    ? [t('hint.sources', { n }), ' ', t('hint.src_ff'), ...(raw ? [' ' + t('hint.raw')] : [])]
     : [icon('i-alert'), t('hint.none_sources')]);
 }
 

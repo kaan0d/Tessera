@@ -22,3 +22,11 @@ function presetSummary(p) {
   if (o.strip_metadata) parts.push(t('pr.s_strip'));
   return parts.join(' · ');
 }
+
+/** Small "ffmpeg" tag on a format that is converted or opened with ffmpeg. */
+function ffTag() {
+  const s = document.createElement('span');
+  s.className = 'badge tag';
+  s.textContent = 'ffmpeg';
+  return s;
+}

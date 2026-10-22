@@ -108,7 +108,7 @@ function buildTargets() {
     for (const x of items) {
       const c = choiceBtn('chip dr-choice', { kind: 'target', target: x.ext }, t('dr.to', { fmt: x.ext.toUpperCase() }));
       c.append(x.ext.toUpperCase());
-      if (x.needs_ffmpeg) c.append(icon('i-download', 'ic badge'));
+      if (x.needs_ffmpeg) c.append(ffTag());
       if (!x.allowed) {
         const why = lockReason(x);
         why === 'ff' ? (ff = true) : (off = true);

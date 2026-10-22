@@ -254,7 +254,7 @@ input[type=radio]:checked::after{scale:1}
   background:linear-gradient(var(--accent-soft),var(--accent-soft)) bottom/100% 0% no-repeat,var(--surface);
   transition:background-size var(--d3) var(--ease),color var(--d2),border-color var(--d2),scale var(--d1) var(--ease)}
 .chip[aria-pressed=true]{background-size:100% 100%;color:var(--accent);border-color:var(--accent-ink)}
-.chip .badge{width:12px;height:12px;stroke-width:2;margin-right:-3px}
+.chip .badge{margin-left:5px}
 .chip[aria-disabled=true]{opacity:.5;cursor:not-allowed;border-style:dashed}
 @media (hover:hover){.chip:not([aria-disabled=true]):hover{border-color:var(--muted);color:var(--ink)}
   .chip[aria-pressed=true]:not([aria-disabled=true]):hover{border-color:var(--accent);color:var(--accent)}}
@@ -262,7 +262,7 @@ input[type=radio]:checked::after{scale:1}
 .chip.nudge{animation:nudge 420ms var(--ease)}
 .hint{padding-top:9px;padding-bottom:10px}
 .hint .ic{display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:6px}
-.hint .badge{width:13px;height:13px;stroke-width:2;margin-right:2px;color:var(--ink)}
+
 .hint.warn{background:var(--warn-bg);color:var(--warn-ink)}
 
 /* name template */
@@ -544,7 +544,7 @@ input[type=radio]:checked::after{scale:1}
 .subopt .label{font-size:var(--t-sm)}
 .q.off{opacity:.45;transition:opacity var(--d2)}
 .q.off .slider{cursor:default}
-.hint .ic.badge{margin-right:0}
+
 /* dependent switch: indented under its parent, dims while the parent is off */
 .row.sub{padding-left:60px;padding-top:10px}
 .row+.row.sub{border-top:0}
@@ -909,3 +909,7 @@ body.settings{
 .p-head .bar{height:3px;background:rgba(255,255,255,.08)}
 .p-head .bar>span{background:linear-gradient(90deg,#f2f2f0,#ffb59e 40%,#ff6b4a)}
 .p-timer{height:3px}
+
+/* the small "ffmpeg" tag next to formats that need it */
+.badge.tag{display:inline-block;padding:1px 6px;border-radius:6px;font-size:9.5px;font-weight:600;letter-spacing:.03em;line-height:1.5;
+  color:var(--muted);background:color-mix(in srgb,var(--ink) 9%,transparent)}
