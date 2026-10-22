@@ -11,71 +11,81 @@
   const stepLine = document.getElementById("stepline");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const S = 240, TILE = 64, GAP = 12, OFF = (S - (3 * TILE + 2 * GAP)) / 2;
+  const S = 240, K = S / 256;
   const dpr = Math.min(devicePixelRatio || 1, 2);
   cv.width = cv.height = S * dpr;
   ctx.scale(dpr, dpr);
 
-  // logo columns: pale ink, teal, mint; radius grows square -> circle
-  const COLS = [["#f2f7f6", "#b7c7c4"], ["#19b59a", "#0e8a75"], ["#9af5df", "#3ccbaa"]];
-  const R0 = 0.14, RT = [0.14, 0.375, 0.5];
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v) => Math.max(0, Math.min(1, v));
-  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
+  // the arch: 11 pieces in building order (piers, imposts, stones from the feet up, keystone last)
+  const ARCH = ["M33 170.25H69A5 5 0 0 1 74 175.25V221.0A5 5 0 0 1 69 226.0H33A5 5 0 0 1 28 221.0V175.25A5 5 0 0 1 33 170.25Z", "M187 170.25H223A5 5 0 0 1 228 175.25V221.0A5 5 0 0 1 223 226.0H187A5 5 0 0 1 182 221.0V175.25A5 5 0 0 1 187 170.25Z", "M26 148.75H76A4 4 0 0 1 80 152.75V160.75A4 4 0 0 1 76 164.75H26A4 4 0 0 1 22 160.75V152.75A4 4 0 0 1 26 148.75Z", "M180 148.75H230A4 4 0 0 1 234 152.75V160.75A4 4 0 0 1 230 164.75H180A4 4 0 0 1 176 160.75V152.75A4 4 0 0 1 180 148.75Z", "M28.18 140.05A100.00 100.00 0 0 1 35.02 109.21A3.2 3.2 0 0 1 39.27 107.66L75.28 124.45A3.2 3.2 0 0 1 76.83 128.70A54.00 54.00 0 0 0 74.31 140.05A3.2 3.2 0 0 1 71.11 143.25L31.38 143.25A3.2 3.2 0 0 1 28.18 140.05Z", "M220.98 109.21A100.00 100.00 0 0 1 227.82 140.05A3.2 3.2 0 0 1 224.62 143.25L184.89 143.25A3.2 3.2 0 0 1 181.69 140.05A54.00 54.00 0 0 0 179.17 128.70A3.2 3.2 0 0 1 180.72 124.45L216.73 107.66A3.2 3.2 0 0 1 220.98 109.21Z", "M40.05 98.42A100.00 100.00 0 0 1 59.28 73.36A3.2 3.2 0 0 1 63.79 73.75L89.33 104.19A3.2 3.2 0 0 1 88.93 108.70A54.00 54.00 0 0 0 81.86 117.92A3.2 3.2 0 0 1 77.60 119.47L41.60 102.68A3.2 3.2 0 0 1 40.05 98.42Z", "M196.72 73.36A100.00 100.00 0 0 1 215.95 98.42A3.2 3.2 0 0 1 214.40 102.68L178.40 119.47A3.2 3.2 0 0 1 174.14 117.92A54.00 54.00 0 0 0 167.07 108.70A3.2 3.2 0 0 1 166.67 104.19L192.21 73.75A3.2 3.2 0 0 1 196.72 73.36Z", "M68.40 65.71A100.00 100.00 0 0 1 96.42 51.12A3.2 3.2 0 0 1 100.34 53.39L110.62 91.76A3.2 3.2 0 0 1 108.36 95.68A54.00 54.00 0 0 0 98.05 101.05A3.2 3.2 0 0 1 93.54 100.65L68.00 70.22A3.2 3.2 0 0 1 68.40 65.71Z", "M159.58 51.12A100.00 100.00 0 0 1 187.60 65.71A3.2 3.2 0 0 1 188.00 70.22L162.46 100.65A3.2 3.2 0 0 1 157.95 101.05A54.00 54.00 0 0 0 147.64 95.68A3.2 3.2 0 0 1 145.38 91.76L155.66 53.39A3.2 3.2 0 0 1 159.58 51.12Z", "M105.06 37.40A111.00 111.00 0 0 1 150.94 37.40A3.2 3.2 0 0 1 153.20 41.32L138.24 97.14A3.2 3.2 0 0 1 134.33 99.40A47.00 47.00 0 0 0 121.67 99.40A3.2 3.2 0 0 1 117.76 97.14L102.80 41.32A3.2 3.2 0 0 1 105.06 37.40Z"];
+  const N = ARCH.length;
+  const paths = ARCH.map((d) => new Path2D(d));
+  const boxes = (() => { // bounding boxes through a hidden svg
+    const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("width", "0"); svg.setAttribute("height", "0"); svg.style.position = "absolute";
+    document.body.appendChild(svg);
+    const out = ARCH.map((d) => { const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); svg.appendChild(p); const b = p.getBBox(); return { x: b.x, y: b.y, w: b.width, h: b.height }; });
+    svg.remove();
+    return out;
+  })();
+  const PAPER = ["#f4f4f2", "#cfcfcb"], CORAL = ["#ff8a6a", "#ff6b4a"];
 
   let mode = "install", tp = 0, dp = 0, last = performance.now(), state = "welcome", doneAt = 0;
-  const popAt = new Array(9).fill(0);
+  const popAt = new Array(N).fill(0);
 
-  function tile(i, t, now) {
-    const col = Math.floor(i / 3), row = i % 3;
-    const raw = clamp(dp * 9 - i);
+  function piece(i, t, now) {
+    const raw = clamp(dp * N - i);
     const f = mode === "uninstall" ? 1 - raw : raw; // removing drains the mark
-    let x = OFF + col * (TILE + GAP), y = OFF + row * (TILE + GAP);
-    const cx = x + TILE / 2, cy = y + TILE / 2;
+    const bx = boxes[i], key = i === N - 1;
+    const cx = bx.x + bx.w / 2, cy = bx.y + bx.h / 2;
 
-    // pop when a tile completes
+    // a little pop when a stone is set
     if (mode === "install" && f >= 0.999 && !popAt[i]) popAt[i] = now;
     let sc = 1;
-    if (popAt[i] && !reduce) { const d = (now - popAt[i]) / 1000; sc = 1 + 0.12 * Math.exp(-6 * d) * Math.sin(16 * d + 1.2); }
+    if (popAt[i] && !reduce) { const d = (now - popAt[i]) / 1000; sc = 1 + 0.06 * Math.exp(-6 * d) * Math.sin(16 * d + 1.2); }
 
     // idle breathing while waiting
     let idle = 0;
-    if (state === "welcome" && mode === "install" && !reduce) idle = 0.5 + 0.5 * Math.sin(t * 1.4 - (col + row) * 0.7);
+    if (state === "welcome" && mode === "install" && !reduce) idle = 0.5 + 0.5 * Math.sin(t * 1.4 - i * 0.55);
 
-    const r = TILE * lerp(R0, RT[col], easeOut(f));
     ctx.save();
+    ctx.scale(K, K);
     ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
-    ctx.beginPath(); ctx.roundRect(x, y, TILE, TILE, r);
-    ctx.fillStyle = `rgba(255,255,255,${0.05 + idle * 0.035})`; ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = `rgba(255,255,255,${0.09 + idle * 0.07})`; ctx.stroke();
+    ctx.fillStyle = key ? `rgba(255,107,74,${0.10 + idle * 0.06})` : `rgba(255,255,255,${0.05 + idle * 0.035})`;
+    ctx.fill(paths[i]);
+    ctx.lineWidth = 1 / K; ctx.strokeStyle = key ? `rgba(255,107,74,${0.30 + idle * 0.15})` : `rgba(255,255,255,${0.09 + idle * 0.07})`;
+    ctx.stroke(paths[i]);
 
     if (f > 0.002) {
       ctx.save();
-      ctx.clip();
-      const level = y + TILE * (1 - f);
-      const amp = f >= 1 ? 0 : TILE * 0.05 * Math.sin(Math.PI * f) + 0.6;
-      const g = ctx.createLinearGradient(x, y, x + TILE, y + TILE);
-      g.addColorStop(0, COLS[col][0]); g.addColorStop(1, COLS[col][1]);
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.moveTo(x - 2, y + TILE + 2);
-      for (let px = -2; px <= TILE + 2; px += 4) {
-        const w = reduce ? 0 : Math.sin((px / TILE) * 6.283 * 1.3 + t * 3.2 + i * 1.7) * amp;
-        ctx.lineTo(x + px, level + w);
+      ctx.clip(paths[i]);
+      const level = bx.y + bx.h * (1 - f);
+      const amp = f >= 1 ? 0 : Math.min(bx.h, 40) * 0.07 * Math.sin(Math.PI * f) + 0.5;
+      const grad = ctx.createLinearGradient(bx.x, bx.y, bx.x + bx.w, bx.y + bx.h);
+      const col = key ? CORAL : PAPER;
+      grad.addColorStop(0, col[0]); grad.addColorStop(1, col[1]);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.moveTo(bx.x - 3, bx.y + bx.h + 3);
+      for (let px = -3; px <= bx.w + 3; px += 3) {
+        const w = reduce ? 0 : Math.sin((px / Math.max(bx.w, 20)) * 6.283 * 1.3 + t * 3.2 + i * 1.7) * amp;
+        ctx.lineTo(bx.x + px, level + w);
       }
-      ctx.lineTo(x + TILE + 2, y + TILE + 2); ctx.closePath(); ctx.fill();
-      // soft highlight like the logo
-      const h = ctx.createRadialGradient(x + TILE * 0.28, y + TILE * 0.18, 0, x + TILE * 0.28, y + TILE * 0.18, TILE * 0.85);
-      h.addColorStop(0, "rgba(255,255,255,.34)"); h.addColorStop(0.55, "rgba(255,255,255,0)");
-      ctx.fillStyle = h; ctx.fillRect(x, y, TILE, TILE);
-      // one sweep of light over the finished mark
+      ctx.lineTo(bx.x + bx.w + 3, bx.y + bx.h + 3); ctx.closePath(); ctx.fill();
+      // soft highlight
+      const h = ctx.createRadialGradient(bx.x + bx.w * 0.28, bx.y + bx.h * 0.18, 0, bx.x + bx.w * 0.28, bx.y + bx.h * 0.18, Math.max(bx.w, bx.h) * 0.9);
+      h.addColorStop(0, "rgba(255,255,255,.32)"); h.addColorStop(0.55, "rgba(255,255,255,0)");
+      ctx.fillStyle = h; ctx.fillRect(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4);
+      // one sweep of light over the finished arch
       if (doneAt && !reduce) {
-        const sp = (now - doneAt) / 1100; // 0..1
+        const sp = (now - doneAt) / 1100;
         if (sp > 0 && sp < 1) {
-          const d = lerp(-0.2, 1.2, sp) * S; // along the diagonal
+          const d = lerp(-0.2, 1.2, sp) * 256;
           const sg = ctx.createLinearGradient(d - 70, d - 70, d + 70, d + 70);
-          // gradient is in canvas space, so offset by tile origin through translate
           sg.addColorStop(0, "rgba(255,255,255,0)"); sg.addColorStop(0.5, "rgba(255,255,255,.55)"); sg.addColorStop(1, "rgba(255,255,255,0)");
-          ctx.fillStyle = sg; ctx.fillRect(x, y, TILE, TILE);
+          ctx.fillStyle = sg; ctx.fillRect(bx.x - 2, bx.y - 2, bx.w + 4, bx.h + 4);
         }
       }
       ctx.restore();
@@ -103,7 +113,7 @@
     if (n !== shownN) { shownN = n; setPct(n); bar.setAttribute("aria-valuenow", n); }
 
     ctx.clearRect(0, 0, S, S);
-    for (let i = 0; i < 9; i++) tile(i, t, now);
+    for (let i = 0; i < N; i++) piece(i, t, now);
 
     if (state === "run" && dp >= 1 && tp >= 1) finish(now);
     requestAnimationFrame(frame);
@@ -306,7 +316,7 @@
   // ?state=run&p=0.6 / ?state=done for screenshots
   const q = new URLSearchParams(location.search);
   if (q.get("state") === "run") { setState("run"); tp = dp = parseFloat(q.get("p") || "0.5"); curLabel = "Registering the menu"; labelEl.textContent = t(curLabel); curStep = 2; stepLine.textContent = fmtStep(); }
-  if (q.get("state") === "done") { setState("done"); tp = dp = 1; Object.assign(popAt, new Array(9).fill(1)); }
+  if (q.get("state") === "done") { setState("done"); tp = dp = 1; Object.assign(popAt, new Array(N).fill(1)); }
   if (!T && q.get("mode") === "uninstall") { api.setMode("uninstall"); setGo("uninstall"); }
   if (!T) { applyLang(q.get("lang") || ((navigator.language || "").startsWith("tr") ? "tr" : "en")); ready(); }
   if (q.get("auto")) setTimeout(demo, 800);

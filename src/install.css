@@ -1,7 +1,7 @@
 /* Installer window. Always dark: it is a brand moment, not a settings page. */
 :root{
-  --ground:#0e1312;--ground-2:#0a0e0d;--ink:#edf2f1;--muted:#8d9a97;--line:rgba(255,255,255,.08);
-  --teal:#19b59a;--mint:#9af5df;--pale:#f2f7f6;--accent:#46d3b6;--on-accent:#04231d;
+  --ground:#0f0f12;--ground-2:#09090b;--ink:#f2f2f0;--muted:#a3a3a8;--line:rgba(255,255,255,.08);
+  --coral:#ff6b4a;--peach:#ffb59e;--pale:#f2f2f0;--accent:#ff6b4a;--on-accent:#1d1d22;
   --ease:cubic-bezier(.16,1,.3,1);--spring:cubic-bezier(.34,1.56,.64,1);
   --p:0;
 }
@@ -20,7 +20,7 @@ body{
 /* one light that travels with the install: the driver is --p */
 .stage::before{
   content:"";position:absolute;inset:-20%;z-index:-1;pointer-events:none;
-  background:radial-gradient(40% 50% at calc(8% + var(--p)*84%) calc(100% - var(--p)*70%),rgba(70,211,182,.20),transparent 70%);
+  background:radial-gradient(40% 50% at calc(8% + var(--p)*84%) calc(100% - var(--p)*70%),rgba(255,107,74,.18),transparent 70%);
 }
 .stage::after{ /* hairline frame */
   content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 1px var(--line);
@@ -43,7 +43,7 @@ body{
 .pct.hundred .dg-h,.pct.tens .dg-t{width:.585em;opacity:1}
 .sign{font-size:.26em;font-weight:400;letter-spacing:0;margin:.34em 0 0 .08em;color:var(--accent)}
 [data-state=run] .pct,[data-state=done] .pct{opacity:1}
-[data-state=done] .pct{color:var(--mint)}
+[data-state=done] .pct{color:var(--peach)}
 .pct{transition:opacity .7s var(--ease),color .8s var(--ease)}
 
 /* text views stacked in one cell, cross-fading */
@@ -68,7 +68,7 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 .bar-fill{position:absolute;inset:0;translate:calc(var(--p)*100% - 100%) 0;will-change:translate}
 .bar-ink{
   position:absolute;inset:0;border-radius:4px;
-  background:linear-gradient(90deg,var(--pale) 0,#b7c7c4 14%,var(--teal) 55%,var(--mint) 100%);
+  background:linear-gradient(90deg,var(--pale) 0,var(--peach) 45%,var(--coral) 100%);
 }
 .bar-ink::before{ /* moving sheen */
   content:"";position:absolute;inset:0;
@@ -77,7 +77,7 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 }
 .bar-ink::after{ /* leading glow */
   content:"";position:absolute;right:-2px;top:50%;width:26px;height:26px;translate:0 -50%;
-  background:radial-gradient(closest-side,rgba(154,245,223,.9),transparent);filter:blur(2px);
+  background:radial-gradient(closest-side,rgba(255,181,158,.9),transparent);filter:blur(2px);
 }
 @keyframes sheen{from{background-position:-80% 0}to{background-position:180% 0}}
 
@@ -88,15 +88,15 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
   cursor:pointer;position:relative;overflow:hidden;
   transition:translate .5s var(--ease),opacity .4s var(--ease),scale .2s var(--ease),background .2s,box-shadow .3s;
 }
-.btn.primary{background:var(--accent);color:var(--on-accent);box-shadow:0 8px 24px -8px rgba(70,211,182,.55),inset 0 1px 0 rgba(255,255,255,.35)}
+.btn.primary{background:var(--accent);color:var(--on-accent);box-shadow:0 8px 24px -8px rgba(255,107,74,.5),inset 0 1px 0 rgba(255,255,255,.35)}
 .btn.ghost{background:rgba(255,255,255,.07);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .btn::after{ /* fill rises from below on hover: the sheet-fills verb */
   content:"";position:absolute;inset:0;background:rgba(255,255,255,.28);translate:0 101%;transition:translate .45s var(--ease);
 }
 .btn.ghost::after{background:rgba(255,255,255,.08)}
-@media (hover:hover){.btn:hover::after{translate:0 0}.btn.primary:hover{box-shadow:0 12px 30px -8px rgba(70,211,182,.7),inset 0 1px 0 rgba(255,255,255,.4)}}
+@media (hover:hover){.btn:hover::after{translate:0 0}.btn.primary:hover{box-shadow:0 12px 30px -8px rgba(255,107,74,.65),inset 0 1px 0 rgba(255,255,255,.4)}}
 .btn:active{scale:.96}
-.btn:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+.btn:focus-visible{outline:2px solid var(--peach);outline-offset:3px}
 /* only the buttons of the current state are visible */
 #go{opacity:1}
 #open,#close{opacity:0;translate:0 14px;pointer-events:none;visibility:hidden}
@@ -117,7 +117,7 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
   box-shadow:inset 0 0 0 1px var(--line);font:12px "Cascadia Mono","Consolas",monospace;text-overflow:ellipsis;transition:box-shadow .2s,background .2s;
 }
 .field input:hover{background:rgba(255,255,255,.08)}
-.field input:focus-visible{outline:none;box-shadow:inset 0 0 0 1.5px var(--accent),0 0 0 4px rgba(70,211,182,.15)}
+.field input:focus-visible{outline:none;box-shadow:inset 0 0 0 1.5px var(--accent),0 0 0 4px rgba(255,107,74,.16)}
 .btn.small{height:34px;padding:0 14px;font-size:13px;border-radius:10px}
 .check{display:flex;gap:10px;margin-top:14px;cursor:pointer;align-items:flex-start}
 .check input{position:absolute;opacity:0;pointer-events:none}
@@ -126,13 +126,13 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 .box svg{width:12px;height:12px;fill:none;stroke:var(--on-accent);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:14;stroke-dashoffset:14;transition:stroke-dashoffset .35s var(--ease)}
 .check input:checked+.box{background:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent);scale:1.06}
 .check input:checked+.box svg{stroke-dashoffset:0}
-.check input:focus-visible+.box{outline:2px solid var(--mint);outline-offset:3px}
+.check input:focus-visible+.box{outline:2px solid var(--peach);outline-offset:3px}
 @media (hover:hover){.check:hover .box{box-shadow:inset 0 0 0 1.5px var(--accent)}}
 .check-t{font-size:13px;line-height:1.35}
 .check small{display:block;margin-top:2px;font-size:11.5px;color:var(--muted);line-height:1.4}
 .check b{font-weight:600;color:var(--ink);opacity:.8;font-family:"Cascadia Mono","Consolas",monospace;font-size:11px}
 
-.err{color:#ff8a80;margin:8px 0 0;min-height:0}
+.err{color:#ff7b93;margin:8px 0 0;min-height:0}
 .err:empty{display:none}
 
 /* uninstall: Cancel beside the main button, no "Open" on the last screen */
@@ -151,7 +151,7 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 .x svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
 @media (hover:hover){.x:hover{background:rgba(255,255,255,.08);color:var(--ink)}}
 .x:active{scale:.92}
-.x:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+.x:focus-visible{outline:2px solid var(--peach);outline-offset:2px}
 [data-state=run] .x{opacity:0;pointer-events:none;visibility:hidden}
 .fine.warn{color:#f7d774}
 .fine.warn:empty{display:none}
