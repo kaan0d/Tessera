@@ -295,7 +295,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
         .into_iter()
         .filter(|g| !g.is_empty())
         .collect();
-    if !groups.is_empty() {
+    if s.menu.folder {
         let (menu, _) = hkcu.create_subkey(folder_key(root))?;
         menu.set_value("MUIVerb", &APP_NAME)?;
         menu.set_value("SubCommands", &"")?;
@@ -319,6 +319,17 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                 i += 1;
             }
         }
+        // one-off settings for the files in the folder: the chooser opens on its custom page
+        let (verb, _) = menu.create_subkey(format!(r"shell\{i:02}_custom"))?;
+        verb.set_value("MUIVerb", &i18n::t(s.language, "menu.custom"))?;
+        if i > 0 {
+            verb.set_value("CommandFlags", &0x20u32)?;
+        }
+        if s.menu.icons {
+            verb.set_value("Icon", &verb_icon(&icons, "custom"))?;
+        }
+        let (cmd, _) = verb.create_subkey("command")?;
+        cmd.set_value("", &format!(r#""{exe}" --custom "%1""#))?;
     }
     Ok(())
 }
@@ -720,7 +731,8 @@ mod tests {
         assert_eq!(menu.get_value::<String, _>("MUIVerb").unwrap(), APP_NAME);
         let names = verb_names(&menu);
         // 8 image formats, 6 presets, wav + flac
-        assert_eq!((names[0].as_str(), names.len()), ("00_png", 8 + 6 + 2));
+        assert_eq!((names[0].as_str(), names.len()), ("00_png", 8 + 6 + 2 + 1));
+        assert!(names.last().unwrap().ends_with("_custom"));
         assert!(names.contains(&"08_preset_web".to_string()));
         assert!(names.iter().any(|n| n.ends_with("_wav")));
         // no ffmpeg: no mp3/ogg
