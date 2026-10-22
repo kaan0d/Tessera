@@ -662,10 +662,9 @@ fn convert_one(
         convert(path, target, opts, progress)
     };
     r.map_err(|e| match e {
-        crate::convert::ConvertError::TargetSize => format!(
-            "{} (try a smaller --max-edge or a larger --max-size)",
-            e.message(lang)
-        ),
+        crate::convert::ConvertError::TargetSize => {
+            format!("{} (or add a smaller --max-edge)", e.message(lang))
+        }
         e => e.message(lang),
     })
 }

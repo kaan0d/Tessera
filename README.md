@@ -18,7 +18,11 @@ Converter apps that cost money, run on subscriptions or bury the exit under upse
 
 ## Setup
 
-Windows 10 or 11. Build from source (Rust stable):
+Windows 10 or 11 (needs Microsoft Edge WebView2, which both already include).
+
+**Download:** get `tessera.exe` from the [Releases page](https://github.com/kaan0d/Tessera/releases) and double-click it. The exe is its own installer, so there is nothing else to download. It is not code-signed yet, so SmartScreen may ask you to confirm once (More info, then Run anyway).
+
+**Build from source** (Rust stable):
 
 ```
 cd src-tauri
@@ -26,12 +30,14 @@ cargo build --release
 target\release\tessera.exe
 ```
 
-Run the release exe and it opens its own installer: pick a folder (default `%LOCALAPPDATA%\Tessera`), optionally keep settings and history in a `data` folder next to the app instead of `%APPDATA%`, registers the menu, a Start menu shortcut and an uninstall entry, downloads video support (ffmpeg) with a live percentage, and can add the folder to your PATH so `tessera-cli` works in any terminal (off by default). The window follows Windows: Turkish on a Turkish system, English otherwise. Settings > Apps > Tessera > Uninstall opens the same window and removes the menu, shortcuts, entry, files and (optionally) settings and history. No admin rights, no separate setup file.
+The release exe opens its own installer: pick a folder (default `%LOCALAPPDATA%\Tessera`), optionally keep settings and history in a `data` folder next to the app instead of `%APPDATA%`, registers the menu, a Start menu shortcut and an uninstall entry, downloads video support (ffmpeg) with a live percentage, and can add the folder to your PATH so `tessera-cli` works in any terminal (off by default). The window follows Windows: Turkish on a Turkish system, English otherwise. Settings > Apps > Tessera > Uninstall opens the same window and removes the menu, shortcuts, entry, files and (optionally) settings and history. No admin rights, no separate setup file.
 
 ```
 tessera.exe --install D:\Apps --portable --add-to-path   silent install (adds \Tessera to the folder)
 tessera.exe --uninstall --quiet            remove without a window (--keep-data keeps settings)
 ```
+
+Both silent commands exit 0 on success and 1 on failure. Video support (ffmpeg) is downloaded by `--install` unless it is already there; add `--defer-ffmpeg` to skip it.
 
 ## Usage
 
@@ -46,7 +52,7 @@ tessera-cli list-presets
 tessera-cli formats png
 ```
 
-Exit codes: 0 ok, 1 a file failed, 2 usage error.
+Exit codes: 0 ok, 1 a file failed (or every file was skipped, nothing converted), 2 usage error. `tessera-cli merge pdf a.png b.png` joins images into one PDF (`--max-size` keeps it small), `merge audio ... --to mp3` joins audio.
 
 In scripts use `tessera-cli.exe` (installed next to `tessera.exe`): the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`.
 
@@ -55,6 +61,14 @@ In scripts use `tessera-cli.exe` (installed next to `tessera.exe`): the same too
 Video and a few audio and image formats need ffmpeg. Tessera downloads one pinned LGPL build (about 170 MB, SHA-256 checked) during setup, with a live percentage. Untick it there, or choose Later in the app, and nothing is fetched until you press Download now under Advanced. Nothing else is downloaded, and the update check is off until you turn it on.
 
 Files never leave your computer. On disk, in `%APPDATA%\Tessera` (or the `data` folder next to the app): `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most). Uninstalling can delete all of it.
+
+## What it changes on your PC
+
+Per user, no admin rights. Files: the install folder (default `%LOCALAPPDATA%\Tessera`) and `%APPDATA%\Tessera` (or `data` next to the app). Registry, all under `HKCU`: the Explorer menu keys per file type, the uninstall entry, optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
+
+## Contributing
+
+Issues and pull requests are welcome. `cd src-tauri && cargo test && cargo clippy --all-targets` should stay clean. Report security problems privately through GitHub's "Report a vulnerability" on the repository.
 
 ## Limits
 

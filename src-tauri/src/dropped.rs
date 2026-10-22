@@ -59,6 +59,8 @@ pub struct Choices {
     pub count: usize,
     /// Dropped files with an unknown extension.
     pub skipped: usize,
+    /// Names of the first few skipped files, so the chooser can say which ones.
+    pub skipped_names: Vec<String>,
 }
 
 fn ext_of(p: &Path) -> &str {
@@ -115,6 +117,12 @@ fn merge_kinds(known: &[(&PathBuf, Format)]) -> Vec<&'static str> {
 
 pub fn choices(files: &[PathBuf], s: &Settings) -> Choices {
     let (known, skipped) = split(files);
+    let skipped_names = files
+        .iter()
+        .filter(|f| Format::from_ext(ext_of(f)).is_none())
+        .take(3)
+        .filter_map(|f| f.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .collect();
     let mut kinds: Vec<&'static str> = vec![];
     for (_, f) in &known {
         if !kinds.contains(&f.kind()) {
@@ -163,6 +171,7 @@ pub fn choices(files: &[PathBuf], s: &Settings) -> Choices {
         merge: merge_kinds(&known),
         count: known.len(),
         skipped,
+        skipped_names,
     }
 }
 

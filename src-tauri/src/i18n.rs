@@ -406,10 +406,14 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("ce.disk_full", "Disk full", "Disk dolu"),
     (
         "ce.corrupt",
-        "The file is corrupt or unreadable",
-        "Dosya bozuk veya okunamıyor",
+        "The file is corrupt or unreadable. Try opening it in another program first.",
+        "Dosya bozuk veya okunamıyor. Önce başka bir programda açmayı deneyin.",
     ),
-    ("ce.unsupported", "Unsupported format", "Desteklenmeyen biçim"),
+    (
+        "ce.unsupported",
+        "This file cannot become that format. Pick another format.",
+        "Bu dosya o biçime dönüştürülemiyor. Başka bir biçim seçin.",
+    ),
     (
         "ce.trim_outside",
         "The cut starts after the end of the clip.",
@@ -418,8 +422,8 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("ce.too_large", "File too large", "Dosya çok büyük"),
     (
         "ce.target_size",
-        "The size limit cannot be reached without making the result unusable",
-        "Boyut sınırına, sonuç kullanılamaz hale gelmeden ulaşılamıyor",
+        "The size limit cannot be reached without making the result unusable. Try a larger limit.",
+        "Boyut sınırına, sonuç kullanılamaz hale gelmeden ulaşılamıyor. Daha büyük bir sınır deneyin.",
     ),
     (
         "ce.protected",
@@ -428,14 +432,14 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ),
     (
         "ce.needs_ffmpeg",
-        "This conversion needs ffmpeg",
-        "Bu dönüşüm için ffmpeg gerekiyor",
+        "This conversion needs ffmpeg. Install it under Settings > Advanced.",
+        "Bu dönüşüm için ffmpeg gerekiyor. Ayarlar > Gelişmiş bölümünden kurun.",
     ),
     ("ce.cancelled", "Cancelled", "İptal edildi"),
     (
         "ce.encode",
-        "Conversion failed: {detail}",
-        "Dönüştürme başarısız: {detail}",
+        "Conversion failed: {detail}. Try another target format.",
+        "Dönüştürme başarısız: {detail}. Başka bir hedef biçim deneyin.",
     ),
     ("ce.io", "File error: {detail}", "Dosya hatası: {detail}"),
     ("ce.not_file", "not a file", "dosya değil"),

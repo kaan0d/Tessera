@@ -128,6 +128,22 @@ function buildTargets() {
   if (off) parts.push(t('dr.note_off'));
   note.hidden = !parts.length;
   note.textContent = parts.join(' ');
+  if (ff) {
+    // the locked formats are a dead end without a way to unlock them from here
+    const get = el('button', 'link inline');
+    get.type = 'button';
+    get.textContent = t('dr.get_ff');
+    get.onclick = async () => {
+      get.disabled = true;
+      try {
+        await invoke('retry_ffmpeg_download');
+        get.textContent = t('dr.ff_started');
+      } catch (e) {
+        get.disabled = false;
+      }
+    };
+    note.append(' ', get);
+  }
 }
 
 function card(cls, choice, ic, name, sub) {
@@ -167,7 +183,8 @@ function paintHead() {
   names.title = files.slice(0, 30).map(fileName).join('\n') + (files.length > 30 ? '\n…' : '');
   const sk = opts ? opts.skipped : 0;
   $('dr-skip').hidden = !sk;
-  $('dr-skip-text').textContent = sk ? t('dr.skipped', { n: sk }) : '';
+  const skipNames = sk && opts.skipped_names ? opts.skipped_names.join(', ') + (sk > opts.skipped_names.length ? '…' : '') : '';
+  $('dr-skip-text').textContent = sk ? `${t('dr.skipped', { n: sk })} ${skipNames}`.trim() : '';
 }
 
 function render() {
