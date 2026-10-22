@@ -68,9 +68,16 @@
     if (f > 0.002) {
       ctx.save();
       ctx.clip(paths[i]);
-      // flat fill rising from the bottom, no wave, no gloss
+      // a flat colour rising with a wavy surface: no gloss, no highlight
+      const level = bx.y + bx.h * (1 - f);
+      const amp = f >= 1 ? 0 : Math.min(bx.h, 40) * 0.07 * Math.sin(Math.PI * f) + 0.5;
       ctx.fillStyle = key ? CORAL[1] : PAPER[0];
-      ctx.fillRect(bx.x - 3, bx.y + bx.h * (1 - f), bx.w + 6, bx.h * f + 3);
+      ctx.beginPath(); ctx.moveTo(bx.x - 3, bx.y + bx.h + 3);
+      for (let px = -3; px <= bx.w + 3; px += 3) {
+        const w = reduce ? 0 : Math.sin((px / Math.max(bx.w, 20)) * 6.283 * 1.3 + t * 3.2 + i * 1.7) * amp;
+        ctx.lineTo(bx.x + px, level + w);
+      }
+      ctx.lineTo(bx.x + bx.w + 3, bx.y + bx.h + 3); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
     ctx.restore();
