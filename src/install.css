@@ -175,3 +175,11 @@ html[lang=tr] .sign{order:-1;margin:.34em .08em 0 0}
 [data-state=welcome] .pct{height:0;margin:0}
 .pct{transition:opacity .7s var(--ease),color .8s var(--ease),height .6s var(--ease)}
 .views{padding-bottom:64px}
+
+/* while it runs and when it is done the number and the text sit as one group on the arch's centre line */
+[data-state=run] .pct,[data-state=done] .pct{margin-top:70px}
+[data-state=run] .views,[data-state=done] .views{padding-bottom:96px}
+.views{transition:padding .6s var(--ease)}
+/* the row is the window's inner height, so hidden views can never stretch it and push the arch off centre */
+.stage{grid-template-rows:minmax(0,1fr)}
+.col{min-height:0}
