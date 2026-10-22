@@ -1027,7 +1027,7 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
     let code = |r: std::io::Result<()>| i32::from(r.is_err());
     match cmd {
         Cli::InstallMenu => {
-            let s = settings::load_from(&settings::settings_path());
+            let s = settings::load_initial(&settings::settings_path());
             Some(code(shell::install(&s)))
         }
         Cli::InstallSendTo => Some(code(shell::set_sendto_at(
@@ -1045,6 +1045,7 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             let a = shell::set_autostart(false);
             Some(code(shell::remove().and(a)))
         }
+        Cli::InstallFfmpeg => Some(install_ffmpeg_headless()),
         Cli::Uninstall {
             quiet: true,
             keep_data,
@@ -1058,6 +1059,22 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
         }
         _ => None,
     }
+}
+
+/// `--install-ffmpeg`: a working ffmpeg is left alone; otherwise download it and print
+/// `P <percent>` lines on stdout for the installer window.
+fn install_ffmpeg_headless() -> i32 {
+    use std::io::Write;
+    let say = |p: f32| {
+        let mut out = std::io::stdout();
+        let _ = writeln!(out, "P {p:.1}");
+        let _ = out.flush();
+    };
+    if ffmpeg::is_working(&ffmpeg::exe_path()) {
+        say(100.0);
+        return 0;
+    }
+    i32::from(ffmpeg::install_pinned(&mut |p| say(p)).is_err())
 }
 
 struct SetupState {
@@ -1091,9 +1108,9 @@ fn install_start(app: AppHandle, req: install::Request) -> Result<String, String
         match install::run_install(&req, |p| {
             let _ = app.emit("install-progress", p);
         }) {
-            Ok(exe) => {
-                *app.state::<SetupState>().exe.lock().unwrap() = Some(exe);
-                let _ = app.emit("install-done", ());
+            Ok(done) => {
+                *app.state::<SetupState>().exe.lock().unwrap() = Some(done.exe);
+                let _ = app.emit("install-done", done.ffmpeg);
             }
             Err(message) => {
                 let _ = app.emit("install-error", message);
@@ -1151,9 +1168,13 @@ fn run_setup(mode: install::Mode) {
             });
             if let Some(cfg) = app.config().app.windows.iter().find(|c| c.label == "setup") {
                 let mut w = tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?;
-                if mode == install::Mode::Uninstall {
-                    w = w.title("Uninstall Tessera");
-                }
+                let tr = i18n::system_lang() == i18n::Lang::Tr;
+                w = w.title(match (mode, tr) {
+                    (install::Mode::Uninstall, true) => "Tessera Kaldır",
+                    (install::Mode::Uninstall, false) => "Uninstall Tessera",
+                    (_, true) => "Tessera Kurulum",
+                    (_, false) => "Tessera Setup",
+                });
                 w.build()?;
             }
             Ok(())
@@ -1234,7 +1255,7 @@ pub fn run() {
             let first_run = !path.exists();
             let upgraded =
                 !first_run && settings::stored_version(&path) < settings::SETTINGS_VERSION;
-            let s = settings::load_from(&path);
+            let s = settings::load_initial(&path);
             i18n::set_lang(s.language);
             // state first: the config windows start loading pages that invoke commands right away
             let first_run_settings = (first_run || upgraded).then(|| s.clone());

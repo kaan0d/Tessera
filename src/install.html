@@ -3,11 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Install Tessera</title>
+<title>Tessera Setup</title>
 <link rel="stylesheet" href="install.css">
 </head>
 <body>
 <main class="stage" id="stage">
+  <button class="x" id="x" type="button" data-label="close" aria-label="Close"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
   <canvas id="mark" class="mark-cv" width="240" height="240" aria-hidden="true"></canvas>
 
   <section class="col">
@@ -21,61 +22,62 @@
 
     <div class="views">
       <div class="view v-welcome">
-        <h1>Install Tessera</h1>
-        <p class="lead">Right-click any file, pick a format, done.</p>
-        <label class="lbl" for="dir">Install to <span>no admin rights needed</span></label>
+        <h1 id="welcomeTitle" data-t="install_title">Install Tessera</h1>
+        <p class="lead" data-t="lead">Right-click any file, pick a format, done.</p>
+        <label class="lbl" for="dir"><span data-t="install_to" class="lbl-main">Install to</span> <span data-t="no_admin">no admin rights needed</span></label>
         <div class="field">
           <input id="dir" type="text" value="C:\Users\you\AppData\Local\Tessera" spellcheck="false" autocomplete="off">
-          <button class="btn ghost small" id="browse" type="button">Browse</button>
+          <button class="btn ghost small" id="browse" type="button" data-t="browse">Browse</button>
         </div>
         <p class="fine err" id="err" role="alert"></p>
         <label class="check">
           <input type="checkbox" id="portable">
           <span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg></span>
-          <span class="check-t">Keep settings inside the app folder
-            <small>Settings, history and menu icons go to <b>data</b> next to the app instead of %APPDATA%.</small>
+          <span class="check-t"><span data-t="keep">Keep settings inside the app folder</span>
+            <small data-h="keep_hint">Settings, history and menu icons go to <b>data</b> next to the app instead of %APPDATA%.</small>
           </span>
         </label>
       </div>
       <div class="view v-remove">
-        <h1>Remove Tessera?</h1>
-        <p class="lead">It leaves the Explorer menu and the app folder is deleted.</p>
+        <h1 data-t="remove_title">Remove Tessera?</h1>
+        <p class="lead" data-t="remove_lead">It leaves the Explorer menu and the app folder is deleted.</p>
         <p class="fine err" id="err2" role="alert"></p>
         <label class="check">
           <input type="checkbox" id="wipe" checked>
           <span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg></span>
-          <span class="check-t">Also delete my settings and history
-            <small>Presets, history and the downloaded ffmpeg. Converted files are never touched.</small>
+          <span class="check-t"><span data-t="wipe">Also delete my settings and history</span>
+            <small data-t="wipe_hint">Presets, history and the downloaded ffmpeg. Converted files are never touched.</small>
           </span>
         </label>
       </div>
       <div class="view v-run">
         <h1 id="label" aria-live="polite">Copying files</h1>
-        <p class="lead"><span id="step">1</span> of 4</p>
-        <div class="bar" id="bar" role="progressbar" aria-label="Installing" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <p class="lead" id="stepline">1 of 5</p>
+        <div class="bar" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="bar-fill"><div class="bar-ink"></div></div>
         </div>
         <p class="tip" id="tip" aria-hidden="true"></p>
       </div>
       <div class="view v-gone">
-        <h1>Tessera is removed</h1>
-        <p class="lead">Your converted files were not touched.</p>
-        <p class="fine">Thanks for trying a free converter.</p>
+        <h1 data-t="gone_title">Tessera is removed</h1>
+        <p class="lead" data-t="gone_lead">Your converted files were not touched.</p>
+        <p class="fine" data-t="gone_fine">Thanks for trying a free converter.</p>
       </div>
       <div class="view v-done">
-        <h1>Tessera is ready</h1>
-        <p class="lead">Right-click a file and look for Tessera.</p>
+        <h1 data-t="done_title">Tessera is ready</h1>
+        <p class="lead" data-t="done_lead">Right-click a file and look for Tessera.</p>
         <p class="fine" id="doneDir"></p>
-        <p class="fine">Free and open source. No account, no ads, no telemetry.</p>
+        <p class="fine" data-t="done_free">Free and open source. No account, no ads, no telemetry.</p>
+        <p class="fine warn" id="ffNote"></p>
       </div>
     </div>
 
     <div class="foot">
       <div class="actions">
-        <button class="btn primary" id="go" type="button">Install</button>
-        <button class="btn ghost" id="cancel" type="button">Cancel</button>
-        <button class="btn primary" id="open" type="button">Open Tessera</button>
-        <button class="btn ghost" id="close" type="button">Close</button>
+        <button class="btn primary" id="go" type="button" data-t="install">Install</button>
+        <button class="btn ghost" id="cancel" type="button" data-t="cancel">Cancel</button>
+        <button class="btn primary" id="open" type="button" data-t="open">Open Tessera</button>
+        <button class="btn ghost" id="close" type="button" data-t="close">Close</button>
       </div>
     </div>
   </section>

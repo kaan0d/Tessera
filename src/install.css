@@ -144,3 +144,18 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 .tip{margin:22px 0 0;min-height:22px;font-size:14px;color:var(--muted);transition:opacity .5s var(--ease),translate .6s var(--ease)}
 .tip.out{opacity:0;translate:0 -6px}
 .tip.pre{opacity:0;translate:0 8px;transition:none}
+
+/* close button of the frameless window: only when closing is safe (not while working) */
+.x{position:absolute;top:14px;right:14px;z-index:3;width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:10px;
+  background:transparent;color:var(--muted);cursor:pointer;transition:background .2s,color .2s,opacity .3s,scale .2s var(--ease)}
+.x svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+@media (hover:hover){.x:hover{background:rgba(255,255,255,.08);color:var(--ink)}}
+.x:active{scale:.92}
+.x:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+[data-state=run] .x{opacity:0;pointer-events:none;visibility:hidden}
+.fine.warn{color:#f7d774}
+.fine.warn:empty{display:none}
+/* the page fades in once the language is known, so English never flashes before Turkish */
+body{opacity:0;transition:opacity .35s var(--ease)}
+body.ready{opacity:1}
+.lbl .lbl-main{font-weight:600;color:var(--ink);opacity:1}

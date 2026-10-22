@@ -286,6 +286,15 @@ pub fn load_from(path: &Path) -> Settings {
         .migrate()
 }
 
+/// Like `load_from`, but a first run (no file yet) starts in the Windows display language.
+pub fn load_initial(path: &Path) -> Settings {
+    let mut s = load_from(path);
+    if !path.exists() {
+        s.language = crate::i18n::system_lang();
+    }
+    s
+}
+
 /// Writes a temp file then renames it over the target.
 pub fn save_to(path: &Path, s: &Settings) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {

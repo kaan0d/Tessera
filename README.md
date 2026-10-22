@@ -26,7 +26,7 @@ cargo build --release
 target\release\tessera.exe
 ```
 
-Run the release exe and it opens its own installer: pick a folder (default `%LOCALAPPDATA%\Tessera`), optionally keep settings and history in a `data` folder next to the app instead of `%APPDATA%`, and it registers the menu, a Start menu shortcut and an uninstall entry. Settings > Apps > Tessera > Uninstall opens the same window and removes the menu, shortcuts, entry, files and (optionally) settings and history. No admin rights, no separate setup file.
+Run the release exe and it opens its own installer: pick a folder (default `%LOCALAPPDATA%\Tessera`), optionally keep settings and history in a `data` folder next to the app instead of `%APPDATA%`, registers the menu, a Start menu shortcut and an uninstall entry, and downloads video support (ffmpeg) with a live percentage. The window follows Windows: Turkish on a Turkish system, English otherwise. Settings > Apps > Tessera > Uninstall opens the same window and removes the menu, shortcuts, entry, files and (optionally) settings and history. No admin rights, no separate setup file.
 
 ```
 tessera.exe --install D:\Apps --portable   silent install (adds \Tessera to the folder)

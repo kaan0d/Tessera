@@ -20,11 +20,12 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tessera";
 const EXE_NAME: &str = "tessera.exe";
 /// Each step shows for at least this long, so the screen reads as progress, not a flash.
-const MIN_STEP: Duration = Duration::from_millis(700);
+const MIN_STEP: Duration = Duration::from_millis(500);
 
 #[derive(Serialize)]
 pub struct Defaults {
     pub mode: &'static str,
+    pub lang: &'static str,
     pub dir: String,
     pub installed: bool,
     pub portable: bool,
@@ -98,6 +99,11 @@ pub fn defaults(mode: Mode) -> Defaults {
     let installed = installed_dir().filter(|d| d.join(EXE_NAME).is_file());
     let dir = installed.clone().unwrap_or_else(default_dir);
     Defaults {
+        lang: if crate::i18n::system_lang() == crate::i18n::Lang::Tr {
+            "tr"
+        } else {
+            "en"
+        },
         mode: if mode == Mode::Uninstall {
             "uninstall"
         } else {
@@ -228,14 +234,48 @@ fn run_step(
     r
 }
 
-/// Runs the install, reporting each step through `emit`. Returns the installed exe.
-pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<PathBuf, String> {
+/// What an install produced: the exe, and whether video support (ffmpeg) is in place.
+pub struct Installed {
+    pub exe: PathBuf,
+    pub ffmpeg: bool,
+}
+
+/// Runs `<exe> --install-ffmpeg`, mapping its `P <percent>` lines onto `sub`. True on success.
+fn download_ffmpeg(exe: &Path, sub: &mut dyn FnMut(f32)) -> bool {
+    use std::io::{BufRead, BufReader};
+    use std::process::Stdio;
+    let Ok(mut child) = Command::new(exe)
+        .arg("--install-ffmpeg")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+    else {
+        return false;
+    };
+    if let Some(out) = child.stdout.take() {
+        for line in BufReader::new(out).lines().map_while(Result::ok) {
+            if let Some(p) = line
+                .strip_prefix("P ")
+                .and_then(|p| p.trim().parse::<f32>().ok())
+            {
+                sub(p / 100.0);
+            }
+        }
+    }
+    child.wait().is_ok_and(|s| s.success())
+}
+
+/// Runs the install, reporting each step through `emit`.
+pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Installed, String> {
     let dir = normalize_dir(&req.dir)?;
     let src = std::env::current_exe().map_err(|e| e.to_string())?;
     let dst = dir.join(EXE_NAME);
     let emit: &mut dyn FnMut(Progress) = &mut emit;
+    let mut ffmpeg_ok = false;
 
-    run_step(emit, 1, "Copying files", (0.0, 0.55), &mut |sub| {
+    run_step(emit, 1, "Copying files", (0.0, 0.06), &mut |sub| {
         stop_running();
         fs::create_dir_all(&dir).map_err(fail("Cannot create the folder"))?;
         if req.portable {
@@ -246,7 +286,7 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Path
         }
         Ok(())
     })?;
-    run_step(emit, 2, "Registering the menu", (0.55, 0.78), &mut |_| {
+    run_step(emit, 2, "Registering the menu", (0.06, 0.09), &mut |_| {
         let ok = Command::new(&dst)
             .arg("--install-menu")
             .creation_flags(CREATE_NO_WINDOW)
@@ -260,15 +300,29 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Path
         emit,
         3,
         "Adding icons and shortcuts",
-        (0.78, 0.93),
+        (0.09, 0.12),
         &mut |_| {
             crate::shell::set_sendto_at(&start_menu_dir(), &dst, true)
                 .map_err(fail("Cannot add the Start menu shortcut"))?;
             write_uninstall_entry(&dir, &dst).map_err(fail("Cannot register the uninstaller"))
         },
     )?;
-    run_step(emit, 4, "Finishing up", (0.93, 1.0), &mut |_| Ok(()))?;
-    Ok(dst)
+    // not fatal: offline, the app downloads it itself the next time it starts
+    run_step(
+        emit,
+        4,
+        "Downloading video support",
+        (0.12, 0.96),
+        &mut |sub| {
+            ffmpeg_ok = download_ffmpeg(&dst, sub);
+            Ok(())
+        },
+    )?;
+    run_step(emit, 5, "Finishing up", (0.96, 1.0), &mut |_| Ok(()))?;
+    Ok(Installed {
+        exe: dst,
+        ffmpeg: ffmpeg_ok,
+    })
 }
 
 /// The folder this exe runs from, when it is the installed copy (and so safe to delete).

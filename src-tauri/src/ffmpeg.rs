@@ -298,17 +298,16 @@ fn install_with(
 
 /// The pinned build (mirror, then BtbN), up to three attempts with a growing pause. Updates `dl` as it goes.
 pub fn install_with_retries(dl: &Download) -> Result<(), FfError> {
+    install_pinned(&mut |p| dl.set_percent(p))
+}
+
+/// Same, reporting percent (0..=100) to `progress`; the installer window drives this.
+pub fn install_pinned(progress: &mut dyn FnMut(f32)) -> Result<(), FfError> {
     let mut last = FfError::new("ff.run");
     for pause in [0u64, 3, 10] {
         std::thread::sleep(Duration::from_secs(pause));
-        dl.set_percent(0.0);
-        match install_from(
-            &SOURCES,
-            SHA256,
-            &ffmpeg_dir(),
-            &mut |p| dl.set_percent(p),
-            &download,
-        ) {
+        progress(0.0);
+        match install_from(&SOURCES, SHA256, &ffmpeg_dir(), progress, &download) {
             Ok(()) => return Ok(()),
             Err(e) => last = e,
         }

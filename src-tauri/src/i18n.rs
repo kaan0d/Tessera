@@ -12,6 +12,17 @@ pub enum Lang {
     Tr,
 }
 
+/// Windows display language: Turkish for a Turkish UI, English for every other language.
+pub fn system_lang() -> Lang {
+    // SAFETY: a plain query with no arguments.
+    let id = unsafe { windows::Win32::Globalization::GetUserDefaultUILanguage() };
+    if id & 0x3ff == 0x1f {
+        Lang::Tr
+    } else {
+        Lang::En
+    }
+}
+
 impl Lang {
     pub fn code(self) -> &'static str {
         match self {

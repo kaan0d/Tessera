@@ -10,6 +10,8 @@ pub enum Cli {
     RemoveMenu,
     /// Show the installer window even when the exe looks installed.
     Setup,
+    /// Download the pinned ffmpeg, printing `P <percent>` lines (the installer reads them).
+    InstallFfmpeg,
     /// Silent install (`--install <dir> [--portable]`), no window.
     Install {
         dir: String,
@@ -112,6 +114,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         Some("--install-menu") => Cli::InstallMenu,
         Some("--remove-menu") => Cli::RemoveMenu,
         Some("--setup") => Cli::Setup,
+        Some("--install-ffmpeg") => Cli::InstallFfmpeg,
         Some("--install") => match args.get(1) {
             Some(dir) if !dir.starts_with("--") => Cli::Install {
                 dir: dir.clone(),
@@ -306,6 +309,7 @@ mod tests {
         assert_eq!(parse(&a(&["--install-menu"]), None), Cli::InstallMenu);
         assert_eq!(parse(&a(&["--remove-menu"]), None), Cli::RemoveMenu);
         assert_eq!(parse(&a(&["--setup"]), None), Cli::Setup);
+        assert_eq!(parse(&a(&["--install-ffmpeg"]), None), Cli::InstallFfmpeg);
         assert_eq!(
             parse(&a(&["--install", r"D:\Apps", "--portable"]), None),
             Cli::Install {

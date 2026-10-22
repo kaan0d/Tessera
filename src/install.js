@@ -8,7 +8,7 @@
   const pct = document.getElementById("pct");
   const strips = [...pct.querySelectorAll(".strip")];
   const labelEl = document.getElementById("label");
-  const stepEl = document.getElementById("step");
+  const stepLine = document.getElementById("stepline");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const S = 240, TILE = 64, GAP = 12, OFF = (S - (3 * TILE + 2 * GAP)) / 2;
@@ -116,28 +116,95 @@
   }
 
   let curLabel = "";
+  // ---- language: English, or Turkish when Windows is Turkish (the backend says which)
+  const DICT = {
+    en: {
+      install_title: "Install Tessera", update_title: "Update Tessera", lead: "Right-click any file, pick a format, done.",
+      install_to: "Install to", no_admin: "no admin rights needed", browse: "Browse",
+      keep: "Keep settings inside the app folder",
+      keep_hint: "Settings, history and menu icons go to <b>data</b> next to the app instead of %APPDATA%.",
+      install: "Install", update: "Update", uninstall: "Uninstall", cancel: "Cancel", open: "Open Tessera", close: "Close",
+      remove_title: "Remove Tessera?", remove_lead: "It leaves the Explorer menu and the app folder is deleted.",
+      wipe: "Also delete my settings and history",
+      wipe_hint: "Presets, history and the downloaded ffmpeg. Converted files are never touched.",
+      done_title: "Tessera is ready", done_lead: "Right-click a file and look for Tessera.",
+      done_free: "Free and open source. No account, no ads, no telemetry.", installed_to: "Installed to",
+      gone_title: "Tessera is removed", gone_lead: "Your converted files were not touched.",
+      gone_fine: "Thanks for trying a free converter.",
+      ff_note: "Video support will download the next time Tessera opens.",
+      step: "{n} of {t}",
+      "Copying files": "Copying files", "Registering the menu": "Registering the menu",
+      "Adding icons and shortcuts": "Adding icons and shortcuts", "Downloading video support": "Downloading video support",
+      "Finishing up": "Finishing up", "Closing Tessera": "Closing Tessera", "Removing the menu": "Removing the menu",
+      "Removing shortcuts and entries": "Removing shortcuts and entries", "Deleting files": "Deleting files",
+      tips: [
+        "Free and open source. MIT licensed, nothing to unlock.",
+        "Paid converters do the same job. You do not need one.",
+        "No account, no ads, no telemetry.",
+        "Your files never leave this computer.",
+        "A modern interface in one small app.",
+        "Right-click any file, pick a format, done.",
+      ],
+    },
+    tr: {
+      install_title: "Tessera'yı kur", update_title: "Tessera'yı güncelle", lead: "Herhangi bir dosyaya sağ tıkla, biçimi seç, bitti.",
+      install_to: "Kurulum yeri", no_admin: "yönetici izni gerekmez", browse: "Gözat",
+      keep: "Ayarları uygulama klasöründe tut",
+      keep_hint: "Ayarlar, geçmiş ve menü simgeleri %APPDATA% yerine uygulamanın yanındaki <b>data</b> klasörüne gider.",
+      install: "Kur", update: "Güncelle", uninstall: "Kaldır", cancel: "Vazgeç", open: "Tessera'yı aç", close: "Kapat",
+      remove_title: "Tessera kaldırılsın mı?", remove_lead: "Explorer menüsünden çıkar ve uygulama klasörü silinir.",
+      wipe: "Ayarlarımı ve geçmişimi de sil",
+      wipe_hint: "Hazır ayarlar, geçmiş ve indirilen ffmpeg. Dönüştürdüğün dosyalara dokunulmaz.",
+      done_title: "Tessera hazır", done_lead: "Bir dosyaya sağ tıkla ve Tessera'yı bul.",
+      done_free: "Ücretsiz ve açık kaynak. Hesap, reklam ve izleme yok.", installed_to: "Kurulum yeri:",
+      gone_title: "Tessera kaldırıldı", gone_lead: "Dönüştürdüğün dosyalara dokunulmadı.",
+      gone_fine: "Ücretsiz bir dönüştürücüyü denediğin için teşekkürler.",
+      ff_note: "Video desteği Tessera'nın bir sonraki açılışında indirilecek.",
+      step: "Adım {n} / {t}",
+      "Copying files": "Dosyalar kopyalanıyor", "Registering the menu": "Menü kaydediliyor",
+      "Adding icons and shortcuts": "Simgeler ve kısayollar ekleniyor", "Downloading video support": "Video desteği indiriliyor",
+      "Finishing up": "Bitiriliyor", "Closing Tessera": "Tessera kapatılıyor", "Removing the menu": "Menü kaldırılıyor",
+      "Removing shortcuts and entries": "Kısayollar ve kayıtlar kaldırılıyor", "Deleting files": "Dosyalar siliniyor",
+      tips: [
+        "Ücretsiz ve açık kaynak. MIT lisanslı, açılacak kilit yok.",
+        "Ücretli dönüştürücüler aynı işi yapıyor. Birine ihtiyacın yok.",
+        "Hesap yok, reklam yok, izleme yok.",
+        "Dosyaların bu bilgisayardan hiç çıkmaz.",
+        "Tek küçük uygulamada modern bir arayüz.",
+        "Herhangi bir dosyaya sağ tıkla, biçimi seç, bitti.",
+      ],
+    },
+  };
+  let lang = "en";
+  const t = (k) => DICT[lang][k] ?? DICT.en[k] ?? k;
+  function applyLang(l) {
+    lang = DICT[l] ? l : "en";
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = t(el.dataset.t); });
+    document.querySelectorAll("[data-h]").forEach((el) => { el.innerHTML = t(el.dataset.h); }); // our own strings
+    document.querySelectorAll("[data-label]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.label)));
+    document.getElementById("bar").setAttribute("aria-label", t("install"));
+    if (curStep) stepLine.textContent = fmtStep();
+    if (curLabel) labelEl.textContent = t(curLabel);
+    if (doneDirPath) document.getElementById("doneDir").textContent = t("installed_to") + " " + doneDirPath;
+  }
+  let curStep = 0, totalSteps = 5, doneDirPath = "";
+  const fmtStep = () => t("step").replace("{n}", curStep).replace("{t}", totalSteps);
   function setLabel(text, step) {
-    if (step) stepEl.textContent = step;
+    if (step) { curStep = step; stepLine.textContent = fmtStep(); }
     if (!text || text === curLabel) return;
     curLabel = text;
-    if (reduce) { labelEl.textContent = text; return; }
+    if (reduce) { labelEl.textContent = t(text); return; }
     labelEl.animate([{ opacity: 1, translate: "0 0" }, { opacity: 0, translate: "0 -8px" }], { duration: 140, easing: "ease-in" }).onfinish = () => {
-      labelEl.textContent = text;
+      labelEl.textContent = t(text);
       labelEl.animate([{ opacity: 0, translate: "0 10px" }, { opacity: 1, translate: "0 0" }], { duration: 380, easing: "cubic-bezier(.16,1,.3,1)" });
     };
   }
 
-  const TIPS = [
-    "Free and open source. MIT licensed, nothing to unlock.",
-    "Paid converters do the same job. You do not need one.",
-    "No account, no ads, no telemetry.",
-    "Your files never leave this computer.",
-    "A modern interface in one small app.",
-    "Right-click any file, pick a format, done.",
-  ];
   const tipEl = document.getElementById("tip");
   let tipIdx = -1, tipTimer = 0;
   function nextTip() {
+    const TIPS = t("tips");
     tipIdx = (tipIdx + 1) % TIPS.length;
     if (reduce || tipIdx === 0) { tipEl.textContent = TIPS[tipIdx]; return; }
     tipEl.classList.add("out");
@@ -151,7 +218,7 @@
   function startTips() { if (mode !== "install" || tipTimer) return; nextTip(); tipTimer = setInterval(nextTip, 2200); }
 
   const api = {
-    start() { if (state !== "welcome") return; setState("run"); startTips(); setLabel(mode === "install" ? "Copying files" : "Closing Tessera", 1); },
+    start() { if (state !== "welcome") return; setState("run"); startTips(); totalSteps = mode === "install" ? 5 : 4; setLabel(mode === "install" ? "Copying files" : "Closing Tessera", 1); },
     setMode(m) { mode = m; root.dataset.mode = m; if (m === "uninstall") popAt.fill(1); },
     set(p, label, step) { tp = clamp(p); setLabel(label, step); },
   };
@@ -159,7 +226,7 @@
 
   // preview simulation: irregular, like real file copying
   const STAGES_UN = [[0.2, "Closing Tessera", 1, 1200], [0.5, "Removing the menu", 2, 1400], [0.75, "Removing shortcuts and entries", 3, 1400], [1, "Deleting files", 4, 1800]];
-  const STAGES_IN = [[0.55, "Copying files", 1, 3600], [0.76, "Registering the menu", 2, 1500], [0.93, "Adding icons and shortcuts", 3, 1400], [1, "Finishing up", 4, 900]];
+  const STAGES_IN = [[0.06, "Copying files", 1, 900], [0.09, "Registering the menu", 2, 600], [0.12, "Adding icons and shortcuts", 3, 600], [0.96, "Downloading video support", 4, 6000], [1, "Finishing up", 5, 700]];
   function demo() {
     api.start();
     let from = 0, k = 0;
@@ -197,43 +264,51 @@
       return T.core.invoke("uninstall_start", { keepData: !document.getElementById("wipe").checked }).then(() => api.start()).catch((e) => showError(String(e)));
     }
     const dir = dirEl.value.trim();
-    document.getElementById("doneDir").textContent = "Installed to " + dir;
+    doneDirPath = dir; document.getElementById("doneDir").textContent = t("installed_to") + " " + dir;
     if (!T) return demo();
     T.core.invoke("install_start", { req: { dir, portable: document.getElementById("portable").checked } })
-      .then((real) => { dirEl.value = real; document.getElementById("doneDir").textContent = "Installed to " + real; api.start(); })
+      .then((real) => { dirEl.value = real; doneDirPath = real; document.getElementById("doneDir").textContent = t("installed_to") + " " + real; api.start(); })
       .catch((e) => showError(String(e)));
   });
   document.getElementById("browse").addEventListener("click", () => {
     if (T) T.core.invoke("pick_install_dir").then((p) => { if (p) dirEl.value = p; }).catch(() => {});
     else dirEl.value = SAMPLE[(SAMPLE.indexOf(dirEl.value) + 1) % SAMPLE.length];
   });
+  document.getElementById("x").addEventListener("click", () => { if (T) T.core.invoke("install_close"); else location.reload(); });
   document.getElementById("cancel").addEventListener("click", () => { if (T) T.core.invoke("install_close"); else location.reload(); });
   document.getElementById("close").addEventListener("click", () => { if (T) T.core.invoke("install_close"); else location.reload(); });
   document.getElementById("open").addEventListener("click", () => { if (T) T.core.invoke("install_open"); else location.reload(); });
 
+  const ready = () => document.body.classList.add("ready");
+  const goEl = document.getElementById("go");
+  function setGo(key) { goEl.dataset.t = key; goEl.textContent = t(key); }
+  // empty areas drag the frameless window
+  document.querySelectorAll(".stage,.col,.views,.view,.pct,.foot,.actions,.mark-cv").forEach((el) => el.setAttribute("data-tauri-drag-region", ""));
   if (T) {
     T.event.listen("install-progress", (e) => api.set(e.payload.p, e.payload.label, e.payload.step));
     T.event.listen("install-error", (e) => showError(String(e.payload)));
+    T.event.listen("install-done", (e) => { document.getElementById("ffNote").textContent = e.payload === false ? t("ff_note") : ""; });
     T.core.invoke("install_defaults").then((d) => {
+      applyLang(d.lang);
       if (d.mode === "uninstall") {
         api.setMode("uninstall");
-        document.getElementById("go").textContent = "Uninstall";
-        return;
+        setGo("uninstall");
+      } else {
+        dirEl.value = d.dir;
+        document.getElementById("portable").checked = d.portable;
+        if (d.installed) { document.getElementById("welcomeTitle").dataset.t = "update_title"; setGo("update"); applyLang(d.lang); }
       }
-      dirEl.value = d.dir;
-      document.getElementById("portable").checked = d.portable;
-      if (d.installed) {
-        document.querySelector(".v-welcome h1").textContent = "Update Tessera";
-        document.getElementById("go").textContent = "Update";
-      }
-    }).catch(() => {});
+      ready();
+    }).catch(ready);
+    setTimeout(ready, 1500);
   }
 
   // ?state=run&p=0.6 / ?state=done for screenshots
   const q = new URLSearchParams(location.search);
-  if (q.get("state") === "run") { setState("run"); tp = dp = parseFloat(q.get("p") || "0.5"); curLabel = "Registering the menu"; labelEl.textContent = curLabel; stepEl.textContent = "2"; }
+  if (q.get("state") === "run") { setState("run"); tp = dp = parseFloat(q.get("p") || "0.5"); curLabel = "Registering the menu"; labelEl.textContent = t(curLabel); curStep = 2; stepLine.textContent = fmtStep(); }
   if (q.get("state") === "done") { setState("done"); tp = dp = 1; Object.assign(popAt, new Array(9).fill(1)); }
-  if (!T && q.get("mode") === "uninstall") { api.setMode("uninstall"); document.getElementById("go").textContent = "Uninstall"; }
+  if (!T && q.get("mode") === "uninstall") { api.setMode("uninstall"); setGo("uninstall"); }
+  if (!T) { applyLang(q.get("lang") || ((navigator.language || "").startsWith("tr") ? "tr" : "en")); ready(); }
   if (q.get("auto")) setTimeout(demo, 800);
 
   requestAnimationFrame(frame);

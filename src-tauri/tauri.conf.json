@@ -62,7 +62,9 @@
         "center": true,
         "resizable": false,
         "maximizable": false,
-        "visible": true
+        "visible": true,
+        "decorations": false,
+        "shadow": true
       }
     ],
     "security": {
