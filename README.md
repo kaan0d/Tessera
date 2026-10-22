@@ -6,7 +6,7 @@ Converter apps that cost money, run on subscriptions or bury the exit under upse
 
 ## Features
 
-- **Explorer menu:** cascading "Tessera" menu per file type and per folder, with one icon per kind and the presets in their own submenu. Lives in your user registry only.
+- **Explorer menu:** cascading "Tessera" menu per file type and per folder, with one icon per kind. Lives in your user registry only.
 - **Formats:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. Also reads SVG, HEIC, RAW (embedded preview) and PDF pages, and turns animated GIFs into MP4 or WebM.
 - **Presets:** shrink for web, WhatsApp, email under 10 MB, Discord under 8 MB, strip location data, make a PDF. Make your own.
 - **Edit while converting:** resize, strip metadata, fix orientation, compress to a target file size, cut audio and video, audio bitrate, mono, GIF fps and width. Save any custom settings as a menu preset.
