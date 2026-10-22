@@ -85,9 +85,9 @@ main{height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
 
 /* sticky section header: title + one line; a hairline settles in once content scrolls under it */
 .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:var(--s3);padding:18px var(--s5) 14px;
-  background:color-mix(in srgb,var(--ground) 50%,transparent);backdrop-filter:blur(24px) saturate(1.4);
+  background:transparent;
   border-bottom:1px solid transparent;animation:lift linear both;animation-timeline:scroll();animation-range:0 28px}
-@keyframes lift{to{border-bottom-color:var(--line);box-shadow:0 10px 24px -18px rgba(10,30,26,.35)}}
+@keyframes lift{to{background:color-mix(in srgb,var(--ground) 94%,transparent);backdrop-filter:blur(24px) saturate(1.4);border-bottom-color:var(--line);box-shadow:0 10px 24px -18px rgba(10,30,26,.35)}}
 .pane-title{font-family:var(--font-display);font-size:var(--t-xl);font-weight:600;letter-spacing:-.01em;line-height:1.2}
 .pane-desc{font-size:var(--t-sm);color:var(--muted);margin-top:1px}
 
@@ -844,3 +844,49 @@ body.settings{
 /* numbers read like the installer percentage: light, large, tabular */
 .val{font-weight:300;font-size:22px;letter-spacing:-.02em}
 .val small{font-size:var(--t-xs);font-weight:600}
+
+/* ---------- room to breathe ----------
+   Bigger window, longer rows, more air between groups, larger targets. Same layout, looser. */
+:root{--t-sm:13px;--t-md:14.5px}
+.shell{grid-template-columns:236px minmax(0,1fr)}
+.side{padding:24px 12px 16px 16px;gap:20px}
+.brand-row{padding:0 8px 4px;gap:12px}
+.nav{gap:3px}
+.nav>button{height:38px;padding:0 12px 0 14px;font-size:14px}
+.nav-group{padding:18px 14px 6px}
+.top{padding:30px 32px 18px}
+.pane-title{font-size:26px}
+.pane-desc{margin-top:4px}
+.content{padding:6px 32px 40px;gap:24px}
+.pane{gap:26px}
+.group{gap:10px}
+.group-title{padding-left:4px}
+.aside{line-height:1.55}
+.row{padding:18px 20px;gap:16px}
+.tile{width:36px;height:36px;border-radius:10px}
+.desc{margin-top:3px;line-height:1.5}
+.label{line-height:1.4}
+.foot{padding:12px 20px 14px 72px;line-height:1.5}
+.banner{padding:12px 14px}
+.btn{min-height:38px;padding:0 18px}
+.btn.sm{min-height:32px;padding:0 14px}
+.seg>button,.seg>label{min-height:34px}
+.chips{gap:8px;margin-top:10px}
+.chip{height:34px;padding:0 14px}
+.kinds .row{padding:16px 20px 18px}
+.field{height:42px}
+.field.plain{height:38px}
+.pcard,.rcard{padding:18px 16px 16px 20px}
+.plist{gap:10px}
+.dialog{max-width:440px;padding:28px}
+.notice{padding:20px}
+
+/* chooser */
+.dr-head{padding:24px 28px 16px;gap:16px}
+.dr-title{font-size:20px}
+.dr-body{padding:10px 14px 24px 28px}
+.dr-q{margin:10px 0 16px}
+.dr-sec+.dr-sec{margin-top:24px}
+.dr-cards{gap:8px}
+.dr-card{padding:14px 16px}
+.dr-skip{margin:0 28px 8px}
