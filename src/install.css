@@ -170,3 +170,8 @@ html[lang=tr] .sign{order:-1;margin:.34em .08em 0 0}
 
 /* the percentage is a progress number: not shown before an install or removal starts */
 [data-state=welcome] .pct{opacity:0}
+
+/* before the install starts there is no number, so its row takes no room and the form can use the height */
+[data-state=welcome] .pct{height:0;margin:0}
+.pct{transition:opacity .7s var(--ease),color .8s var(--ease),height .6s var(--ease)}
+.views{padding-bottom:64px}
