@@ -1124,11 +1124,18 @@ fn install_ffmpeg_headless() -> i32 {
         let _ = writeln!(out, "P {p:.1}");
         let _ = out.flush();
     };
-    if ffmpeg::is_working(&ffmpeg::exe_path()) {
+    let ok = ffmpeg::is_working(&ffmpeg::exe_path()) || ffmpeg::install_pinned(&mut |p| say(p)).is_ok();
+    if ok {
         say(100.0);
-        return 0;
+        // the app must not ask again what the installer already answered
+        let path = settings::settings_path();
+        let mut s = settings::load_initial(&path);
+        s.ffmpeg_ready = true;
+        s.ffmpeg_later = false;
+        s.ffmpeg_notice_seen = true;
+        let _ = settings::save_to(&path, &s);
     }
-    i32::from(ffmpeg::install_pinned(&mut |p| say(p)).is_err())
+    i32::from(!ok)
 }
 
 struct SetupState {
