@@ -959,3 +959,7 @@ body.settings::after,body.drop::after{content:"";position:fixed;inset:0;z-index:
 .fold[open] .fold-ic{rotate:180deg}
 @media (hover:hover){.fold-sum:hover .group-title{color:var(--ink)}}
 .fold-sum:focus-visible{outline-offset:2px}
+
+/* inputs inside an option row sit on its center line and stay inside the hover area */
+.choice .field,.choice .field.short{margin-top:0}
+.field.plain.short,.field.short{height:32px}
