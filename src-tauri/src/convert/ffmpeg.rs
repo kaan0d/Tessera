@@ -438,7 +438,7 @@ pub fn convert_with_ffmpeg(
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_nanos());
             let png = dest.with_file_name(format!(".still.{nanos}.png"));
-            let r = run_child(ffmpeg, still_args(&src, &png), cancel, &mut progress)
+            let r = run_child(ffmpeg, still_args(&src, &png), None, cancel, &mut progress)
                 .and_then(|()| super::encode_decoded(&png, target, true, opts, w));
             let _ = std::fs::remove_file(&png);
             r
@@ -466,9 +466,7 @@ pub fn convert_with_ffmpeg(
                 let p = probe(ffmpeg, &src)?;
                 let mut d = p.duration_us.ok_or(ConvertError::TargetSize)?;
                 // only the kept part counts against the size limit
-                d = d
-                    .saturating_sub((x.trim_start * 1e6) as u64)
-                    .min(x.trim_len.map_or(u64::MAX, |l| (l * 1e6) as u64));
+                d = kept_us(d, x.trim_start, x.trim_len);
                 let b =
                     plan_bitrates(max, d, target, p.has_audio && !opts.no_audio, &opts.quality)?;
                 (x.video_bps, x.audio_bps) = (b.video_bps, b.audio_bps);
@@ -477,7 +475,13 @@ pub fn convert_with_ffmpeg(
         output::write_via_temp(&dest, |tmp| {
             for attempt in 0..RETRIES {
                 let args = build_args(&src, tmp, target, &opts.quality, &x);
-                run_child(ffmpeg, args, cancel, &mut progress)?;
+                run_child(
+                    ffmpeg,
+                    args,
+                    Some((x.trim_start, x.trim_len)),
+                    cancel,
+                    &mut progress,
+                )?;
                 let Some(max) = opts.max_bytes else {
                     return Ok(());
                 };
@@ -539,7 +543,7 @@ pub fn encode_webp(
         a.extend(["-f", "webp"].map(OsString::from));
         a.push(webp.clone().into());
         let never = AtomicBool::new(false);
-        run_child(ffmpeg, a, cancel.unwrap_or(&never), &mut |_| {})?;
+        run_child(ffmpeg, a, None, cancel.unwrap_or(&never), &mut |_| {})?;
         let bytes = std::fs::read(&webp)?;
         if bytes.is_empty() {
             return Err(ConvertError::EmptyOutput);
@@ -552,9 +556,20 @@ pub fn encode_webp(
     r
 }
 
+/// Length in microseconds of the part that is kept after a cut: `total` minus the start,
+/// shortened to `len` seconds when given.
+pub fn kept_us(total: u64, start: f64, len: Option<f64>) -> u64 {
+    total
+        .saturating_sub((start * 1e6) as u64)
+        .min(len.map_or(u64::MAX, |l| (l * 1e6) as u64))
+}
+
+/// `cut` is (start, length) in seconds: ffmpeg reports the input's full length, but with the
+/// cut before `-i` its progress counts only the kept part, so that is what 100% means.
 fn run_child(
     ffmpeg: &Path,
     args: Vec<OsString>,
+    cut: Option<(f64, Option<f64>)>,
     cancel: &AtomicBool,
     progress: &mut impl FnMut(f32),
 ) -> Result<(), ConvertError> {
@@ -603,7 +618,8 @@ fn run_child(
     loop {
         match rx.recv_timeout(Duration::from_millis(50)) {
             Ok(us) => {
-                let d = duration.load(Ordering::Relaxed);
+                let total = duration.load(Ordering::Relaxed);
+                let d = cut.map_or(total, |(start, len)| kept_us(total, start, len));
                 if d > 0 {
                     progress((us as f32 / d as f32).min(0.99));
                 }
@@ -876,6 +892,15 @@ mod tests {
         shrink_bitrates(&mut x, 0.5).unwrap();
         assert_eq!((x.video_bps, x.audio_bps), (Some(50_000), Some(24_000)));
         assert!(shrink_bitrates(&mut x, 0.5).is_err());
+    }
+
+    #[test]
+    fn kept_length_follows_the_cut() {
+        assert_eq!(kept_us(60_000_000, 0.0, None), 60_000_000);
+        assert_eq!(kept_us(60_000_000, 10.0, None), 50_000_000);
+        assert_eq!(kept_us(60_000_000, 10.0, Some(5.0)), 5_000_000);
+        assert_eq!(kept_us(60_000_000, 58.0, Some(30.0)), 2_000_000);
+        assert_eq!(kept_us(60_000_000, 90.0, None), 0);
     }
 
     #[test]
