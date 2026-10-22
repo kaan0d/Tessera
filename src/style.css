@@ -1005,3 +1005,5 @@ kbd{font-size:12px}
 /* the profile line carries a link to the file types */
 #p-hint{justify-content:space-between;gap:12px}
 #p-hint .link{flex:none}
+
+@media (prefers-reduced-motion:reduce){.top{animation:none;background:transparent;border-bottom-color:transparent}}
