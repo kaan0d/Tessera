@@ -27,7 +27,7 @@ const I18N = {
     'lang.desc': 'Language of the app and its right-click menu.',
     'autostart.label': 'Start with Windows',
     'autostart.desc': 'Waits in the system tray after you sign in.',
-    'general.aside': 'Right-click a file and choose a format from the <b>Convert</b> menu. You can change which formats appear under <button type="button" class="link" data-goto="t-bicim">Formats</button>.',
+    'general.aside': '<span class="sent">Right-click a file and choose a format from the <b>Convert</b> menu.</span> <span class="sent">You can change which formats appear under <button type="button" class="link" data-goto="t-bicim">Formats</button>.</span>',
 
     'kind.image': 'Image',
     'kind.audio': 'Audio',
@@ -488,7 +488,7 @@ const I18N = {
     'lang.desc': 'Uygulamanın ve sağ tık menüsünün dili.',
     'autostart.label': 'Windows ile başlat',
     'autostart.desc': 'Oturum açıldığında simge tepsisinde hazır bekler.',
-    'general.aside': 'Dosyalara sağ tıklayıp <b>Dönüştür</b> menüsünden bir biçim seçin. Hangi biçimlerin görüneceğini <button type="button" class="link" data-goto="t-bicim">Biçimler</button> bölümünden değiştirebilirsiniz.',
+    'general.aside': '<span class="sent">Dosyalara sağ tıklayıp <b>Dönüştür</b> menüsünden bir biçim seçin.</span> <span class="sent">Hangi biçimlerin görüneceğini <button type="button" class="link" data-goto="t-bicim">Biçimler</button> bölümünden değiştirebilirsiniz.</span>',
 
     'kind.image': 'Görsel',
     'kind.audio': 'Ses',

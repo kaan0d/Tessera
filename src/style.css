@@ -113,7 +113,7 @@ main{height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
 .pane:focus{outline:none}
 .pane.in{animation:pane-in var(--d3) var(--ease)}
 @keyframes pane-in{from{opacity:0;translate:calc(var(--dir,1) * 18px) 0}}
-.aside{font-size:var(--t-sm);color:var(--muted);padding:0 2px;max-width:58ch}
+.aside{font-size:var(--t-sm);color:var(--muted);padding:0 2px;max-width:74ch}
 .aside b{color:var(--ink);font-weight:600}
 .link{background:none;border:0;padding:2px 6px;margin:0;border-radius:var(--r-sm);font-size:inherit;font-weight:600;color:var(--accent);cursor:pointer;transition:background var(--d1)}
 @media (hover:hover){.link:hover{background:var(--accent-soft)}}
@@ -931,3 +931,8 @@ body.settings::after,body.drop::after{content:"";position:fixed;inset:0;z-index:
 /* opening the window: the stones appear first, then the keystone drops in and locks the arch */
 .enter .mark-arch .key{animation:key-drop 720ms var(--spring) 560ms both}
 @keyframes key-drop{from{translate:0 -26px;opacity:0}60%{opacity:1}}
+
+/* short explanatory paragraphs break into even lines, so no word is left hanging at a line end */
+.aside,.desc,.pane-desc{text-wrap:balance}
+
+.sent{display:inline-block}
