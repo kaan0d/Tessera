@@ -48,10 +48,10 @@ body{
 
 /* text views stacked in one cell, cross-fading */
 .views{display:grid;min-height:0;padding-bottom:26px}
-.view{grid-area:1/1;align-self:center;opacity:0;translate:0 14px;pointer-events:none;
-  transition:opacity .45s var(--ease),translate .6s var(--ease)}
+.view{grid-area:1/1;align-self:center;opacity:0;translate:0 14px;pointer-events:none;visibility:hidden;
+  transition:opacity .45s var(--ease),translate .6s var(--ease),visibility 0s .6s}
 [data-state=welcome][data-mode=install] .v-welcome,[data-state=welcome][data-mode=uninstall] .v-remove,[data-state=run] .v-run,[data-state=done][data-mode=install] .v-done,[data-state=done][data-mode=uninstall] .v-gone{
-  opacity:1;translate:0 0;pointer-events:auto;transition-delay:.15s}
+  opacity:1;translate:0 0;pointer-events:auto;visibility:visible;transition-delay:.15s,.15s,0s}
 h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.01em}
 .lead{margin:0;color:var(--ink);opacity:.82;font-size:14px}
 .fine{margin:8px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
@@ -159,3 +159,11 @@ h1{margin:0 0 6px;font:600 22px/1.2 "Segoe UI Variable Display","Segoe UI",syste
 body{opacity:0;transition:opacity .35s var(--ease)}
 body.ready{opacity:1}
 .lbl .lbl-main{font-weight:600;color:var(--ink);opacity:1}
+
+/* only the buttons of the current screen take room; the others wait out of the flow */
+.actions .btn{position:absolute;left:0;flex:none}
+[data-state=welcome] #go,[data-state=welcome][data-mode=uninstall] #cancel,
+[data-state=done][data-mode=install] #open,[data-state=done] #close{position:relative}
+.check small{text-wrap:balance}
+html[lang=tr] .sign{order:-1;margin:.34em .08em 0 0}
+.pct{direction:ltr}

@@ -31,6 +31,8 @@ pub enum ConvertError {
     Encode(String),
     Io(String),
     NoStream,
+    /// A cut that starts after the clip ends.
+    TrimOutside,
     EmptyOutput,
     FfmpegStart(String),
     FfmpegWait(String),
@@ -62,6 +64,7 @@ impl ConvertError {
             E::DiskFull => plain("ce.disk_full"),
             E::Corrupt => plain("ce.corrupt"),
             E::Unsupported => plain("ce.unsupported"),
+            E::TrimOutside => plain("ce.trim_outside"),
             E::TooLarge => plain("ce.too_large"),
             E::TargetSize => plain("ce.target_size"),
             E::Protected => plain("ce.protected"),

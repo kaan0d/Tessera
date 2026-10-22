@@ -406,6 +406,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Dosya bozuk veya okunamıyor",
     ),
     ("ce.unsupported", "Unsupported format", "Desteklenmeyen biçim"),
+    (
+        "ce.trim_outside",
+        "The cut starts after the end of the clip.",
+        "Kesme başlangıcı klibin bitişinden sonra.",
+    ),
     ("ce.too_large", "File too large", "Dosya çok büyük"),
     (
         "ce.target_size",

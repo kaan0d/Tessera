@@ -373,6 +373,7 @@ function histRow(e) {
   tile.append(icon(KIND_ICON[kindOfExt(ext)]));
   const main = el('div', 'grow');
   const name = el('div', 'h-name', fileName(e.input));
+  name.title = e.ok && !e.undone && e.output ? e.output : e.input;
   name.title = e.input;
   const meta = el('div', 'h-meta');
   if (ext) meta.append(el('span', 'fmt', ext.toUpperCase()));
@@ -399,7 +400,7 @@ function histRow(e) {
     const u = textBtn('i-undo', t('hi.undo'), 'ghost undo');
     u.setAttribute('aria-label', t('hi.undo_aria', { name: fileName(e.input) }));
     u.disabled = !e.output;
-    if (!e.output) u.title = t('hi.no_output');
+    u.title = e.output ? t('hi.undo_tip') : t('hi.no_output');
     u.onclick = () => undo(e, u);
     acts.append(u);
   }

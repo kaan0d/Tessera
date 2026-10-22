@@ -15,7 +15,7 @@
 
   --ground:#f4f2ee;--ground-2:#ebe8e1;--surface:#ffffff;--surface-2:#f8f6f2;
   --ink:#1d1d22;--muted:#5f5e62;--line:rgba(29,29,34,.09);--line-strong:rgba(29,29,34,.18);
-  --accent:#c93a17;--accent-hover:#b33213;--on-accent:#ffffff;--accent-soft:rgba(201,58,23,.09);--accent-ink:rgba(201,58,23,.26);
+  --accent:#bf3815;--accent-hover:#a82f11;--on-accent:#ffffff;--accent-soft:rgba(191,56,21,.09);--accent-ink:rgba(191,56,21,.26);
   --danger:#b0102f;--danger-hover:#960d28;--on-danger:#ffffff;--danger-soft:rgba(176,16,47,.09);
   --warn-bg:#fdf3d8;--warn-ink:#6a4a00;--warn-line:rgba(160,110,0,.25);
   --track:rgba(29,29,34,.12);
@@ -936,3 +936,15 @@ body.settings::after,body.drop::after{content:"";position:fixed;inset:0;z-index:
 .aside,.desc,.pane-desc{text-wrap:balance}
 
 .sent{display:inline-block}
+
+/* ---------- readability pass (from the review) ---------- */
+.badge.tag{font-size:11px}
+.fmt{font-size:11.5px}
+.chips.small .chip{font-size:11.5px}
+.mini .link{height:28px}
+.wc-btn{width:36px;height:32px}
+.iconbtn{width:32px;height:32px}
+/* a chip that is on says so with more than a tint: a check, and a clearer rim when off */
+.chip{border-color:color-mix(in srgb,var(--ink) 30%,transparent)}
+.chip[aria-pressed=true]{border-color:var(--accent-ink)}
+.chip[aria-pressed=true]:not(.dr-choice)::before{content:"¹3" / "";font-size:10px;font-weight:800;margin-right:5px;line-height:1}

@@ -461,6 +461,14 @@ pub fn convert_with_ffmpeg(
             }
             x.trim_len = Some(len);
         }
+        if x.trim_start > 0.0 {
+            // a start past the end would leave an empty file that looks like a success
+            if let Some(d) = probe(ffmpeg, &src)?.duration_us {
+                if (x.trim_start * 1e6) as u64 >= d {
+                    return Err(ConvertError::TrimOutside);
+                }
+            }
+        }
         if let Some(max) = opts.max_bytes {
             if target.is_video() || matches!(target, Format::Mp3 | Format::Ogg | Format::Aac) {
                 let p = probe(ffmpeg, &src)?;
