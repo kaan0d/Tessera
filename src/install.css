@@ -186,5 +186,10 @@ html[lang=tr] .sign{order:-1;margin:.34em .08em 0 0}
 [data-state=run] .pct,[data-state=done] .pct{height:140px;margin:0 0 22px}
 .foot{flex:none;margin-top:30px}
 [data-state=run] .foot{margin-top:0}
-.v-run .tip{position:absolute;left:0;right:0;top:100%;margin:0}
+
 [data-state=run] #cancel{transition:none}
+
+/* opening: the arch ripples first, then the text arrives */
+.col{transition:opacity .7s var(--ease),translate .8s var(--ease)}
+html.intro .col{opacity:0;translate:0 12px;transition:none}
+.v-run .tip{position:static;margin:22px 0 0}

@@ -33,7 +33,7 @@
   })();
   const PAPER = ["#f4f4f2", "#cfcfcb"], CORAL = ["#ff8a6a", "#ff6b4a"];
 
-  let mode = "install", tp = 0, dp = 0, last = performance.now(), state = "welcome", doneAt = 0;
+  let introAt = 0, mode = "install", tp = 0, dp = 0, last = performance.now(), state = "welcome", doneAt = 0;
   const popAt = new Array(N).fill(0);
 
   function piece(i, t, now) {
@@ -44,7 +44,13 @@
 
     // a little pop when a stone is set
     if (mode === "install" && f >= 0.999 && !popAt[i]) popAt[i] = now;
-    let sc = 1;
+    // opening: a ripple sets the stones one after the other, the keystone last
+    let ring = 0;
+    if (introAt && !reduce) {
+      const u = (now - introAt) / 1000 - i * 0.075;
+      if (u > 0) ring = Math.min(1, u * 9) * Math.exp(-u * 3.2);
+    }
+    let sc = 1 + ring * 0.07;
     if (popAt[i] && !reduce) { const d = (now - popAt[i]) / 1000; sc = 1 + 0.06 * Math.exp(-6 * d) * Math.sin(16 * d + 1.2); }
 
     // idle breathing while waiting
@@ -54,9 +60,9 @@
     ctx.save();
     ctx.scale(K, K);
     ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
-    ctx.fillStyle = key ? `rgba(255,107,74,${0.10 + idle * 0.06})` : `rgba(255,255,255,${0.05 + idle * 0.035})`;
+    ctx.fillStyle = key ? `rgba(255,107,74,${0.10 + idle * 0.06 + ring * 0.7})` : `rgba(255,255,255,${0.05 + idle * 0.035 + ring * 0.55})`;
     ctx.fill(paths[i]);
-    ctx.lineWidth = 1 / K; ctx.strokeStyle = key ? `rgba(255,107,74,${0.30 + idle * 0.15})` : `rgba(255,255,255,${0.09 + idle * 0.07})`;
+    ctx.lineWidth = 1 / K; ctx.strokeStyle = key ? `rgba(255,107,74,${Math.min(1, 0.30 + idle * 0.15 + ring)})` : `rgba(255,255,255,${Math.min(1, 0.09 + idle * 0.07 + ring * 0.6)})`;
     ctx.stroke(paths[i]);
 
     if (f > 0.002) {
@@ -311,7 +317,16 @@
   document.getElementById("close").addEventListener("click", () => { if (T) T.core.invoke("install_close"); else location.reload(); });
   document.getElementById("open").addEventListener("click", () => { if (T) T.core.invoke("install_open"); else location.reload(); });
 
-  const ready = () => document.body.classList.add("ready");
+  let opened = false;
+  const ready = () => {
+    document.body.classList.add("ready");
+    if (opened) return;
+    opened = true;
+    if (reduce || new URLSearchParams(location.search).get("state")) return;
+    introAt = performance.now();
+    root.classList.add("intro");
+    setTimeout(() => root.classList.remove("intro"), 900);
+  };
   const goEl = document.getElementById("go");
   function setGo(key) { goEl.dataset.t = key; goEl.textContent = t(key); }
   // empty areas drag the frameless window
