@@ -235,7 +235,7 @@ const activeProfile = () => Object.keys(PROFILES).find((id) => {
 function paintProfiles() {
   const box = $('profiles');
   if (!box.firstChild) {
-    for (const id of Object.keys(PROFILES)) {
+    for (const id of [...Object.keys(PROFILES), 'custom']) {
       const c = document.createElement('button');
       c.type = 'button';
       c.className = 'profile';
@@ -244,18 +244,18 @@ function paintProfiles() {
       name.className = 'p-name';
       desc.className = 'p-desc';
       c.append(name, desc, icon('i-check', 'ic p-check'));
-      c.onclick = () => change(profileSets(PROFILES[id]));
+      if (id !== 'custom') c.onclick = () => change(profileSets(PROFILES[id]));
       box.append(c);
     }
   }
-  const cur = activeProfile();
+  const cur = activeProfile() || 'custom';
   for (const c of box.children) {
     c.firstChild.textContent = t('profile.' + c.dataset.id);
-    c.children[1].textContent = t(`profile.${c.dataset.id}_desc`);
+    c.children[1].textContent = t(c.dataset.id === 'custom' ? 'profile.custom_card' : `profile.${c.dataset.id}_desc`);
     c.setAttribute('aria-pressed', c.dataset.id === cur);
   }
   // always shown with a line of the same size, so picking a chip never pushes the page down
-  $('p-hint').textContent = t(cur ? 'profile.matched' : 'profile.custom_desc');
+  $('p-hint').textContent = t(cur !== 'custom' ? 'profile.matched' : 'profile.custom_desc');
 }
 
 function paintChips() {
