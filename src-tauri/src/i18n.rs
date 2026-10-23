@@ -356,6 +356,16 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Could not save settings: {err}",
         "Ayarlar kaydedilemedi: {err}",
     ),
+    (
+        "cmd.export",
+        "Could not export settings: {err}",
+        "Ayarlar dışa aktarılamadı: {err}",
+    ),
+    (
+        "cmd.import",
+        "Could not import settings: {err}",
+        "Ayarlar içe aktarılamadı: {err}",
+    ),
     ("cmd.bad_corner", "Invalid corner", "Geçersiz köşe"),
     ("cmd.bad_seconds", "Invalid duration", "Geçersiz süre"),
     ("cmd.bad_path", "Invalid path", "Geçersiz yol"),

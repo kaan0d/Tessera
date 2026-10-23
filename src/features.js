@@ -935,6 +935,9 @@ function featuresInit() {
       setTimeout(loadWatch, 400);
     });
   }
+  $('bk-exp').onclick = () => invoke('export_settings').then(() => msg('bk-err', ''), (e) => msg('bk-err', String(e)));
+  $('bk-imp').onclick = () =>
+    invoke('import_settings').then((done) => (done ? location.reload() : msg('bk-err', '')), (e) => msg('bk-err', String(e)));
   $('ab-lic').onclick = openLicenses;
   $('ab-log').onclick = () => invoke('open_log').then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));
   $('ab-repo').onclick = () => invoke('open_url', { url: about ? about.repo_url : '' }).then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));

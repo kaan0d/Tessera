@@ -184,7 +184,7 @@ fn set_settings(
     state: State<AppState>,
 ) -> Result<Settings, String> {
     settings.validate()?;
-    let mut cur = state.settings.lock().unwrap();
+    let cur = state.settings.lock().unwrap();
     let mut new = settings.normalized();
     new.ffmpeg_ready = cur.ffmpeg_ready;
     // presets are changed through their own commands
@@ -193,6 +193,17 @@ fn set_settings(
     // watch rules are changed through set_watch
     new.watch = cur.watch.clone();
     new.settings_version = settings::SETTINGS_VERSION;
+    apply_settings(&app, &state, cur, new)
+}
+
+/// Saves `new`, applies it to the OS (autostart, menu) and the running app. `cur` is the locked
+/// current settings; it is replaced by `new`.
+fn apply_settings(
+    app: &AppHandle,
+    state: &State<AppState>,
+    mut cur: std::sync::MutexGuard<Settings>,
+    new: Settings,
+) -> Result<Settings, String> {
     let lang = new.language;
     let msg = |key, e: std::io::Error| fmt(lang, key, &[("err", &e.to_string())]);
     shell::set_autostart(new.autostart).map_err(|e| msg("cmd.autostart", e))?;
@@ -202,16 +213,70 @@ fn set_settings(
     *state.queue.panel.lock().unwrap() = new.panel;
     state.queue.history.lock().unwrap().enabled = new.history_enabled;
     let changed = cur.language != lang;
+    let watch_changed = cur.watch != new.watch;
     *cur = new.clone();
     drop(cur);
+    if watch_changed && !changed {
+        restart_watch(app);
+    }
     if changed {
         i18n::set_lang(lang);
-        let _ = set_tray_menu(&app, lang);
+        let _ = set_tray_menu(app, lang);
         let _ = app.emit("language-changed", lang.code());
         // status errors are localized
-        restart_watch(&app);
+        restart_watch(app);
     }
     Ok(new)
+}
+
+/// Writes the settings to a JSON file the user picks. Ok(false) when the dialog is cancelled.
+#[tauri::command]
+async fn export_settings(app: AppHandle) -> Result<bool, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let lang = i18n::lang();
+    let Some(path) = app
+        .dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .set_file_name("tessera-settings.json")
+        .blocking_save_file()
+    else {
+        return Ok(false);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let s = app.state::<AppState>().settings.lock().unwrap().clone();
+    settings::save_to(&path, &s).map_err(|e| fmt(lang, "cmd.export", &[("err", &e.to_string())]))?;
+    Ok(true)
+}
+
+/// Replaces the settings with a JSON file the user picks. Ok(false) when the dialog is cancelled.
+/// ffmpeg state belongs to this PC, so it is kept.
+#[tauri::command]
+async fn import_settings(app: AppHandle) -> Result<bool, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let lang = i18n::lang();
+    let Some(path) = app
+        .dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .blocking_pick_file()
+    else {
+        return Ok(false);
+    };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let read = |e: String| fmt(lang, "cmd.import", &[("err", &e)]);
+    let text = std::fs::read_to_string(&path).map_err(|e| read(e.to_string()))?;
+    let mut new: Settings = serde_json::from_str(&text).map_err(|e| read(e.to_string()))?;
+    new.validate()?;
+    let state = app.state::<AppState>();
+    let cur = state.settings.lock().unwrap();
+    new.ffmpeg_ready = cur.ffmpeg_ready;
+    new.ffmpeg_notice_seen = cur.ffmpeg_notice_seen;
+    new.ffmpeg_later = cur.ffmpeg_later;
+    let mut new = new.normalized();
+    new.settings_version = settings::SETTINGS_VERSION;
+    apply_settings(&app, &state, cur, new)?;
+    Ok(true)
 }
 
 #[derive(Serialize)]
@@ -1316,6 +1381,8 @@ pub fn run() {
             get_settings,
             get_catalog,
             set_settings,
+            export_settings,
+            import_settings,
             install_context_menu,
             remove_context_menu,
             cancel_job,
