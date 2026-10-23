@@ -47,7 +47,7 @@ Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OG
 
 Windows 10 or 11. Needs Microsoft Edge WebView2, which both already include.
 
-Get `tessera-setup-v0.1.0.exe` from the [latest release](https://github.com/kaan0d/Tessera/releases/latest) and double-click it. Each release lists the exe's SHA-256. The exe is its own installer, so there is nothing else to download. Pick a folder (default `%LOCALAPPDATA%\Tessera`), choose whether to keep settings next to the app, and let it download video support with a live percentage. It also registers the menu, a Start menu shortcut and an uninstall entry. Uninstall from Settings > Apps > Tessera.
+Get `tessera-setup-v0.1.1.exe` from the [latest release](https://github.com/kaan0d/Tessera/releases/latest) and double-click it. Each release lists the exe's SHA-256. The exe is its own installer, so there is nothing else to download. Pick a folder (default `%LOCALAPPDATA%\Tessera`), choose whether to keep settings next to the app, and let it download video support with a live percentage. It also registers the menu, a Start menu shortcut and an uninstall entry. Uninstall from Settings > Apps > Tessera.
 
 The exe is not code-signed yet, so SmartScreen may ask you to confirm once (More info, then Run anyway).
 
