@@ -167,7 +167,7 @@ pub fn verify_sha256(path: &Path, expected: &str) -> Result<(), FfError> {
 }
 
 /// Streams `url` into `dest`, reporting 0.0..=1.0.
-fn download(url: &str, dest: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), FfError> {
+pub(crate) fn download(url: &str, dest: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), FfError> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_connect(Some(Duration::from_secs(15)))
         .timeout_recv_response(Some(Duration::from_secs(30)))

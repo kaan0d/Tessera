@@ -658,7 +658,7 @@ async function wdSave(ev) {
 /* ======================================================================== updates */
 function paintUpdate() {
   const u = lastUpdate, res = $('upd-result'), tile = $('upd-tile');
-  $('upd-open').hidden = !(u && u.available);
+  $('upd-now').hidden = $('upd-open').hidden = !(u && u.available);
   tile.className = 'tile upd-tile';
   if (!u) return (res.textContent = t('upd.never')), $('upd-ic').setAttribute('href', '#i-retry');
   const none = !u.error && !u.available && /\/releases\/?$/.test(u.url || '');
@@ -684,6 +684,19 @@ async function checkUpdate() {
   b.classList.remove('busy');
   b.textContent = t('upd.check');
   paintUpdate();
+}
+
+async function installUpdate() {
+  const b = $('upd-now');
+  b.disabled = true;
+  $('upd-result').textContent = t('upd.installing');
+  try {
+    await invoke('install_update');
+  } catch (e) {
+    b.disabled = false;
+    lastUpdate = { ...lastUpdate, error: String(e) };
+    paintUpdate();
+  }
 }
 
 async function openRelease() {
@@ -922,6 +935,7 @@ function featuresInit() {
   };
   $('hist-sw').addEventListener('change', () => setTimeout(renderHistory, 0));
   $('upd-check').onclick = checkUpdate;
+  $('upd-now').onclick = installUpdate;
   $('upd-open').onclick = openRelease;
   $('upd-banner-get').onclick = openRelease;
   $('upd-banner-x').onclick = () => ($('upd-banner').hidden = true);

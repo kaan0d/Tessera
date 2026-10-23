@@ -17,6 +17,7 @@ use crate::app_info::APP_NAME;
 use crate::cli::Cli;
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+const DETACHED_PROCESS: u32 = 0x0000_0008;
 const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tessera";
 const EXE_NAME: &str = "tessera.exe";
 /// The same program flagged as a console app, for scripts: PowerShell waits for it and sees its exit code.
@@ -51,6 +52,9 @@ pub struct Request {
     /// Add the install folder to the user's PATH so `tessera-cli` works in a terminal.
     #[serde(default)]
     pub path: bool,
+    /// In-app update: ffmpeg is left as it is and the app starts when the install is done.
+    #[serde(default)]
+    pub update: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -72,6 +76,31 @@ pub fn installed_dir() -> Option<PathBuf> {
         .ok()?;
     let dir: String = key.get_value("InstallLocation").ok()?;
     (!dir.is_empty()).then(|| PathBuf::from(dir))
+}
+
+/// The folder this exe runs from when it is the installed copy.
+pub fn installed_here() -> Option<PathBuf> {
+    let here = exe_dir()?;
+    installed_dir().filter(|i| same_path(i, &here))?;
+    Some(here)
+}
+
+/// Runs the downloaded installer `setup` as a silent update of the install in `dir`, keeping
+/// its data mode and PATH entry. The installer closes this app, copies itself over and restarts it.
+pub fn launch_update(setup: &Path, dir: &Path) -> io::Result<()> {
+    let mut cmd = Command::new(setup);
+    cmd.arg("--install").arg(dir).arg("--update");
+    if dir.join("data").is_dir() {
+        cmd.arg("--portable");
+    }
+    let on_path = RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey(ENV_KEY)
+        .map(|k| read_user_path(&k).0)
+        .is_ok_and(|cur| path_with(&cur, &dir.to_string_lossy()).is_none());
+    if on_path {
+        cmd.arg("--add-to-path");
+    }
+    cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS).spawn().map(drop)
 }
 
 fn exe_dir() -> Option<PathBuf> {
@@ -565,7 +594,8 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Inst
         },
         (0.12, 0.96),
         &mut |sub| {
-            if req.ffmpeg {
+            if req.update {
+            } else if req.ffmpeg {
                 ffmpeg_ok = Some(download_ffmpeg(&dst, sub));
             } else {
                 // the app then waits for the user instead of fetching 170 MB on its own
@@ -577,7 +607,15 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Inst
             Ok(())
         },
     )?;
-    run_step(emit, 5, "Finishing up", (0.96, 1.0), &mut |_| Ok(()))?;
+    run_step(emit, 5, "Finishing up", (0.96, 1.0), &mut |_| {
+        if req.update {
+            Command::new(&dst)
+                .creation_flags(DETACHED_PROCESS)
+                .spawn()
+                .map_err(fail("Cannot start the app"))?;
+        }
+        Ok(())
+    })?;
     Ok(Installed {
         exe: dst,
         ffmpeg: ffmpeg_ok,

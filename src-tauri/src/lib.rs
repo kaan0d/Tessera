@@ -279,6 +279,16 @@ async fn import_settings(app: AppHandle) -> Result<bool, String> {
     Ok(true)
 }
 
+/// Downloads the latest installer, checks its SHA-256 and runs it as a silent update of this
+/// install. The installer closes the app, so an Ok means the app is about to go away.
+#[tauri::command]
+async fn install_update() -> Result<(), String> {
+    let lang = i18n::lang();
+    tauri::async_runtime::spawn_blocking(move || update::install(lang))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[derive(Serialize)]
 struct PresetInfo {
     id: String,
@@ -1183,14 +1193,20 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             dir,
             portable,
             path,
+            update,
         } => {
             let req = install::Request {
                 dir: dir.clone(),
                 portable: *portable,
                 ffmpeg: true,
                 path: *path,
+                update: *update,
             };
-            Some(i32::from(install::run_install(&req, |_| {}).is_err()))
+            let r = install::run_install(&req, |_| {});
+            if let Err(e) = &r {
+                log::write("error", &format!("install failed: {e}"));
+            }
+            Some(i32::from(r.is_err()))
         }
         _ => None,
     }
@@ -1398,6 +1414,7 @@ pub fn run() {
             clear_history,
             undo_job,
             check_update,
+            install_update,
             open_url,
             get_watch,
             set_watch,

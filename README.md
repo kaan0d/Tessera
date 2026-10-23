@@ -77,7 +77,7 @@ tessera-cli formats png
 
 ## Privacy
 
-Files never leave your computer. Tessera downloads one thing: a pinned LGPL ffmpeg build (about 170 MB, SHA-256 checked) during setup. Untick it there, or choose Later in the app, and nothing is fetched until you press Download. The update check is off until you turn it on.
+Files never leave your computer. Tessera downloads one thing: a pinned LGPL ffmpeg build (about 170 MB, SHA-256 checked) during setup. Untick it there, or choose Later in the app, and nothing is fetched until you press Download. The update check is off until you turn it on; "Update now" then downloads the new installer from the release, checks its SHA-256 and replaces the app, keeping your settings.
 
 On disk, in `%APPDATA%\Tessera` (or the `data` folder next to the app): `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
 

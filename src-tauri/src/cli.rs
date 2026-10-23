@@ -19,6 +19,8 @@ pub enum Cli {
         dir: String,
         portable: bool,
         path: bool,
+        /// In-app update: keeps ffmpeg as it is and starts the app when done.
+        update: bool,
     },
     /// Remove the installed app (menu, shortcuts, uninstall entry, files). Shows a window
     /// unless `--quiet`; `--keep-data` leaves settings and history.
@@ -161,6 +163,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
                 dir: dir.clone(),
                 portable: args.iter().any(|a| a == "--portable"),
                 path: args.iter().any(|a| a == "--add-to-path"),
+                update: args.iter().any(|a| a == "--update"),
             },
             _ => Cli::Normal,
         },
@@ -478,7 +481,8 @@ mod tests {
             Cli::Install {
                 dir: r"D:\Apps".into(),
                 portable: true,
-                path: false
+                path: false,
+                update: false
             }
         );
         assert_eq!(parse(&a(&["--install"]), None), Cli::Normal);

@@ -26,6 +26,15 @@ pub struct UpdateInfo {
 struct Release {
     tag_name: String,
     html_url: String,
+    #[serde(default)]
+    assets: Vec<Asset>,
+}
+
+#[derive(Deserialize)]
+struct Asset {
+    name: String,
+    #[serde(default)]
+    browser_download_url: String,
 }
 
 fn api_url(slug: &str) -> String {
@@ -93,24 +102,27 @@ pub fn no_releases(current: &str, slug: &str, lang: Lang) -> UpdateInfo {
     }
 }
 
-/// Queries the latest release of `REPO`. Blocking; run it off the UI thread.
-pub fn check(lang: Lang) -> Result<UpdateInfo, String> {
-    let current = env!("CARGO_PKG_VERSION");
+/// GET `url` as text (at most `MAX_BODY` bytes); `None` for a 404.
+fn get_text(url: &str, lang: Lang) -> Result<Option<String>, String> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_secs(10)))
         .http_status_as_error(false)
-        .user_agent(format!("{}/{current}", crate::app_info::APP_NAME))
+        .user_agent(format!(
+            "{}/{}",
+            crate::app_info::APP_NAME,
+            env!("CARGO_PKG_VERSION")
+        ))
         .build()
         .into();
     let fail = |e: &dyn std::fmt::Display| fmt(lang, "update.failed", &[("err", &e.to_string())]);
     let mut resp = agent
-        .get(&api_url(REPO))
+        .get(url)
         .header("Accept", "application/vnd.github+json")
         .call()
         .map_err(|e| fail(&e))?;
     match resp.status().as_u16() {
         200 => {}
-        404 => return Ok(no_releases(current, REPO, lang)),
+        404 => return Ok(None),
         s => return Err(fail(&format!("HTTP {s}"))),
     }
     let mut body = String::new();
@@ -121,7 +133,62 @@ pub fn check(lang: Lang) -> Result<UpdateInfo, String> {
         .take(MAX_BODY)
         .read_to_string(&mut body)
         .map_err(|e| fail(&e))?;
-    parse_release(&body, current, REPO, lang)
+    Ok(Some(body))
+}
+
+/// Queries the latest release of `REPO`. Blocking; run it off the UI thread.
+pub fn check(lang: Lang) -> Result<UpdateInfo, String> {
+    let current = env!("CARGO_PKG_VERSION");
+    match get_text(&api_url(REPO), lang)? {
+        Some(body) => parse_release(&body, current, REPO, lang),
+        None => Ok(no_releases(current, REPO, lang)),
+    }
+}
+
+/// Download links of `tessera-setup-v<latest>.exe` and its `.sha256` in a release answer.
+/// Both must be release downloads of this repository.
+fn installer_urls(body: &str, latest: &str, slug: &str) -> Option<(String, String)> {
+    let r: Release = serde_json::from_str(body).ok()?;
+    let find = |name: String| {
+        r.assets
+            .iter()
+            .find(|a| a.name == name)
+            .map(|a| a.browser_download_url.clone())
+            .filter(|u| allowed_url(u, slug) && u.contains("/releases/download/"))
+    };
+    let exe = format!("tessera-setup-v{latest}.exe");
+    Some((find(exe.clone())?, find(exe + ".sha256")?))
+}
+
+/// The hash in a `sha256sum` line (`<hex> *<name>`).
+fn parse_sha256(text: &str) -> Option<String> {
+    let h = text.split_whitespace().next()?;
+    (h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit())).then(|| h.to_lowercase())
+}
+
+/// In-app update: downloads the latest installer, checks its SHA-256 and runs it as a silent
+/// update of this install. Only works from the installed copy. Blocking.
+pub fn install(lang: Lang) -> Result<(), String> {
+    let text = |k: &str| t(lang, k).to_string();
+    let dir = crate::install::installed_here().ok_or_else(|| text("update.not_installed"))?;
+    let body = get_text(&api_url(REPO), lang)?.ok_or_else(|| text("update.none_yet"))?;
+    let info = parse_release(&body, env!("CARGO_PKG_VERSION"), REPO, lang)?;
+    if !info.available {
+        return Err(info.message);
+    }
+    let (exe_url, sha_url) =
+        installer_urls(&body, &info.latest, REPO).ok_or_else(|| text("update.no_asset"))?;
+    let sha = get_text(&sha_url, lang)?
+        .and_then(|s| parse_sha256(&s))
+        .ok_or_else(|| text("update.no_asset"))?;
+    let work = std::env::temp_dir().join("Tessera-update");
+    let _ = std::fs::remove_dir_all(&work);
+    let fail = |e: &dyn std::fmt::Display| fmt(lang, "update.failed", &[("err", &e.to_string())]);
+    std::fs::create_dir_all(&work).map_err(|e| fail(&e))?;
+    let setup = work.join(format!("tessera-setup-v{}.exe", info.latest));
+    crate::ffmpeg::download(&exe_url, &setup, &mut |_| {}).map_err(|e| e.message(lang))?;
+    crate::ffmpeg::verify_sha256(&setup, &sha).map_err(|e| e.message(lang))?;
+    crate::install::launch_update(&setup, &dir).map_err(|e| fail(&e))
 }
 
 /// Only https links inside the project's own GitHub repository.
@@ -201,6 +268,34 @@ mod tests {
         let evil = r#"{"tag_name":"v9.0.0","html_url":"https://evil.example/x"}"#;
         let i = parse_release(evil, "0.1.0", REPO, Lang::En).unwrap();
         assert_eq!(i.url, "https://github.com/kaan0d/Tessera/releases");
+    }
+
+    #[test]
+    fn finds_the_installer_assets() {
+        let dl = "https://github.com/kaan0d/Tessera/releases/download/v0.2.0/";
+        let body = |exe: &str| {
+            format!(
+                r#"{{"tag_name":"v0.2.0","html_url":"x","assets":[
+                {{"name":"tessera-setup-v0.2.0.exe","browser_download_url":"{exe}"}},
+                {{"name":"tessera-setup-v0.2.0.exe.sha256","browser_download_url":"{dl}tessera-setup-v0.2.0.exe.sha256"}}]}}"#
+            )
+        };
+        let good = body(&format!("{dl}tessera-setup-v0.2.0.exe"));
+        let (exe, sha) = installer_urls(&good, "0.2.0", REPO).unwrap();
+        assert!(exe.ends_with(".exe") && sha.ends_with(".sha256"));
+        // another version, a foreign host, or no assets: nothing to install
+        assert!(installer_urls(&good, "0.3.0", REPO).is_none());
+        assert!(installer_urls(&body("https://evil.example/a.exe"), "0.2.0", REPO).is_none());
+        assert!(installer_urls(FIXTURE, "0.2.0", REPO).is_none());
+    }
+
+    #[test]
+    fn reads_a_sha256sum_line() {
+        let h = "B".repeat(64);
+        assert_eq!(parse_sha256(&format!("{h} *a.exe
+")), Some("b".repeat(64)));
+        assert_eq!(parse_sha256("short"), None);
+        assert_eq!(parse_sha256(&"z".repeat(64)), None);
     }
 
     #[test]

@@ -205,6 +205,16 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Güncellemeler denetlenemedi: {err}",
     ),
     (
+        "update.not_installed",
+        "Updating works from the installed app only. Download the new version from the release page.",
+        "Güncelleme sadece kurulu uygulamada çalışır. Yeni sürümü sürüm sayfasından indir.",
+    ),
+    (
+        "update.no_asset",
+        "This release has no installer to download",
+        "Bu sürümde indirilecek bir kurulum dosyası yok",
+    ),
+    (
         "update.bad_response",
         "The update server sent an unexpected answer",
         "Güncelleme sunucusu beklenmeyen bir yanıt verdi",
