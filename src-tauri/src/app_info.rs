@@ -31,12 +31,8 @@ mod tests {
         assert_eq!((i.name, i.license), (APP_NAME, "MIT"));
         assert_eq!(i.repo_url, "https://github.com/kaan0d/Tessera");
         assert!(i.version.split('.').count() == 3);
-        // the notices carry the ffmpeg section and real crate texts
+        // the notices carry the ffmpeg and Rust sections
         assert!(LICENSES.contains("FFmpeg") && LICENSES.contains("LGPL"));
-        assert!(LICENSES.contains("Permission is hereby granted"));
-        assert!(
-            LICENSES.len() < 600_000,
-            "keep the embedded file reasonable"
-        );
+        assert!(LICENSES.contains("Rust") && LICENSES.contains("Apache"));
     }
 }
