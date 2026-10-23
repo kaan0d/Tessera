@@ -38,6 +38,7 @@ Prefer a window? Drop files on it and choose there. Prefer scripts? There is a f
 - **Edit on the way:** resize, strip metadata, fix orientation, cut audio and video, audio bitrate, mono, GIF fps and width.
 - **Batch:** merge images into one PDF or audio files into one, convert whole folders, drop many files at once.
 - **Automate:** watch folders with rules, a Send To entry, and `tessera-cli` for scripts.
+- **Move your setup:** export all settings, presets and watch rules to a file and import them on another PC.
 - **Stay safe:** originals are kept, output gets a new name, nothing is overwritten unless you turn it on. Every job goes into a history with undo, and any running job can be cancelled.
 - **Feel at home:** English and Turkish (follows Windows), light and dark, keyboard friendly.
 
@@ -141,5 +142,5 @@ src-tauri/menu-icons/    one .ico per menu verb (embedded in the exe)
 - **No inline styles:** the content security policy is `default-src 'self'`, so style with classes in `style.css` (colors are tokens on `:root`).
 - **Conversion rules:** every converter writes through `output::write_atomic`, never overwrites the source, and honors the size limit through `size::fit` or ffmpeg bitrates. New formats go in `convert/mod.rs` (`Format`, `supported_targets`).
 - **Menu icons:** bump `ICON_REV` in `shell/mod.rs` when you change an icon so Explorer drops its cache.
-- **Releases:** `cargo build --release` produces `target/release/tessera.exe`, and that exe is the installer, so there is no bundle step. Publish it as `tessera-setup-vX.Y.Z.exe` with its SHA-256 (`gh release create vX.Y.Z tessera-setup-vX.Y.Z.exe`); the in-app update check looks at the latest release of this repo.
+- **Releases:** `cargo build --release` produces `target/release/tessera.exe`, and that exe is the installer, so there is no bundle step. Publish it as `tessera-setup-vX.Y.Z.exe` plus `tessera-setup-vX.Y.Z.exe.sha256` (`gh release create vX.Y.Z tessera-setup-vX.Y.Z.exe tessera-setup-vX.Y.Z.exe.sha256`). The in-app update check and "Update now" read the latest release of this repo and need both assets under exactly these names.
 - **Build output:** `src-tauri/target` grows past 10 GB and `src-tauri/gen` is generated. Both are git-ignored and safe to delete; the next build recreates them.
