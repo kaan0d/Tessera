@@ -48,14 +48,14 @@ Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OG
 
 Windows 10 or 11. Needs Microsoft Edge WebView2, which both already include.
 
-Get `tessera-setup-v0.1.2.exe` from the [latest release](https://github.com/kaan0d/Tessera/releases/latest) and double-click it. Each release lists the exe's SHA-256. The exe is its own installer, so there is nothing else to download. Pick a folder (default `%LOCALAPPDATA%\Tessera`), choose whether to keep settings next to the app, and let it download video support with a live percentage. It also registers the menu, a Start menu shortcut and an uninstall entry. Uninstall from Settings > Apps > Tessera.
+Get `tessera-setup-v0.1.2.exe` from the [latest release](https://github.com/kaan0d/Tessera/releases/latest) and double-click it. Each release lists the exe's SHA-256. The exe is its own installer, so there is nothing else to download. Pick a folder (default `%LOCALAPPDATA%\Tessera`) and let it download video support with a live percentage. It also registers the menu, a Start menu shortcut and an uninstall entry. Uninstall from Settings > Apps > Tessera.
 
 The exe is not code-signed yet, so SmartScreen may ask you to confirm once (More info, then Run anyway).
 
 For a silent install:
 
 ```
-tessera.exe --install D:\Apps --portable --add-to-path   adds \Tessera to the folder
+tessera.exe --install D:\Apps --add-to-path              adds \Tessera to the folder
 tessera.exe --uninstall --quiet                          --keep-data keeps settings
 ```
 
@@ -80,9 +80,9 @@ tessera-cli formats png
 
 Files never leave your computer. Tessera downloads one thing: a pinned LGPL ffmpeg build (about 170 MB, SHA-256 checked) during setup. Untick it there, or choose Later in the app, and nothing is fetched until you press Download. The update check is off until you turn it on; "Update now" then downloads the new installer from the release, checks its SHA-256 and replaces the app, keeping your settings.
 
-On disk, in `%APPDATA%\Tessera` (or the `data` folder next to the app): `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
+On disk, in the `data` folder inside the install folder: `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
 
-Everything is per user. Files: the install folder and the data folder above. Registry, all under `HKCU`: the Explorer menu keys, the uninstall entry, and optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
+Everything is per user. Files: the install folder only, data included (an update from v0.1.x moves the old `%APPDATA%\Tessera` into it). Registry, all under `HKCU`: the Explorer menu keys, the uninstall entry, and optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
 
 ## Limits
 

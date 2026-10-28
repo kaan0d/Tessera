@@ -245,7 +245,8 @@ async fn export_settings(app: AppHandle) -> Result<bool, String> {
     };
     let path = path.into_path().map_err(|e| e.to_string())?;
     let s = app.state::<AppState>().settings.lock().unwrap().clone();
-    settings::save_to(&path, &s).map_err(|e| fmt(lang, "cmd.export", &[("err", &e.to_string())]))?;
+    settings::save_to(&path, &s)
+        .map_err(|e| fmt(lang, "cmd.export", &[("err", &e.to_string())]))?;
     Ok(true)
 }
 
@@ -1189,15 +1190,9 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             quiet: true,
             keep_data,
         } => Some(install::uninstall_quiet(*keep_data)),
-        Cli::Install {
-            dir,
-            portable,
-            path,
-            update,
-        } => {
+        Cli::Install { dir, path, update } => {
             let req = install::Request {
                 dir: dir.clone(),
-                portable: *portable,
                 ffmpeg: true,
                 path: *path,
                 update: *update,
@@ -1336,7 +1331,9 @@ fn run_setup(mode: install::Mode) {
                 exe: Mutex::new(None),
             });
             if let Some(cfg) = app.config().app.windows.iter().find(|c| c.label == "setup") {
-                let mut w = tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?;
+                // a temp cache: the installer may run from Downloads and install anywhere
+                let mut w = tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?
+                    .data_directory(std::env::temp_dir().join("Tessera-setup"));
                 let tr = i18n::system_lang() == i18n::Lang::Tr;
                 w = w.title(match (mode, tr) {
                     (install::Mode::Uninstall, true) => "Tessera Kaldır",
@@ -1461,7 +1458,9 @@ pub fn run() {
                 .iter()
                 .filter(|c| c.label != "setup")
             {
-                tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?.build()?;
+                tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?
+                    .data_directory(settings::data_dir().join("webview"))
+                    .build()?;
             }
             if let Some(w) = app.get_webview_window("progress") {
                 panel::init(&w);

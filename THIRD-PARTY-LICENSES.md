@@ -19,7 +19,7 @@ unmodified build and runs `ffmpeg.exe` as a separate process:
 
 The download is verified against a fixed SHA-256 before it is used. To use your own FFmpeg
 instead (for example a newer or custom LGPL build), replace `ffmpeg.exe` in
-`%APPDATA%\Tessera\ffmpeg\` with yours. Tessera uses whatever runs there and answers
+`data\ffmpeg\` inside the install folder (`%LOCALAPPDATA%\Tessera` by default) with yours. Tessera uses whatever runs there and answers
 `ffmpeg -version`; if it stops working, Tessera downloads the pinned build again.
 
 ## Rust

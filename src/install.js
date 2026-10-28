@@ -121,8 +121,6 @@
     en: {
       install_title: "Install Tessera", update_title: "Update Tessera", lead: "Right-click any file, pick a format, done.",
       install_to: "Install to", browse: "Browse",
-      keep: "Keep my settings in the app folder",
-      keep_hint: "Settings, history and menu icons stay in a <b>data</b> folder next to the app, not in your user profile.",
       install: "Install", update: "Update", uninstall: "Uninstall", cancel: "Cancel", open: "Open Tessera", close: "Close",
       remove_title: "Remove Tessera?", remove_lead: "It leaves the Explorer menu and the app folder is deleted.",
       wipe: "Also delete my settings and history",
@@ -163,8 +161,6 @@
     tr: {
       install_title: "Tessera'yı kur", update_title: "Tessera'yı güncelle", lead: "Herhangi bir dosyaya sağ tıkla, biçimi seç, bitti.",
       install_to: "Kurulum yeri", browse: "Gözat",
-      keep: "Ayarlarımı uygulama klasöründe tut",
-      keep_hint: "Ayarlar, geçmiş ve menü simgeleri kullanıcı profilin yerine uygulamanın yanındaki <b>data</b> klasöründe kalır.",
       install: "Kur", update: "Güncelle", uninstall: "Kaldır", cancel: "Vazgeç", open: "Tessera'yı aç", close: "Kapat",
       remove_title: "Tessera kaldırılsın mı?", remove_lead: "Explorer menüsünden çıkar ve uygulama klasörü silinir.",
       wipe: "Ayarlarımı ve geçmişimi de sil",
@@ -294,7 +290,7 @@
     const dir = dirEl.value.trim();
     doneDirPath = dir; document.getElementById("doneDir").textContent = t("installed_to") + " " + dir;
     if (!T) return demo();
-    T.core.invoke("install_start", { req: { dir, portable: document.getElementById("portable").checked, ffmpeg: document.getElementById("ffdl").checked, path: document.getElementById("pathadd").checked } })
+    T.core.invoke("install_start", { req: { dir, ffmpeg: document.getElementById("ffdl").checked, path: document.getElementById("pathadd").checked } })
       .then((real) => { document.getElementById("pathNote").textContent = document.getElementById("pathadd").checked ? t("path_note") : ""; dirEl.value = real; doneDirPath = real; document.getElementById("doneDir").textContent = t("installed_to") + " " + real; api.start(); })
       .catch((e) => showError(String(e)));
   });
@@ -337,7 +333,6 @@
         setGo("uninstall");
       } else {
         dirEl.value = d.dir;
-        document.getElementById("portable").checked = d.portable;
         if (d.installed) { document.getElementById("welcomeTitle").dataset.t = "update_title"; setGo("update"); applyLang(d.lang); }
         if (d.ffmpeg) {
           const cb = document.getElementById("ffdl");

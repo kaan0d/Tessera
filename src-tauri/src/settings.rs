@@ -256,8 +256,8 @@ impl Settings {
     }
 }
 
-/// Settings, history, ffmpeg and menu icons. A `data` folder next to the exe (the installer's
-/// "keep settings inside the app folder" option) wins over `%APPDATA%\Tessera`.
+/// Settings, history, ffmpeg, menu icons and the WebView2 cache: the `data` folder the installer
+/// creates next to the exe. A copy without one (a dev build) uses `%LOCALAPPDATA%\Tessera\data`.
 pub fn data_dir() -> PathBuf {
     if let Some(d) = std::env::current_exe()
         .ok()
@@ -266,10 +266,16 @@ pub fn data_dir() -> PathBuf {
     {
         return d;
     }
-    let base = std::env::var_os("APPDATA")
+    std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
-        .unwrap_or_else(std::env::temp_dir);
-    base.join(APP_NAME)
+        .unwrap_or_else(std::env::temp_dir)
+        .join(APP_NAME)
+        .join("data")
+}
+
+/// Where v0.1.x kept its data; the installer moves it into `data_dir` once.
+pub fn legacy_data_dir() -> Option<PathBuf> {
+    std::env::var_os("APPDATA").map(|b| PathBuf::from(b).join(APP_NAME))
 }
 
 pub fn settings_path() -> PathBuf {

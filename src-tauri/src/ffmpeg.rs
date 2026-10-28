@@ -1,5 +1,5 @@
 //! ffmpeg download: one pinned LGPL win64 build, SHA-256 verified before anything is
-//! extracted, only `bin/ffmpeg.exe` kept. Lives in %APPDATA%\<app>\ffmpeg\.
+//! extracted, only `bin/ffmpeg.exe` kept. Lives in `<data>\ffmpeg\` (see `settings::data_dir`).
 //! Pure functions plus a small shared status; the app wiring is in lib.rs.
 
 use std::fmt;
@@ -167,7 +167,11 @@ pub fn verify_sha256(path: &Path, expected: &str) -> Result<(), FfError> {
 }
 
 /// Streams `url` into `dest`, reporting 0.0..=1.0.
-pub(crate) fn download(url: &str, dest: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), FfError> {
+pub(crate) fn download(
+    url: &str,
+    dest: &Path,
+    progress: &mut dyn FnMut(f32),
+) -> Result<(), FfError> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_connect(Some(Duration::from_secs(15)))
         .timeout_recv_response(Some(Duration::from_secs(30)))

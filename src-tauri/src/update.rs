@@ -292,8 +292,13 @@ mod tests {
     #[test]
     fn reads_a_sha256sum_line() {
         let h = "B".repeat(64);
-        assert_eq!(parse_sha256(&format!("{h} *a.exe
-")), Some("b".repeat(64)));
+        assert_eq!(
+            parse_sha256(&format!(
+                "{h} *a.exe
+"
+            )),
+            Some("b".repeat(64))
+        );
         assert_eq!(parse_sha256("short"), None);
         assert_eq!(parse_sha256(&"z".repeat(64)), None);
     }

@@ -14,10 +14,9 @@ pub enum Cli {
     InstallFfmpeg,
     /// Record that ffmpeg is downloaded later (the installer's "skip").
     DeferFfmpeg,
-    /// Silent install (`--install <dir> [--portable]`), no window.
+    /// Silent install (`--install <dir>`), no window. v0.1.x updaters may add `--portable`: ignored.
     Install {
         dir: String,
-        portable: bool,
         path: bool,
         /// In-app update: keeps ffmpeg as it is and starts the app when done.
         update: bool,
@@ -161,7 +160,6 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         Some("--install") => match args.get(1) {
             Some(dir) if !dir.starts_with("--") => Cli::Install {
                 dir: dir.clone(),
-                portable: args.iter().any(|a| a == "--portable"),
                 path: args.iter().any(|a| a == "--add-to-path"),
                 update: args.iter().any(|a| a == "--update"),
             },
@@ -480,7 +478,6 @@ mod tests {
             parse(&a(&["--install", r"D:\Apps", "--portable"]), None),
             Cli::Install {
                 dir: r"D:\Apps".into(),
-                portable: true,
                 path: false,
                 update: false
             }

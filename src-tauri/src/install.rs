@@ -1,6 +1,6 @@
 //! Self-installer: the release exe is its own setup. `setup_mode` decides at launch, the
 //! installer window (`install.html`) drives `install_start`, `--uninstall` undoes it.
-//! Everything is per-user (HKCU, %LOCALAPPDATA%, %APPDATA%): no admin rights.
+//! Everything is per-user (HKCU, one folder under %LOCALAPPDATA%): no admin rights.
 
 use std::fs;
 use std::io::{self, Read, Write};
@@ -31,7 +31,6 @@ pub struct Defaults {
     pub lang: &'static str,
     pub dir: String,
     pub installed: bool,
-    pub portable: bool,
     /// A working ffmpeg is already in the installed copy's data folder.
     pub ffmpeg: bool,
     /// Windows 11: the classic menu sits under "Show more options".
@@ -45,7 +44,6 @@ fn yes() -> bool {
 #[derive(Deserialize, Debug)]
 pub struct Request {
     pub dir: String,
-    pub portable: bool,
     /// Download ffmpeg during the install (the default); false = later.
     #[serde(default = "yes")]
     pub ffmpeg: bool,
@@ -86,13 +84,10 @@ pub fn installed_here() -> Option<PathBuf> {
 }
 
 /// Runs the downloaded installer `setup` as a silent update of the install in `dir`, keeping
-/// its data mode and PATH entry. The installer closes this app, copies itself over and restarts it.
+/// its PATH entry. The installer closes this app, copies itself over and restarts it.
 pub fn launch_update(setup: &Path, dir: &Path) -> io::Result<()> {
     let mut cmd = Command::new(setup);
     cmd.arg("--install").arg(dir).arg("--update");
-    if dir.join("data").is_dir() {
-        cmd.arg("--portable");
-    }
     let on_path = RegKey::predef(HKEY_CURRENT_USER)
         .open_subkey(ENV_KEY)
         .map(|k| read_user_path(&k).0)
@@ -100,7 +95,9 @@ pub fn launch_update(setup: &Path, dir: &Path) -> io::Result<()> {
     if on_path {
         cmd.arg("--add-to-path");
     }
-    cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS).spawn().map(drop)
+    cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS)
+        .spawn()
+        .map(drop)
 }
 
 fn exe_dir() -> Option<PathBuf> {
@@ -140,17 +137,53 @@ pub fn default_dir() -> PathBuf {
         .join(APP_NAME)
 }
 
-/// A working ffmpeg already sits in the data folder this install uses (`<dir>\data` or `%APPDATA%\Tessera`).
+/// A working ffmpeg already sits in the install's data folder, or in the v0.1.x one it moves from.
 pub fn ffmpeg_present(dir: &Path) -> bool {
-    let data = if dir.join("data").is_dir() {
-        dir.join("data")
-    } else {
-        std::env::var_os("APPDATA")
-            .map(PathBuf::from)
-            .unwrap_or_else(std::env::temp_dir)
-            .join(APP_NAME)
-    };
-    crate::ffmpeg::is_working(&data.join("ffmpeg").join("ffmpeg.exe"))
+    let legacy = crate::settings::legacy_data_dir().filter(|_| !dir.join("data").is_dir());
+    [Some(dir.join("data")), legacy]
+        .into_iter()
+        .flatten()
+        .any(|d| crate::ffmpeg::is_working(&d.join("ffmpeg").join("ffmpeg.exe")))
+}
+
+/// Moves every entry of `from` into `to` (rename, or copy across drives), then removes `from`.
+/// Entries already in `to` stay where they are and keep `from` alive.
+fn move_tree(from: &Path, to: &Path) -> io::Result<()> {
+    fs::create_dir_all(to)?;
+    for e in fs::read_dir(from)? {
+        let e = e?;
+        let dst = to.join(e.file_name());
+        if dst.exists() || fs::rename(e.path(), &dst).is_ok() {
+            continue;
+        }
+        if e.file_type()?.is_dir() {
+            move_tree(&e.path(), &dst)?;
+        } else {
+            fs::copy(e.path(), &dst)?;
+            fs::remove_file(e.path())?;
+        }
+    }
+    fs::remove_dir(from)
+}
+
+/// v0.1.x kept data in %APPDATA%\Tessera and the WebView2 cache in %LOCALAPPDATA%\com.tessera.app.
+/// Both move into the install's `data` folder once; a folder that already has settings wins.
+fn adopt_legacy_data(data: &Path) {
+    if let Some(old) = crate::settings::legacy_data_dir()
+        .filter(|o| o.is_dir() && !data.join("settings.json").exists())
+    {
+        if let Err(e) = move_tree(&old, data) {
+            crate::log::write("warn", &format!("old data not fully moved: {e}"));
+        }
+    }
+    // only a cache: the app rebuilds it in data\webview
+    if let Some(web) = legacy_webview_dir() {
+        let _ = fs::remove_dir_all(web);
+    }
+}
+
+fn legacy_webview_dir() -> Option<PathBuf> {
+    std::env::var_os("LOCALAPPDATA").map(|b| PathBuf::from(b).join("com.tessera.app"))
 }
 
 fn is_win11() -> bool {
@@ -180,7 +213,6 @@ pub fn defaults(mode: Mode) -> Defaults {
         } else {
             "install"
         },
-        portable: dir.join("data").is_dir(),
         installed: installed.is_some(),
         dir: dir.to_string_lossy().into_owned(),
     }
@@ -545,9 +577,8 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Inst
     run_step(emit, 1, "Copying files", (0.0, 0.06), &mut |sub| {
         stop_running(&dir);
         fs::create_dir_all(&dir).map_err(fail("Cannot create the folder"))?;
-        if req.portable {
-            fs::create_dir_all(dir.join("data")).map_err(fail("Cannot create the data folder"))?;
-        }
+        adopt_legacy_data(&dir.join("data"));
+        fs::create_dir_all(dir.join("data")).map_err(fail("Cannot create the data folder"))?;
         if !same_path(&src, &dst) {
             copy_with_progress(&src, &dst, &mut *sub).map_err(fail("Cannot copy the app"))?;
         }
@@ -686,7 +717,7 @@ pub fn run_uninstall(
         if !keep_data && !done(fs::remove_dir_all(crate::settings::data_dir())) {
             left.push("data");
         }
-        if schedule_cleanup(&exe, &dir).is_err() {
+        if schedule_cleanup(&exe, &dir, keep_data).is_err() {
             left.push("files");
         }
         Ok(())
@@ -695,19 +726,25 @@ pub fn run_uninstall(
 }
 
 /// The exe cannot delete itself while it runs: a detached `cmd` waits (up to a minute, the
-/// uninstall window may stay open) until the exe is gone, then removes the empty folder and
-/// the WebView2 cache the app created in %LOCALAPPDATA%.
-fn schedule_cleanup(exe: &Path, dir: &Path) -> Result<(), String> {
-    let web = std::env::var_os("LOCALAPPDATA")
-        .map(|b| PathBuf::from(b).join("com.tessera.app"))
-        .unwrap_or_default();
+/// uninstall window may stay open) until the exe is gone, then removes the WebView2 cache, the
+/// data folder unless it is kept, and the app folder once it is empty.
+fn schedule_cleanup(exe: &Path, dir: &Path, keep_data: bool) -> Result<(), String> {
+    let data = dir.join("data");
+    // the app's WebView2 processes may still have held files when step 4 ran
+    let wipe = if keep_data {
+        data.join("webview")
+    } else {
+        data
+    };
+    let legacy = legacy_webview_dir().unwrap_or_default();
     // raw_arg: cmd does its own quote parsing and rejects the backslash-escaped quotes `arg` adds
     let script = format!(
-        r#"/C "for /l %i in (1,1,60) do (if exist "{exe}" (del /f /q "{exe}" 2>nul & ping -n 2 127.0.0.1 >nul)) & del /f /q "{cli}" 2>nul & rmdir "{dir}" & rmdir /s /q "{web}"""#,
+        r#"/C "for /l %i in (1,1,60) do (if exist "{exe}" (del /f /q "{exe}" 2>nul & ping -n 2 127.0.0.1 >nul)) & del /f /q "{cli}" 2>nul & rmdir /s /q "{wipe}" & rmdir /s /q "{legacy}" & rmdir "{dir}"""#,
         exe = exe.display(),
         cli = dir.join(CLI_NAME).display(),
-        dir = dir.display(),
-        web = web.display()
+        wipe = wipe.display(),
+        legacy = legacy.display(),
+        dir = dir.display()
     );
     Command::new("cmd")
         .raw_arg(script)
@@ -742,6 +779,26 @@ mod tests {
         assert_eq!(c.iter().zip(&b).filter(|(x, y)| x != y).count(), 1);
         assert!(console_copy_bytes(vec![0; 16]).is_none());
         assert!(console_copy_bytes(vec![0; 0x200]).is_none());
+    }
+
+    #[test]
+    fn old_data_moves_without_overwriting() {
+        let t = tempfile::tempdir().unwrap();
+        let (old, new) = (t.path().join("old"), t.path().join("new"));
+        fs::create_dir_all(old.join("ffmpeg")).unwrap();
+        fs::write(old.join("settings.json"), "old").unwrap();
+        fs::write(old.join("ffmpeg").join("ffmpeg.exe"), "x").unwrap();
+        move_tree(&old, &new).unwrap();
+        assert!(!old.exists());
+        assert_eq!(fs::read_to_string(new.join("settings.json")).unwrap(), "old");
+        assert!(new.join("ffmpeg").join("ffmpeg.exe").is_file());
+
+        // an entry already in the new folder wins and keeps the old folder in place
+        fs::create_dir_all(&old).unwrap();
+        fs::write(old.join("tessera.log"), "old").unwrap();
+        fs::write(new.join("tessera.log"), "new").unwrap();
+        assert!(move_tree(&old, &new).is_err());
+        assert_eq!(fs::read_to_string(new.join("tessera.log")).unwrap(), "new");
     }
 
     #[test]
