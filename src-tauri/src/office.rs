@@ -13,6 +13,7 @@ use std::time::Duration;
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 use winreg::RegKey;
 
+use crate::convert::{ConvertError, Format, Options};
 use crate::ffmpeg::{download_capped, verify_sha256, Download, FfError};
 use crate::settings::data_dir;
 
@@ -32,9 +33,11 @@ pub fn own_dir() -> PathBuf {
     data_dir().join("libreoffice")
 }
 
-/// The isolated user profile every conversion runs with (never the user's own).
+/// The isolated user profile every conversion runs with (never the user's own). Its name must
+/// not start with `libreoffice`: a profile URL that begins with the program folder's URL makes
+/// soffice exit at once without converting anything.
 pub fn profile_dir() -> PathBuf {
-    data_dir().join("libreoffice-profile")
+    data_dir().join("office-profile")
 }
 
 /// Where the converter comes from.
@@ -67,6 +70,17 @@ fn system_soffice() -> Option<PathBuf> {
     let default = std::env::var_os("ProgramFiles")
         .map(|p| PathBuf::from(p).join(r"LibreOffice\program\soffice.exe"));
     from_registry.chain(default).find(|p| p.is_file())
+}
+
+/// Converts with whichever LibreOffice `soffice` finds; `NeedsOffice` when there is none.
+pub fn convert(
+    input: &Path,
+    target: Format,
+    opts: &Options,
+    progress: impl FnMut(f32),
+) -> Result<PathBuf, ConvertError> {
+    let (exe, _) = soffice().ok_or(ConvertError::NeedsOffice)?;
+    crate::convert::office::convert_with_office(&exe, &profile_dir(), input, target, opts, progress)
 }
 
 /// Where an unpacked file goes inside our copy, or None when conversion does not need it:

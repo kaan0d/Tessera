@@ -17,6 +17,7 @@ pub static ALPHA_FLATTENED: std::sync::atomic::AtomicBool =
 mod error;
 pub mod ffmpeg;
 mod image;
+pub mod office;
 pub mod output;
 pub mod pdf;
 mod raw;

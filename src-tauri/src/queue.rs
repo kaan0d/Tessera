@@ -9,7 +9,9 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::convert::combine::{self, MergeKind};
-use crate::convert::{self, convert, uses_ffmpeg, Conflict, ConvertError, Format, Options};
+use crate::convert::{
+    self, convert, uses_ffmpeg, uses_office, Conflict, ConvertError, Format, Options,
+};
 use crate::history::{self, Entry, Kind};
 use crate::i18n::{self, fmt, t};
 use crate::panel;
@@ -392,6 +394,8 @@ fn run(app: &AppHandle, job: &Job) -> Done {
     let opts = job.opts.clone().cancel(job.cancel.clone());
     let result = if let Some((kind, files)) = &job.merge {
         combine::run(*kind, files, &opts, on_progress)
+    } else if from.is_some_and(|f| uses_office(f, job.target)) {
+        crate::office::convert(&job.path, job.target, &opts, on_progress)
     } else if from.is_some_and(|f| uses_ffmpeg(f, job.target) || opts.ffmpeg_only(f)) {
         if job.ffmpeg_ready {
             ffmpeg_convert(job, on_progress)

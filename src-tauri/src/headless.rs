@@ -7,7 +7,7 @@ use std::sync::atomic::AtomicBool;
 
 use crate::cli::{Command, ConvertArgs};
 use crate::convert::{
-    convert, needs_ffmpeg, supported_targets, uses_ffmpeg, Format, Options, OutDir,
+    convert, needs_ffmpeg, supported_targets, uses_ffmpeg, uses_office, Format, Options, OutDir,
 };
 use crate::i18n::{t, Lang};
 use crate::{app_info, ffmpeg, preset, settings};
@@ -612,6 +612,9 @@ fn precheck(path: &Path, target: Format, ffmpeg_ok: &mut Option<bool>) -> Result
             ext.to_lowercase()
         ));
     }
+    if uses_office(from, target) && crate::office::soffice().is_none() {
+        return Err(t(Lang::En, "cli.no_office").into());
+    }
     if (uses_ffmpeg(from, target) || needs_ffmpeg(target))
         && !*ffmpeg_ok.get_or_insert_with(|| ffmpeg::is_working(&ffmpeg::exe_path()))
     {
@@ -633,7 +636,9 @@ fn convert_one(
         .extension()
         .and_then(|e| e.to_str())
         .and_then(Format::from_ext);
-    let r = if from.is_some_and(|f| uses_ffmpeg(f, target) || opts.ffmpeg_only(f))
+    let r = if from.is_some_and(|f| uses_office(f, target)) {
+        crate::office::convert(path, target, opts, progress)
+    } else if from.is_some_and(|f| uses_ffmpeg(f, target) || opts.ffmpeg_only(f))
         || needs_ffmpeg(target)
     {
         let exe = ffmpeg::exe_path();

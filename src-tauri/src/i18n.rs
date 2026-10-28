@@ -278,6 +278,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "This conversion needs ffmpeg, which is not installed. Start the app once so it can install it.",
         "Bu dönüşüm için ffmpeg gerekiyor ama kurulu değil. Kurması için uygulamayı bir kez başlatın.",
     ),
+    (
+        "cli.no_office",
+        "Office documents need document support, which is not downloaded. Get it in the app under Settings > Advanced, or run `tessera --install-office`.",
+        "Ofis belgeleri için belge desteği gerekiyor ama indirilmemiş. Uygulamada Ayarlar > Gelişmiş bölümünden indirin ya da `tessera --install-office` çalıştırın.",
+    ),
     // tray
     ("tray.open", "Settings", "Ayarlar"),
     ("tray.quit", "Quit", "Çıkış"),
