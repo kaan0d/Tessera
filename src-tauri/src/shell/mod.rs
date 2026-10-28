@@ -223,7 +223,12 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
     }
     remove_at(root)?;
     let icon = format!(r#""{exe}",0"#);
-    let icons = crate::settings::data_dir().join("menu-icons");
+    // unit tests must not create the real data folder: a v0.1.x install would adopt it
+    let icons = if cfg!(test) {
+        std::env::temp_dir().join("tessera-test-menu-icons")
+    } else {
+        crate::settings::data_dir().join("menu-icons")
+    };
     if s.menu.icons {
         write_kind_icons(&icons);
     }
