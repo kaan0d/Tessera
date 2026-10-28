@@ -134,11 +134,15 @@ pub struct Settings {
 }
 
 /// Current settings generation.
-pub const SETTINGS_VERSION: u32 = 1;
+pub const SETTINGS_VERSION: u32 = 2;
 /// Targets and sources added by engine wave A; appended once for files older than version 1.
 const NEW_TARGETS_V1: [&str; 2] = ["avif", "pdf"];
 const NEW_SOURCES_V1: [&str; 13] = [
     "avif", "svg", "heic", "heif", "dng", "cr2", "cr3", "nef", "arw", "orf", "rw2", "raf", "pdf",
+];
+/// Office documents (v0.2.0): targets and sources appended once for files older than version 2.
+const NEW_OFFICE_V2: [&str; 12] = [
+    "docx", "doc", "odt", "rtf", "txt", "xlsx", "xls", "ods", "csv", "pptx", "ppt", "odp",
 ];
 
 impl Default for Settings {
@@ -210,17 +214,20 @@ impl Settings {
 
     /// One-time upgrade of an old file: formats added since are appended to the user's lists.
     fn migrate(mut self) -> Self {
+        let add = |list: &mut Vec<String>, new: &[&str]| {
+            for e in new {
+                if !list.iter().any(|x| x == e) {
+                    list.push((*e).into());
+                }
+            }
+        };
         if self.settings_version < 1 {
-            for e in NEW_TARGETS_V1 {
-                if !self.enabled_targets.iter().any(|x| x == e) {
-                    self.enabled_targets.push(e.into());
-                }
-            }
-            for e in NEW_SOURCES_V1 {
-                if !self.menu_sources.iter().any(|x| x == e) {
-                    self.menu_sources.push(e.into());
-                }
-            }
+            add(&mut self.enabled_targets, &NEW_TARGETS_V1);
+            add(&mut self.menu_sources, &NEW_SOURCES_V1);
+        }
+        if self.settings_version < 2 {
+            add(&mut self.enabled_targets, &NEW_OFFICE_V2);
+            add(&mut self.menu_sources, &NEW_OFFICE_V2);
         }
         self.settings_version = SETTINGS_VERSION;
         self
@@ -502,14 +509,25 @@ mod tests {
         .unwrap();
         let s = load_from(&p);
         assert_eq!(s.settings_version, SETTINGS_VERSION);
-        assert_eq!(s.enabled_targets, ["jpg", "mp3", "avif", "pdf"]);
-        assert!(s.menu_sources.contains(&"heic".to_string()) && s.menu_sources.len() == 15);
+        assert_eq!(s.enabled_targets[..4], ["jpg", "mp3", "avif", "pdf"]);
+        assert!(s.enabled_targets.contains(&"docx".to_string()) && s.enabled_targets.len() == 16);
+        assert!(s.menu_sources.contains(&"heic".to_string()) && s.menu_sources.len() == 27);
         assert!(!s.menu_sources.contains(&"jpg".to_string()));
         // saved at the new version: the user's later choices are not overridden
         let mut s = s;
         s.enabled_targets.retain(|e| e != "pdf");
         save_to(&p, &s).unwrap();
         assert!(!load_from(&p).enabled_targets.contains(&"pdf".to_string()));
+        // a v1 file only gets the office formats
+        fs::write(
+            &p,
+            br#"{"settings_version":1,"enabled_targets":["jpg"],"menu_sources":["png"]}"#,
+        )
+        .unwrap();
+        let s = load_from(&p);
+        assert_eq!(s.enabled_targets.len(), 13);
+        assert!(!s.enabled_targets.contains(&"avif".to_string()));
+        assert!(s.menu_sources.contains(&"xlsx".to_string()));
         // new fields default sensibly on an old file
         fs::write(&p, b"{}").unwrap();
         let s = load_from(&p);

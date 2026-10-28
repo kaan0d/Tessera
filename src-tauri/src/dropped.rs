@@ -40,7 +40,9 @@ pub struct DropTarget {
     pub ext: &'static str,
     pub kind: &'static str,
     pub needs_ffmpeg: bool,
-    /// When it needs ffmpeg, ffmpeg is ready. (Formats switched off in the settings are not
+    /// Written by LibreOffice (document support).
+    pub needs_office: bool,
+    /// When it needs ffmpeg, ffmpeg is ready; when it needs document support, that is there. (Formats switched off in the settings are not
     /// offered at all.)
     pub allowed: bool,
 }
@@ -145,11 +147,15 @@ pub fn choices(files: &[PathBuf], s: &Settings) -> Choices {
             })
             .map(|t| {
                 let ff = needs_ffmpeg(t) || known.iter().any(|(_, f)| uses_ffmpeg(*f, t));
+                let lo = known
+                    .iter()
+                    .any(|(_, f)| crate::convert::uses_office(*f, t));
                 DropTarget {
                     ext: t.ext(),
                     kind: t.kind(),
                     needs_ffmpeg: ff,
-                    allowed: s.ffmpeg_ready || !ff,
+                    needs_office: lo,
+                    allowed: (s.ffmpeg_ready || !ff) && (!lo || crate::office::ready()),
                 }
             })
             .collect()

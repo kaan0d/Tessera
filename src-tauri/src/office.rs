@@ -56,6 +56,11 @@ pub fn soffice() -> Option<(PathBuf, Source)> {
     system_soffice().map(|p| (p, Source::System))
 }
 
+/// Office conversions can run (our copy or an installed LibreOffice).
+pub fn ready() -> bool {
+    soffice().is_some()
+}
+
 /// An installed LibreOffice: the UNO install path in the registry, else the default folder.
 fn system_soffice() -> Option<PathBuf> {
     let from_registry = [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER]

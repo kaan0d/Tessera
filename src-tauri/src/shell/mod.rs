@@ -9,7 +9,7 @@ use winreg::RegKey;
 
 use crate::app_info::APP_NAME;
 use crate::convert::combine::MergeKind;
-use crate::convert::{needs_ffmpeg, supported_targets, uses_ffmpeg, Format};
+use crate::convert::{needs_ffmpeg, supported_targets, uses_ffmpeg, uses_office, Format};
 use crate::folder::Action;
 use crate::i18n::{self, Lang};
 use crate::preset;
@@ -20,10 +20,11 @@ pub const REAL_ROOT: &str = r"Software\Classes";
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 
 /// Source extensions (must all be accepted by `Format::from_ext`).
-pub const EXTS: [&str; 34] = [
+pub const EXTS: [&str; 46] = [
     "png", "jpg", "jpeg", "webp", "bmp", "gif", "tif", "tiff", "ico", "avif", "svg", "heic",
     "heif", "dng", "cr2", "cr3", "nef", "arw", "orf", "rw2", "raf", "pdf", "wav", "flac", "mp3",
-    "ogg", "oga", "aac", "m4a", "mp4", "mkv", "avi", "webm", "mov",
+    "ogg", "oga", "aac", "m4a", "mp4", "mkv", "avi", "webm", "mov", "docx", "doc", "odt", "rtf",
+    "txt", "xlsx", "xls", "ods", "csv", "pptx", "ppt", "odp",
 ];
 
 fn label(t: Format, lang: Lang) -> String {
@@ -44,6 +45,8 @@ fn verbs(ext: &str, s: &Settings) -> Vec<Format> {
         .into_iter()
         .filter(|&t| s.target_enabled(t))
         .filter(|&t| s.ffmpeg_ready || src.is_none_or(|f| !uses_ffmpeg(f, t)))
+        // office formats appear once document support is there
+        .filter(|&t| src.is_none_or(|f| !uses_office(f, t)) || crate::office::ready())
         .collect();
     if s.menu.sort == MenuSort::Alphabetical {
         t.sort_by_key(|t| t.ext());

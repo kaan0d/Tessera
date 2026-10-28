@@ -79,6 +79,8 @@ struct AppState {
     settings: Mutex<Settings>,
     queue: Queue,
     download: Arc<Download>,
+    /// Document support (LibreOffice) download, started only by the user.
+    office_download: Arc<Download>,
     merges: Arc<Mutex<Collector>>,
     watcher: Mutex<Option<watch::Running>>,
     /// Files the chooser window currently shows (it reads them on load; the event can be early).
@@ -139,6 +141,70 @@ fn start_ffmpeg_download(app: &AppHandle) {
         }
         download.finish(result.err());
     });
+}
+
+#[derive(Serialize)]
+struct OfficeStatus {
+    ready: bool,
+    downloading: bool,
+    percent: f32,
+    error: Option<String>,
+    /// "own" (downloaded by Tessera, removable) | "system" (an installed LibreOffice) | none.
+    source: Option<&'static str>,
+}
+
+#[tauri::command]
+fn office_status(state: State<AppState>) -> OfficeStatus {
+    let found = office::soffice().map(|(_, s)| s);
+    let f = state.office_download.status(found.is_some(), i18n::lang());
+    OfficeStatus {
+        ready: f.ready,
+        downloading: f.downloading,
+        percent: f.percent,
+        error: f.error,
+        source: found.map(|s| match s {
+            office::Source::Own => "own",
+            office::Source::System => "system",
+        }),
+    }
+}
+
+/// Menu entries for office files appear or go with document support.
+fn refresh_menu(app: &AppHandle) {
+    let s = app.state::<AppState>().settings.lock().unwrap().clone();
+    let _ = shell::install(&s);
+    let _ = app.emit("office-changed", ());
+}
+
+/// Starts the document support download (the user pressed Download).
+#[tauri::command]
+fn office_download(app: AppHandle) {
+    let dl = app.state::<AppState>().office_download.clone();
+    if !dl.begin() {
+        return;
+    }
+    std::thread::spawn(move || {
+        let result = office::install_with_retries(&dl);
+        if let Err(e) = &result {
+            log::write(
+                "error",
+                &format!(
+                    "document support download failed: {}",
+                    e.message(i18n::Lang::En)
+                ),
+            );
+        }
+        dl.finish(result.err());
+        refresh_menu(&app);
+    });
+}
+
+/// Deletes Tessera's own copy of document support; an installed LibreOffice stays.
+#[tauri::command]
+fn office_remove(app: AppHandle) -> Result<(), String> {
+    let r = office::remove().map_err(|e| e.to_string());
+    refresh_menu(&app);
+    r
 }
 
 /// Startup check: a working ffmpeg is marked ready, a missing or corrupt one is downloaded.
@@ -1422,6 +1488,9 @@ pub fn run() {
             cancel_job,
             ffmpeg_status,
             retry_ffmpeg_download,
+            office_status,
+            office_download,
+            office_remove,
             open_folder,
             panel_preview,
             list_presets,
@@ -1465,6 +1534,7 @@ pub fn run() {
                 queue: Queue::new(app.handle().clone(), s.panel, s.history_enabled),
                 settings: Mutex::new(s),
                 download: Arc::default(),
+                office_download: Arc::default(),
                 merges: Arc::new(Mutex::new(Collector::new(batch::QUIET_MS))),
                 watcher: Mutex::new(None),
                 dropped: Mutex::new(vec![]),
