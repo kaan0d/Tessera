@@ -86,7 +86,8 @@ function choiceBtn(cls, choice, label) {
 }
 
 function lockReason(x) {
-  return x.needs_ffmpeg && !ffReady ? 'ff' : 'off';
+  if (x.needs_ffmpeg && !ffReady) return 'ff';
+  return x.needs_office ? 'lo' : 'off';
 }
 
 function buildTargets() {
@@ -94,7 +95,7 @@ function buildTargets() {
   box.replaceChildren();
   const list = opts.targets;
   $('sec-convert').hidden = !list.length && opts.kinds.length < 2;
-  let ff = false, off = false;
+  let ff = false, lo = false, off = false;
   for (const kind of KINDS) {
     const items = list.filter((x) => x.kind === kind);
     if (!items.length) continue;
@@ -111,10 +112,12 @@ function buildTargets() {
       if (x.needs_ffmpeg) c.append(ffTag());
       if (!x.allowed) {
         const why = lockReason(x);
-        why === 'ff' ? (ff = true) : (off = true);
+        if (why === 'ff') ff = true;
+        else if (why === 'lo') lo = true;
+        else off = true;
         c.setAttribute('aria-disabled', 'true');
         c.dataset.why = why;
-        c.title = t(why === 'ff' ? 'dr.locked_ff' : 'dr.locked_off', { fmt: x.ext.toUpperCase() });
+        c.title = t({ ff: 'dr.locked_ff', lo: 'dr.locked_lo', off: 'dr.locked_off' }[why], { fmt: x.ext.toUpperCase() });
       } else if (x.needs_ffmpeg) c.title = t('chip.ff');
       chips.append(c);
     }
@@ -125,6 +128,7 @@ function buildTargets() {
   const parts = [];
   if (!list.length) parts.push(t('dr.no_common'));
   if (ff) parts.push(t('dr.note_ff'));
+  if (lo) parts.push(t('dr.note_lo'));
   if (off) parts.push(t('dr.note_off'));
   note.hidden = !parts.length;
   note.textContent = parts.join(' ');
@@ -138,6 +142,21 @@ function buildTargets() {
       try {
         await invoke('retry_ffmpeg_download');
         get.textContent = t('dr.ff_started');
+      } catch (e) {
+        get.disabled = false;
+      }
+    };
+    note.append(' ', get);
+  }
+  if (lo) {
+    const get = el('button', 'link inline');
+    get.type = 'button';
+    get.textContent = t('dr.get_lo');
+    get.onclick = async () => {
+      get.disabled = true;
+      try {
+        await invoke('office_download');
+        get.textContent = t('dr.lo_started');
       } catch (e) {
         get.disabled = false;
       }

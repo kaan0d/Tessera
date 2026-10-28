@@ -34,5 +34,6 @@ mod tests {
         // the notices carry the ffmpeg and Rust sections
         assert!(LICENSES.contains("FFmpeg") && LICENSES.contains("LGPL"));
         assert!(LICENSES.contains("Rust") && LICENSES.contains("Apache"));
+        assert!(LICENSES.contains("LibreOffice") && LICENSES.contains("MPL-2.0"));
     }
 }

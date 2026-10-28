@@ -204,6 +204,7 @@ function buildKinds(box, items, sources) {
         c.dataset.ff = '';
         c.append(ffTag());
       }
+      if (!sources && it.needs_office) c.dataset.lo = '';
       if (sources) c.title = srcNeedsFf(it) ? t('chip.src_ff') : RAW.includes(it.ext) ? t('chip.raw') : '';
       c.onclick = () => (sources ? toggleSource(it.ext) : toggleTarget(it, c));
       chips.append(c);
@@ -217,8 +218,8 @@ function buildKinds(box, items, sources) {
 // null = every catalog entry
 const PROFILES = {
   normal: {
-    src: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'heic', 'heif', 'pdf', 'wav', 'mp3', 'm4a', 'mp4', 'mov'],
-    dst: ['png', 'jpg', 'webp', 'gif', 'pdf', 'wav', 'mp3', 'mp4'],
+    src: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'heic', 'heif', 'pdf', 'wav', 'mp3', 'm4a', 'mp4', 'mov', 'docx', 'xlsx', 'pptx'],
+    dst: ['png', 'jpg', 'webp', 'gif', 'pdf', 'wav', 'mp3', 'mp4', 'docx'],
   },
   all: { src: null, dst: null },
 };
@@ -275,7 +276,7 @@ function paintChips() {
     const locked = 'ff' in c.dataset && !ffReady;
     c.setAttribute('aria-pressed', on);
     c.setAttribute('aria-disabled', locked);
-    c.title = locked ? t('chip.locked') : 'ff' in c.dataset ? t('chip.ff') : '';
+    c.title = locked ? t('chip.locked') : 'ff' in c.dataset ? t('chip.ff') : 'lo' in c.dataset ? t('chip.lo') : '';
   }
   for (const c of $$('#sources .chip')) c.setAttribute('aria-pressed', s.menu_sources.includes(c.dataset.ext));
   paintProfiles();
@@ -625,6 +626,35 @@ async function refreshFfmpeg() {
   }
 }
 
+let loTimer;
+
+// Document support (LibreOffice): downloaded only when the user presses the button.
+async function refreshOffice() {
+  clearTimeout(loTimer);
+  let f;
+  try {
+    f = await invoke('office_status');
+  } catch (e) {
+    $('lo-status').textContent = t('lo.status_err', { err: e });
+    return;
+  }
+  const state = f.downloading ? 'downloading' : f.ready ? 'ready' : f.error ? 'error' : 'missing';
+  $('lo').dataset.state = state;
+  const pct = Math.round(f.percent || 0);
+  $('lo-status').textContent = state === 'downloading' ? t('lo.downloading')
+    : state === 'ready' ? t(f.source === 'system' ? 'lo.system' : 'lo.ready')
+    : state === 'error' ? t('ff.failed', { err: f.error })
+    : t('lo.missing');
+  $('lo-bar').hidden = $('lo-pct').hidden = state !== 'downloading';
+  $('lo-bar').style.setProperty('--p', pct / 100);
+  $('lo-bar').setAttribute('aria-valuenow', pct);
+  $('lo-pct').textContent = t('pct', { n: pct });
+  $('lo-get').hidden = state === 'downloading' || state === 'ready';
+  $('lo-get').querySelector('span').textContent = t(state === 'error' ? 'ff.retry' : 'lo.get');
+  $('lo-del').hidden = !(state === 'ready' && f.source === 'own');
+  if (f.downloading) loTimer = setTimeout(refreshOffice, 1000);
+}
+
 function bind() {
   tabs.forEach((t, i) => (t.onclick = () => select(i)));
   $('tabs').onkeydown = tabKeys;
@@ -700,6 +730,25 @@ function bind() {
     }
     refreshFfmpeg();
   };
+  $('lo-get').onclick = async () => {
+    try {
+      await invoke('office_download');
+    } catch (e) {
+      showError(t('err.dl_start', { err: e }));
+    }
+    refreshOffice();
+  };
+  $('lo-del').onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      await invoke('office_remove');
+      toast(t('lo.removed'));
+    } catch (err) {
+      toast(t('err.action', { err }), true);
+    }
+    e.currentTarget.disabled = false;
+    refreshOffice();
+  };
   $('menu-add').onclick = (e) => menuAction('install_context_menu', 'mn.added', e.currentTarget);
   $('menu-del').onclick = (e) => menuAction('remove_context_menu', 'mn.removed', e.currentTarget);
 }
@@ -715,6 +764,7 @@ function relabel() {
   }
   tplPaint();
   refreshFfmpeg();
+  refreshOffice();
   paintNav();
   if (typeof featuresRelabel === 'function') featuresRelabel();
 }
@@ -727,6 +777,8 @@ if (T && T.event) {
     setLang(s.language);
     relabel();
   });
+  // a download finished or document support was removed
+  T.event.listen('office-changed', () => refreshOffice());
 }
 
 // sections settle in each time the window comes back from the tray
@@ -772,5 +824,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   await loadCatalog();
   refreshFfmpeg();
+  refreshOffice();
   if (typeof featuresInit === 'function') featuresInit();
 });

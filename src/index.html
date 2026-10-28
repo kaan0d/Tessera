@@ -573,6 +573,27 @@
       </div>
     </div>
     <div class="group">
+      <h2 class="group-title" data-i18n="lo.title"></h2>
+      <div class="card">
+        <div id="lo" class="row top-align" data-state="checking">
+          <span class="tile"><img src="kinds/document.svg" alt=""></span>
+          <div class="grow">
+            <div class="label-line">
+              <span class="label" data-i18n="lo.label"></span>
+              <span id="lo-pct" class="val" hidden></span>
+            </div>
+            <p id="lo-status" class="desc" role="status" data-i18n="ff.initial"></p>
+            <div id="lo-bar" class="bar" role="progressbar" data-i18n-attr="aria-label:lo.bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span></span></div>
+            <div class="actions">
+              <button type="button" id="lo-get" class="btn sm" hidden><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg><span data-i18n="lo.get"></span></button>
+              <button type="button" id="lo-del" class="btn ghost sm" hidden><span data-i18n="lo.remove"></span></button>
+            </div>
+          </div>
+        </div>
+        <p class="foot" data-i18n="lo.foot"></p>
+      </div>
+    </div>
+    <div class="group">
       <h2 class="group-title" data-i18n="cli.title"></h2>
       <div class="card">
         <div class="row top-align">

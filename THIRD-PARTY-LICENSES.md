@@ -1,7 +1,7 @@
 # Third-party licenses
 
-Tessera is MIT-licensed (see LICENSE). It is written in Rust and runs a separate FFmpeg
-program that it downloads on first use.
+Tessera is MIT-licensed (see LICENSE). It is written in Rust and runs two separate programs
+it downloads: FFmpeg (on first use) and LibreOffice (only when you ask for document support).
 
 ## FFmpeg (downloaded at runtime, not bundled)
 
@@ -21,6 +21,22 @@ The download is verified against a fixed SHA-256 before it is used. To use your 
 instead (for example a newer or custom LGPL build), replace `ffmpeg.exe` in
 `data\ffmpeg\` inside the install folder (`%LOCALAPPDATA%\Tessera` by default) with yours. Tessera uses whatever runs there and answers
 `ffmpeg -version`; if it stops working, Tessera downloads the pinned build again.
+
+## LibreOffice (downloaded on request, not bundled)
+
+LibreOffice is licensed under the Mozilla Public License 2.0 (MPL-2.0); some of its parts carry
+other free licenses, listed in its own `LICENSE.html` and `CREDITS.fodt`. Tessera does not contain
+or link LibreOffice. Only when you press Download under Settings > Advanced > Office documents
+does it download this unmodified official installer from The Document Foundation, check its
+SHA-256, and unpack it into `data\libreoffice\` inside the install folder. Help pages, interface
+translations and spelling dictionaries are left out; the license files stay. Tessera runs
+`soffice.exe --headless` as a separate process, only to convert files, with its own profile in
+`data\office-profile\`. If LibreOffice is already installed on the PC, Tessera uses that instead.
+
+- Build: LibreOffice 26.2.6 (build 26.2.6.3), `LibreOffice_26.2.6_Win_x86-64.msi`, SHA-256 `f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660`
+- Download: https://downloadarchive.documentfoundation.org/libreoffice/old/26.2.6.3/win/x86_64/
+- Source code: https://www.libreoffice.org/download/source-code/ and https://git.libreoffice.org/core
+- License text: https://www.mozilla.org/en-US/MPL/2.0/ and https://www.libreoffice.org/about-us/licenses/
 
 ## Rust
 
