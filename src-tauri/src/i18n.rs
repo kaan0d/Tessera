@@ -564,6 +564,17 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "ffmpeg could not be run",
         "ffmpeg çalıştırılamadı",
     ),
+    // document support (LibreOffice) download errors
+    (
+        "lo.unpack",
+        "Could not unpack document support: {detail}",
+        "Belge desteği açılamadı: {detail}",
+    ),
+    (
+        "lo.missing",
+        "The document support package is incomplete",
+        "Belge desteği paketi eksik",
+    ),
 ];
 
 /// Text for `key`; an unknown key comes back as itself (a test catches those).

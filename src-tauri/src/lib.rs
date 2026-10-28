@@ -10,6 +10,7 @@ pub mod history;
 pub mod i18n;
 pub mod install;
 pub mod log;
+pub mod office;
 pub mod panel;
 pub mod preset;
 pub mod queue;
@@ -1179,6 +1180,8 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
             Some(code(shell::remove().and(a)))
         }
         Cli::InstallFfmpeg => Some(install_ffmpeg_headless()),
+        Cli::InstallOffice => Some(install_office_headless()),
+        Cli::RemoveOffice => Some(i32::from(office::remove().is_err())),
         Cli::DeferFfmpeg => {
             let path = settings::settings_path();
             let mut s = settings::load_initial(&path);
@@ -1232,6 +1235,21 @@ fn install_ffmpeg_headless() -> i32 {
         let _ = settings::save_to(&path, &s);
     }
     i32::from(!ok)
+}
+
+/// `--install-office`: download document support, printing `P <percent>` lines on stdout.
+fn install_office_headless() -> i32 {
+    use std::io::Write;
+    let r = office::install(&mut |p| {
+        let mut out = std::io::stdout();
+        let _ = writeln!(out, "P {p:.1}");
+        let _ = out.flush();
+    });
+    if let Err(e) = &r {
+        log::write("error", &format!("document support download failed: {e}"));
+        eprintln!("{e}");
+    }
+    i32::from(r.is_err())
 }
 
 struct SetupState {

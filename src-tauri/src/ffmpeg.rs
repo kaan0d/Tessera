@@ -51,11 +51,11 @@ pub struct FfError {
 }
 
 impl FfError {
-    fn new(key: &'static str) -> Self {
+    pub(crate) fn new(key: &'static str) -> Self {
         Self::with(key, "")
     }
 
-    fn with(key: &'static str, detail: impl fmt::Display) -> Self {
+    pub(crate) fn with(key: &'static str, detail: impl fmt::Display) -> Self {
         FfError {
             key,
             detail: detail.to_string(),
@@ -172,6 +172,18 @@ pub(crate) fn download(
     dest: &Path,
     progress: &mut dyn FnMut(f32),
 ) -> Result<(), FfError> {
+    download_capped(url, dest, MAX_ZIP, EXPECTED_SIZE, progress)
+}
+
+/// `download` for any file: refuses more than `max` bytes; `expected` drives the progress
+/// when the server sends no length.
+pub(crate) fn download_capped(
+    url: &str,
+    dest: &Path,
+    max: u64,
+    expected: u64,
+    progress: &mut dyn FnMut(f32),
+) -> Result<(), FfError> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_connect(Some(Duration::from_secs(15)))
         .timeout_recv_response(Some(Duration::from_secs(30)))
@@ -186,11 +198,11 @@ pub(crate) fn download(
         .body()
         .content_length()
         .filter(|&n| n > 0)
-        .unwrap_or(EXPECTED_SIZE);
-    if total > MAX_ZIP {
+        .unwrap_or(expected);
+    if total > max {
         return Err(FfError::new("ff.too_big"));
     }
-    let mut body = resp.into_body().into_with_config().limit(MAX_ZIP).reader();
+    let mut body = resp.into_body().into_with_config().limit(max).reader();
     let mut out = File::create(dest).map_err(|e| FfError::with("ff.tmp", e))?;
     let mut buf = vec![0u8; 256 * 1024];
     let mut done = 0u64;
