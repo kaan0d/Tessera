@@ -2,7 +2,7 @@
 
 # Tessera
 
-**Right-click any file, pick a format, done.** Tessera is a **100% free**, open-source file converter with a **modern interface**. It lives in the Windows right-click menu, turns photos, audio, video and PDFs into the format you need, shrinks them for email or WhatsApp, and never sends a file anywhere.
+**Right-click any file, pick a format, done.** Tessera is a **100% free**, open-source file converter with a **modern interface**. It lives in the Windows right-click menu, turns photos, audio, video, PDFs and office documents into the format you need, shrinks them for email or WhatsApp, and never sends a file anywhere.
 
 - **Free, for real:** MIT licensed. No price, no subscription, no premium tier, no account, no ads, no telemetry, no admin rights.
 - **Modern interface:** a clean, fast window in dark and light, smooth motion, keyboard friendly, English and Turkish. Built for Windows 10 and 11.
@@ -33,6 +33,7 @@ Prefer a window? Drop files on it and choose there. Prefer scripts? There is a f
 ## What you can do
 
 - **Convert:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. It also reads SVG, HEIC, RAW (embedded preview) and PDF pages, and turns animated GIFs into MP4 or WebM.
+- **Office documents:** DOCX, DOC, ODT, RTF, TXT; XLSX, XLS, ODS, CSV; PPTX, PPT, ODP. Each converts to the others of its kind and to PDF, and a PDF can come back as DOCX or ODT.
 - **Shrink to a size:** "under 10 MB" or "under 2 MB" for images, video, audio and PDF. A file that already fits is copied as is when its format stays the same.
 - **Presets:** web, WhatsApp, email, Discord (all under 10 MB where it matters), strip location data, PDF, WebP, icon, Instagram, podcast. Save your own from any custom settings.
 - **Edit on the way:** resize, strip metadata, fix orientation, cut audio and video, audio bitrate, mono, GIF fps and width.
@@ -42,7 +43,7 @@ Prefer a window? Drop files on it and choose there. Prefer scripts? There is a f
 - **Stay safe:** originals are kept, output gets a new name, nothing is overwritten unless you turn it on. Every job goes into a history with undo, and any running job can be cancelled.
 - **Feel at home:** English and Turkish (follows Windows), light and dark, keyboard friendly.
 
-Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OGG, AAC and HEIC use ffmpeg, which the installer can download for you (see below).
+Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OGG, AAC and HEIC use ffmpeg, which the installer can download for you (see below). Office documents use LibreOffice as a hidden converter: download it under Settings > Advanced (about 360 MB, 700 MB on disk), or Tessera uses the one already installed.
 
 ## Install
 
@@ -68,6 +69,7 @@ tessera-cli convert photo.heic --to jpg
 tessera-cli convert scan.png --to webp --max-edge 1600 --strip
 tessera-cli convert clip.mov --to mp4 --max-size 8MB
 tessera-cli convert talk.mp4 --to mp3 --start 1:30 --end 4:00 --mono
+tessera-cli convert report.docx --to pdf
 tessera-cli preset whatsapp beach.jpg --out D:\Sent
 tessera-cli merge pdf page1.png page2.png page3.png
 tessera-cli list-presets
@@ -78,9 +80,9 @@ tessera-cli formats png
 
 ## Privacy
 
-Files never leave your computer. Tessera downloads one thing: a pinned LGPL ffmpeg build (about 170 MB, SHA-256 checked) during setup. Untick it there, or choose Later in the app, and nothing is fetched until you press Download. The update check is off until you turn it on; "Update now" then downloads the new installer from the release, checks its SHA-256 and replaces the app, keeping your settings.
+Files never leave your computer. Tessera downloads two things, both pinned and SHA-256 checked: an LGPL ffmpeg build (about 170 MB) during setup, and LibreOffice for office documents only when you press its Download button (`tessera.exe --install-office` from a script). Untick ffmpeg in setup, or choose Later in the app, and nothing is fetched until you press Download. LibreOffice runs with its own profile, macros, remote links and embedded objects switched off, and gets no shortcut or file association. The update check is off until you turn it on; "Update now" then downloads the new installer from the release, checks its SHA-256 and replaces the app, keeping your settings.
 
-On disk, in the `data` folder inside the install folder: `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
+On disk, in the `data` folder inside the install folder: `ffmpeg`, `libreoffice` and `office-profile` when downloaded, `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
 
 Everything is per user. Files: the install folder only, data included (an update from v0.1.x moves the old `%APPDATA%\Tessera` into it). Registry, all under `HKCU`: the Explorer menu keys, the uninstall entry, and optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
 
@@ -90,6 +92,7 @@ Everything is per user. Files: the install folder only, data included (an update
 - The installer is not code-signed, so SmartScreen may warn on first run.
 - A full-screen exclusive game hides the progress panel.
 - RAW files use the embedded JPEG preview, not a full demosaic.
+- Office documents convert one at a time; the first one after a start takes about 10 seconds, later ones about 2. A PDF turned into DOCX keeps the text but often not the layout.
 
 ## Built with
 
@@ -132,6 +135,7 @@ src-tauri/src/
   watch.rs  folder.rs    watch folders and folder verbs
   cli.rs  headless.rs    command-line parsing and the `tessera-cli` commands
   install.rs             the self-installer and uninstaller
+  office.rs              document support: LibreOffice download and lookup (runner in convert/office.rs)
   settings.rs  preset.rs history.rs  update.rs  log.rs  i18n.rs  ffmpeg.rs
 src-tauri/menu-icons/    one .ico per menu verb (embedded in the exe)
 ```

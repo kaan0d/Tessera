@@ -301,11 +301,18 @@ fn running_copies(targets: &[PathBuf]) -> Vec<u32> {
 }
 
 /// Stops the running copies of the app that live in `dir` (the installed exe holds its file
-/// open). Copies run from anywhere else, like a dev build, are left alone; so is this process.
+/// open), and a conversion of its document support. Copies run from anywhere else, like a dev
+/// build, are left alone; so is this process.
 fn stop_running(dir: &Path) {
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
-    let targets = [dir.join(EXE_NAME), dir.join(CLI_NAME)];
+    let office = dir.join(r"data\libreoffice\program");
+    let targets = [
+        dir.join(EXE_NAME),
+        dir.join(CLI_NAME),
+        office.join("soffice.exe"),
+        office.join("soffice.bin"),
+    ];
     let pids = running_copies(&targets);
     for pid in &pids {
         // SAFETY: the handle is opened and closed right here.
