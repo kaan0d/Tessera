@@ -63,6 +63,19 @@ pub enum Format {
     Avi,
     Webm,
     Mov,
+    // Office documents, converted by LibreOffice (`office.rs`).
+    Docx,
+    Doc,
+    Odt,
+    Rtf,
+    Txt,
+    Xlsx,
+    Xls,
+    Ods,
+    Csv,
+    Pptx,
+    Ppt,
+    Odp,
 }
 
 /// Raster formats that work as source and target.
@@ -92,6 +105,18 @@ const VIDEO: [Format; 5] = [
     Format::Webm,
     Format::Mov,
 ];
+/// Office families: any member converts to any other member and to PDF.
+const TEXT: [Format; 5] = [
+    Format::Docx,
+    Format::Doc,
+    Format::Odt,
+    Format::Rtf,
+    Format::Txt,
+];
+const SHEETS: [Format; 4] = [Format::Xlsx, Format::Xls, Format::Ods, Format::Csv];
+const SLIDES: [Format; 3] = [Format::Pptx, Format::Ppt, Format::Odp];
+/// Editable text recovered from a PDF (LibreOffice's PDF import; layout often breaks).
+const FROM_PDF_TEXT: [Format; 2] = [Format::Docx, Format::Odt];
 /// Targets for a video source: other containers, GIF, and audio extraction.
 const FROM_VIDEO: [Format; 6] = [
     Format::Gif,
@@ -127,6 +152,18 @@ impl Format {
             "avi" => Format::Avi,
             "webm" => Format::Webm,
             "mov" => Format::Mov,
+            "docx" => Format::Docx,
+            "doc" => Format::Doc,
+            "odt" => Format::Odt,
+            "rtf" => Format::Rtf,
+            "txt" => Format::Txt,
+            "xlsx" => Format::Xlsx,
+            "xls" => Format::Xls,
+            "ods" => Format::Ods,
+            "csv" => Format::Csv,
+            "pptx" => Format::Pptx,
+            "ppt" => Format::Ppt,
+            "odp" => Format::Odp,
             _ => return None,
         })
     }
@@ -156,6 +193,18 @@ impl Format {
             Format::Avi => "avi",
             Format::Webm => "webm",
             Format::Mov => "mov",
+            Format::Docx => "docx",
+            Format::Doc => "doc",
+            Format::Odt => "odt",
+            Format::Rtf => "rtf",
+            Format::Txt => "txt",
+            Format::Xlsx => "xlsx",
+            Format::Xls => "xls",
+            Format::Ods => "ods",
+            Format::Csv => "csv",
+            Format::Pptx => "pptx",
+            Format::Ppt => "ppt",
+            Format::Odp => "odp",
         }
     }
 
@@ -168,13 +217,18 @@ impl Format {
         VIDEO.contains(&self)
     }
 
+    /// Word processor, spreadsheet and presentation files (LibreOffice). PDF is not one.
+    pub fn is_office(self) -> bool {
+        TEXT.contains(&self) || SHEETS.contains(&self) || SLIDES.contains(&self)
+    }
+
     /// "image" | "audio" | "video" | "document"
     pub fn kind(self) -> &'static str {
         if self.is_image() {
             "image"
         } else if self.is_video() {
             "video"
-        } else if self == Format::Pdf {
+        } else if self == Format::Pdf || self.is_office() {
             "document"
         } else {
             "audio"
@@ -182,7 +236,7 @@ impl Format {
     }
 
     /// Every output format (what the settings grid lists). Source-only formats are not here.
-    pub const ALL: [Format; 19] = [
+    pub const ALL: [Format; 31] = [
         Format::Png,
         Format::Jpg,
         Format::Webp,
@@ -202,6 +256,18 @@ impl Format {
         Format::Avi,
         Format::Webm,
         Format::Mov,
+        Format::Docx,
+        Format::Doc,
+        Format::Odt,
+        Format::Rtf,
+        Format::Txt,
+        Format::Xlsx,
+        Format::Xls,
+        Format::Ods,
+        Format::Csv,
+        Format::Pptx,
+        Format::Ppt,
+        Format::Odp,
     ];
 }
 
@@ -454,6 +520,11 @@ pub fn uses_ffmpeg(src: Format, target: Format) -> bool {
     src.is_video() || matches!(src, Format::Heic | Format::Avif) || needs_ffmpeg(target)
 }
 
+/// True when LibreOffice does the conversion: an office source, or a PDF read back as text.
+pub fn uses_office(src: Format, target: Format) -> bool {
+    src.is_office() || target.is_office()
+}
+
 /// Targets offered for a source extension (empty if the extension is unknown).
 /// Includes ffmpeg-only targets; filter with `uses_ffmpeg` when ffmpeg is missing.
 pub fn supported_targets(ext: &str) -> Vec<Format> {
@@ -468,7 +539,13 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
     } else if src.is_image() {
         (&IMAGES, &pdf)
     } else if src == Format::Pdf {
-        (&IMAGES, &[])
+        (&IMAGES, &FROM_PDF_TEXT)
+    } else if TEXT.contains(&src) {
+        (&TEXT, &pdf)
+    } else if SHEETS.contains(&src) {
+        (&SHEETS, &pdf)
+    } else if SLIDES.contains(&src) {
+        (&SLIDES, &pdf)
     } else if src.is_video() {
         (&VIDEO, &FROM_VIDEO)
     } else {
@@ -482,13 +559,14 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
         .collect()
 }
 
-/// `supported_targets` plus same-format output for every writable format except PDF when
+/// `supported_targets` plus same-format output for every writable format except PDF and office when
 /// the job transforms the file (resize, size limit, strip), which is how "shrink this JPEG"
 /// or "email under 10 MB" works. Audio and video go through a re-encode.
 pub fn allows(ext: &str, from: Format, target: Format, opts: &Options) -> bool {
     supported_targets(ext).contains(&target)
         || (target == from
             && from != Format::Pdf
+            && !from.is_office()
             && Format::ALL.contains(&from)
             && opts.transforms())
 }
@@ -506,6 +584,9 @@ pub fn convert(
     let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
     if !allows(ext, from, target, opts) {
         return Err(ConvertError::Unsupported);
+    }
+    if uses_office(from, target) {
+        return Err(ConvertError::NeedsOffice);
     }
     if uses_ffmpeg(from, target) || opts.ffmpeg_only(from) {
         return Err(ConvertError::NeedsFfmpeg);
@@ -613,5 +694,40 @@ mod gif_video_tests {
         assert!(!supported_targets("png").contains(&Format::Mp4));
         assert!(uses_ffmpeg(Format::Gif, Format::Mp4));
         assert!(!uses_ffmpeg(Format::Gif, Format::Png));
+    }
+}
+
+#[cfg(test)]
+mod office_tests {
+    use super::*;
+
+    #[test]
+    fn office_files_convert_inside_their_family_and_to_pdf() {
+        use Format::*;
+        assert_eq!(supported_targets("DOCX"), vec![Doc, Odt, Rtf, Txt, Pdf]);
+        assert_eq!(supported_targets("csv"), vec![Xlsx, Xls, Ods, Pdf]);
+        assert_eq!(supported_targets("odp"), vec![Pptx, Ppt, Pdf]);
+        // no word processor to spreadsheet and the like
+        assert!(!supported_targets("docx").contains(&Xlsx));
+        assert!(!supported_targets("xlsx").contains(&Png));
+    }
+
+    #[test]
+    fn pdf_reads_back_as_text_through_office() {
+        let t = supported_targets("pdf");
+        assert!(t.contains(&Format::Docx) && t.contains(&Format::Odt) && t.contains(&Format::Png));
+        assert!(uses_office(Format::Pdf, Format::Docx));
+        assert!(!uses_office(Format::Pdf, Format::Png));
+        assert!(!uses_office(Format::Png, Format::Pdf));
+        assert!(uses_office(Format::Xls, Format::Pdf));
+        assert!(!uses_ffmpeg(Format::Docx, Format::Pdf));
+        assert_eq!(Format::Pptx.kind(), "document");
+    }
+
+    #[test]
+    fn office_files_are_never_rewritten_to_the_same_format() {
+        let shrink = Options::default().max_bytes(1000);
+        assert!(!allows("docx", Format::Docx, Format::Docx, &shrink));
+        assert!(allows("jpg", Format::Jpg, Format::Jpg, &shrink));
     }
 }

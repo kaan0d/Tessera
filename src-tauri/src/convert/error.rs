@@ -27,6 +27,8 @@ pub enum ConvertError {
     /// Password-protected document.
     Protected,
     NeedsFfmpeg,
+    /// Office documents need the LibreOffice download first.
+    NeedsOffice,
     Cancelled,
     Encode(String),
     Io(String),
@@ -69,6 +71,7 @@ impl ConvertError {
             E::TargetSize => plain("ce.target_size"),
             E::Protected => plain("ce.protected"),
             E::NeedsFfmpeg => plain("ce.needs_ffmpeg"),
+            E::NeedsOffice => plain("ce.needs_office"),
             E::Cancelled => plain("ce.cancelled"),
             E::Encode(d) => with("ce.encode", d),
             E::Io(d) => with("ce.io", d),
@@ -140,6 +143,7 @@ mod tests {
             ConvertError::TargetSize,
             ConvertError::Protected,
             ConvertError::NeedsFfmpeg,
+            ConvertError::NeedsOffice,
             ConvertError::Cancelled,
             ConvertError::Encode("x".into()),
             ConvertError::Io("x".into()),

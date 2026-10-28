@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn images_get_image_targets_presets_and_pdf_merge() {
-        let c = choices(&p(&["a.png", "b.JPG", "c.txt"]), &ready());
+        let c = choices(&p(&["a.png", "b.JPG", "c.exe"]), &ready());
         assert_eq!((c.count, c.skipped), (2, 1));
         assert_eq!(c.kinds, ["image"]);
         // a file already in the target format is skipped in that run, so both stay on offer
@@ -216,7 +216,7 @@ mod tests {
         assert!(c.targets.is_empty() && c.merge.is_empty());
         // but presets still apply to the file they fit
         assert!(c.preset_ids.contains(&"web".to_string()));
-        let none = choices(&p(&["x.txt"]), &ready());
+        let none = choices(&p(&["x.exe"]), &ready());
         assert_eq!((none.count, none.skipped), (0, 1));
         assert!(none.targets.is_empty() && none.kinds.is_empty());
     }
@@ -285,7 +285,7 @@ mod tests {
     fn collect_keeps_files_expands_folders_and_dedups() {
         let d = tempfile::tempdir().unwrap();
         let r = d.path();
-        for n in ["a.png", "b.mp3", "c.txt"] {
+        for n in ["a.png", "b.mp3", "c.exe"] {
             std::fs::write(r.join(n), b"x").unwrap();
         }
         std::fs::create_dir(r.join("sub")).unwrap();
@@ -300,7 +300,7 @@ mod tests {
             .iter()
             .map(|f| f.file_name().unwrap().to_string_lossy().to_lowercase())
             .collect();
-        // the folder adds its convertible direct files (no c.txt, no sub/deep.png)
+        // the folder adds its convertible direct files (no c.exe, no sub/deep.png)
         assert_eq!(names, ["a.png", "b.mp3"]);
     }
 }

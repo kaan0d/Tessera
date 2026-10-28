@@ -790,7 +790,10 @@ mod tests {
         fs::write(old.join("ffmpeg").join("ffmpeg.exe"), "x").unwrap();
         move_tree(&old, &new).unwrap();
         assert!(!old.exists());
-        assert_eq!(fs::read_to_string(new.join("settings.json")).unwrap(), "old");
+        assert_eq!(
+            fs::read_to_string(new.join("settings.json")).unwrap(),
+            "old"
+        );
         assert!(new.join("ffmpeg").join("ffmpeg.exe").is_file());
 
         // an entry already in the new folder wins and keeps the old folder in place

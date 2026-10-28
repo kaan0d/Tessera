@@ -547,6 +547,8 @@ struct CatalogTarget {
     ext: &'static str,
     kind: &'static str,
     needs_ffmpeg: bool,
+    /// Office formats: written by LibreOffice, which is downloaded on request.
+    needs_office: bool,
     /// Works without ffmpeg, but is lossy (better and smaller) once it is installed: WebP.
     better_with_ffmpeg: bool,
 }
@@ -576,6 +578,7 @@ fn get_catalog() -> Catalog {
                 ext: f.ext(),
                 kind: f.kind(),
                 needs_ffmpeg: convert::needs_ffmpeg(*f),
+                needs_office: f.is_office(),
                 better_with_ffmpeg: *f == convert::Format::Webp,
             })
             .collect(),

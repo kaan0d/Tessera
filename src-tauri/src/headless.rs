@@ -686,7 +686,7 @@ mod more_cli_tests {
     #[test]
     fn folders_and_globs_expand_to_files() {
         let d = tempfile::tempdir().unwrap();
-        for n in ["a.png", "b.jpg", "c.txt"] {
+        for n in ["a.png", "b.jpg", "c.exe"] {
             std::fs::write(d.path().join(n), b"x").unwrap();
         }
         std::fs::create_dir(d.path().join("sub")).unwrap();

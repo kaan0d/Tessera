@@ -455,6 +455,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "This conversion needs ffmpeg. Install it under Settings > Advanced.",
         "Bu dönüşüm için ffmpeg gerekiyor. Ayarlar > Gelişmiş bölümünden kurun.",
     ),
+    (
+        "ce.needs_office",
+        "Office documents need document support. Download it under Settings > Advanced.",
+        "Ofis belgeleri için belge desteği gerekiyor. Ayarlar > Gelişmiş bölümünden indirin.",
+    ),
     ("ce.cancelled", "Cancelled", "İptal edildi"),
     (
         "ce.encode",
