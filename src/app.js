@@ -75,7 +75,7 @@ function select(i, focus) {
   p.classList.add('in');
   cur = i;
   paintNav();
-  $('main').scrollTo(0, 0);
+  document.querySelector('.content').scrollTo(0, 0);
   if (typeof onSection === 'function') onSection(tabs[i].id);
 }
 

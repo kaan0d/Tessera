@@ -68,8 +68,9 @@ body.settings{
 }
 /* two columns: a quiet sidebar of sections, the chosen section scrolls on the right */
 .shell{display:grid;grid-template-columns:212px minmax(0,1fr);height:100vh}
-main{height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
-.content{padding:4px var(--s5) var(--s6);display:flex;flex-direction:column;gap:var(--s4)}
+main{height:100vh;display:flex;flex-direction:column;overflow:hidden;timeline-scope:--pane}
+.content{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;scroll-timeline:--pane;
+  padding:4px var(--s5) var(--s6);display:flex;flex-direction:column;gap:var(--s4)}
 
 /* sidebar: brand, then the sections; the chosen row sits on a paper thumb that slides between rows */
 .side{display:flex;flex-direction:column;gap:14px;min-height:0;padding:16px 10px 12px 12px;
@@ -91,11 +92,11 @@ main{height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
 .nav>button:focus-visible{outline-offset:-2px;border-radius:var(--r-md)}
 .nav-group{font-size:var(--t-xs);font-weight:600;color:var(--muted);opacity:1;padding:12px 12px 4px}
 
-/* sticky section header: title + one line; a hairline settles in once content scrolls under it */
-.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:var(--s3);padding:18px var(--s5) 14px;
-  background:transparent;
-  border-bottom:1px solid transparent;animation:lift linear both;animation-timeline:scroll();animation-range:0 28px}
-@keyframes lift{to{background:color-mix(in srgb,var(--ground) 94%,transparent);backdrop-filter:blur(24px) saturate(1.4);border-bottom-color:var(--line);box-shadow:0 10px 24px -18px rgba(10,30,26,.35)}}
+/* section header above the scrolling content: title + one line; a hairline settles in once the content scrolls */
+.top{position:relative;z-index:5;flex:none;display:flex;align-items:center;gap:var(--s3);padding:18px var(--s5) 14px;
+  background:var(--ground);
+  border-bottom:1px solid transparent;animation:lift linear both;animation-timeline:--pane;animation-range:0 28px}
+@keyframes lift{to{border-bottom-color:var(--line);box-shadow:0 10px 24px -18px rgba(10,30,26,.35)}}
 .pane-title{font-family:var(--font-display);font-size:var(--t-xl);font-weight:600;letter-spacing:-.01em;line-height:1.2}
 .pane-desc{font-size:var(--t-sm);color:var(--muted);margin-top:1px}
 
@@ -324,7 +325,6 @@ input[type=radio]:checked::after{scale:1}
 .bar>span{display:block;height:100%;border-radius:inherit;background:var(--accent);transform-origin:left;scale:var(--p) 1;transition:scale var(--d4) var(--ease)}
 
 /* ffmpeg status component */
-.ff .btn{margin-top:var(--s3)}
 .ff-status{transition:color var(--d2)}
 .ff[data-state=error] .ff-status{color:var(--danger)}
 .ff[data-state=ready] .ff-status{color:var(--ink)}
@@ -721,7 +721,6 @@ html:not([lang=tr]) .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 }
 @media (prefers-reduced-transparency:reduce){
   .backdrop{backdrop-filter:none;background:rgba(0,0,0,.55)}
-  .top{background:var(--ground);backdrop-filter:none}
   .side{background:var(--ground-2)}
   .p-card{--acrylic:var(--surface);backdrop-filter:none}
 }
@@ -1013,13 +1012,13 @@ kbd{font-size:12px}
 #p-hint{justify-content:space-between;gap:12px}
 #p-hint .link{flex:none}
 
-@media (prefers-reduced-motion:reduce){.top{animation:none;background:transparent;border-bottom-color:transparent}}
+@media (prefers-reduced-motion:reduce){.top{animation:none;border-bottom-color:transparent}}
 
 #error .btn{flex:none;align-self:center}
 #error .btn:first-of-type{margin-left:auto}
 
-/* the settings scrollbar starts under the window buttons, not behind them */
-main::-webkit-scrollbar-track{margin:52px 0 8px}
+/* the settings scrollbar keeps clear of the window's bottom corner */
+.content::-webkit-scrollbar-track{margin:0 0 8px}
 
 /* history search sits between the header and the list */
 .hist-search{display:flex;margin:0 0 10px}
