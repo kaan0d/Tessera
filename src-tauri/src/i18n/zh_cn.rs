@@ -85,7 +85,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("drop.custom_name", "自定义设置"),
     ("menu.custom", "自定义设置..."),
     ("cmd.autostart", "无法更改启动设置：{err}"),
-    ("cmd.menu_save", "无法保存上下文菜单：{err}"),
+    ("cmd.menu_save", "无法注册上下文菜单：{err}"),
     ("cmd.menu_remove", "无法移除上下文菜单：{err}"),
     ("cmd.save", "无法保存设置：{err}"),
     ("cmd.export", "无法导出设置：{err}"),

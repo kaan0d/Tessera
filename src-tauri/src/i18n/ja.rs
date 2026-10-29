@@ -85,7 +85,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("drop.custom_name", "カスタム設定"),
     ("menu.custom", "カスタム設定..."),
     ("cmd.autostart", "起動の設定を変更できませんでした: {err}"),
-    ("cmd.menu_save", "コンテキスト メニューを保存できませんでした: {err}"),
+    ("cmd.menu_save", "コンテキスト メニューを登録できませんでした: {err}"),
     ("cmd.menu_remove", "コンテキスト メニューを削除できませんでした: {err}"),
     ("cmd.save", "設定を保存できませんでした: {err}"),
     ("cmd.export", "設定をエクスポートできませんでした: {err}"),
