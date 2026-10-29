@@ -265,7 +265,8 @@ fn ignored_flags(a: &ConvertArgs) -> Vec<String> {
     let mut v = Vec::new();
     let mut add = |on: bool, flag: &str, why: &str| {
         if on {
-            v.push(format!("--{flag} is ignored for {} ({why})", t.ext()));
+            let verb = if flag.contains(" and ") { "are" } else { "is" };
+            v.push(format!("--{flag} {verb} ignored for {} ({why})", t.ext()));
         }
     };
     add(a.mono && !av, "mono", "the result has no audio");
@@ -275,7 +276,8 @@ fn ignored_flags(a: &ConvertArgs) -> Vec<String> {
         "only video has a sound track to remove",
     );
     add(
-        (a.start.is_some() || a.end.is_some()) && !av,
+        // a GIF made from a video is cut too
+        (a.start.is_some() || a.end.is_some()) && !av && t != Format::Gif,
         "start and --end",
         "only audio and video can be cut",
     );
@@ -751,7 +753,8 @@ fn convert_one(
         convert(path, target, opts, progress)
     };
     r.map_err(|e| match e {
-        crate::convert::ConvertError::TargetSize => {
+        // only pictures and video get smaller with a smaller frame
+        crate::convert::ConvertError::TargetSize if target.is_image() || target.is_video() => {
             format!("{} (or add a smaller --max-edge)", e.message(lang))
         }
         e => e.message(lang),
