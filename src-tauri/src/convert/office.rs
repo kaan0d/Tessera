@@ -317,6 +317,9 @@ pub fn convert_with_office(
         return Err(ConvertError::Unsupported);
     }
     check_magic(&src, from)?;
+    if from == Format::Pdf {
+        super::pdf_edit::check_intact(&src)?;
+    }
     let dest = output::plan(&src, target.ext(), &opts.output)?;
     progress(0.0);
 

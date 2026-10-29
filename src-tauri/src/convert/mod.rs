@@ -607,6 +607,9 @@ pub fn convert(
     }
 
     opts.check_cancel()?;
+    if from == Format::Pdf {
+        pdf_edit::check_intact(&src)?;
+    }
     if from == Format::Pdf && target.is_image() {
         let dest = pages_to_images(&src, &src, target, opts, &mut progress)?;
         // a folder of pages is no replacement; one page is a normal conversion

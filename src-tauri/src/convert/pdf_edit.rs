@@ -32,6 +32,11 @@ pub fn load_mem(bytes: &[u8]) -> Result<Document, ConvertError> {
         if doc.is_encrypted() {
             return Err(ConvertError::Protected);
         }
+        // a damaged file (broken or cut-off cross-reference table) is refused, not patched up:
+        // the result could silently miss pages
+        if doc.xref_recovery.is_some() {
+            return Err(ConvertError::Corrupt);
+        }
         if doc.get_pages().is_empty() {
             return Err(ConvertError::Corrupt);
         }
@@ -47,6 +52,11 @@ pub fn load(path: &Path) -> Result<Document, ConvertError> {
 }
 
 /// Compressed streams and object streams; the header says 1.7 since object streams need 1.5.
+/// Refuses a PDF that is damaged, locked or empty before another engine reads it.
+pub fn check_intact(path: &Path) -> Result<(), ConvertError> {
+    load(path).map(|_| ())
+}
+
 pub fn save(doc: &mut Document) -> Result<Vec<u8>, ConvertError> {
     guarded(|| {
         doc.compress();
@@ -213,6 +223,11 @@ pub(crate) mod tests {
     #[test]
     fn junk_and_empty_input_are_errors() {
         assert!(matches!(load_mem(b"not a pdf"), Err(ConvertError::Corrupt)));
+        // cut off at two thirds: the cross-reference table is gone
+        let whole = sample(3);
+        assert!(load_mem(&whole).is_ok());
+        let cut = &whole[..whole.len() * 2 / 3];
+        assert!(matches!(load_mem(cut), Err(ConvertError::Corrupt)));
         assert!(matches!(load_mem(&sample(0)), Err(ConvertError::Corrupt)));
     }
 }
