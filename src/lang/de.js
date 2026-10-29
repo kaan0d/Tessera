@@ -336,6 +336,8 @@ I18N['de'] = {
   "wa.types_more": "{list} und {n} weitere",
   "wa.recursive": "Mit Unterordnern",
   "wa.live": "Aktiv",
+  "wa.skipped": "Übersprungen: {n} · zuletzt: {name}",
+  "wa.skipped_tip": "Diese Dateien passen zur Regel, aber ihre Aktion kann sie nicht konvertieren (zum Beispiel eine Vorlage für einen anderen Dateityp).",
   "wa.enable_aria": "Regel für {name}",
   "wa.edit_aria": "Regel für {name} bearbeiten",
   "wa.del_aria": "Regel für {name} löschen",

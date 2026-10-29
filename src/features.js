@@ -515,6 +515,12 @@ function ruleCard(r, i) {
   tag('i-arrow', outText(r.output));
   main.append(name, path, tags);
   if (err) main.append(el('p', 'h-msg err', err));
+  const sk = watch.skips && watch.skips[r.id];
+  if (sk && sk.count) {
+    const p = el('p', 'h-msg warn', t('wa.skipped', { n: sk.count, name: sk.last }));
+    p.title = t('wa.skipped_tip');
+    main.append(p);
+  }
   else if (watch.enabled && r.enabled && st) {
     const ok = el('p', 'r-live');
     ok.append(icon('i-eye', 'ic tiny'), t('wa.live'));
@@ -563,7 +569,7 @@ async function loadWatch() {
 async function saveWatch(next, fromDialog) {
   try {
     const w = await invoke('set_watch', { watch: { enabled: next.enabled, rules: next.rules } });
-    watch = { ...w, status: watch.status };
+    watch = { ...w, status: watch.status, skips: watch.skips };
     banner('wa-err', '');
     try {
       watch.status = (await invoke('get_watch')).status;
@@ -964,6 +970,7 @@ function featuresInit() {
   $('upd-banner-x').onclick = () => ($('upd-banner').hidden = true);
   if (T && T.event) {
     T.event.listen('history-changed', loadHistory);
+    T.event.listen('watch-changed', loadWatch);
     T.event.listen('update-available', (e) => updateBanner(e.payload));
     // built-in preset names and watch errors are written by the backend in its language.
     // ponytail: it restarts the watchers right after announcing the language; the short wait picks up their new status

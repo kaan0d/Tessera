@@ -333,6 +333,8 @@ I18N['zh-CN'] = {
   "wa.types_more": "{list} 及另外 {n} 种",
   "wa.recursive": "包括子文件夹",
   "wa.live": "正在监视",
+  "wa.skipped": "已跳过：{n} · 最近：{name}",
+  "wa.skipped_tip": "这些文件符合规则，但规则的操作无法转换它们（例如为其他文件类型制作的预设）。",
   "wa.enable_aria": "{name} 的规则",
   "wa.edit_aria": "编辑 {name} 的规则",
   "wa.del_aria": "删除 {name} 的规则",

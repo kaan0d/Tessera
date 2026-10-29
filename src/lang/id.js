@@ -333,6 +333,8 @@ I18N['id'] = {
   "wa.types_more": "{list} dan {n} lainnya",
   "wa.recursive": "Dengan subfolder",
   "wa.live": "Memantau",
+  "wa.skipped": "Dilewati: {n} · terakhir: {name}",
+  "wa.skipped_tip": "File ini cocok dengan aturan, tetapi tindakannya tidak bisa mengonversinya (misalnya prasetel untuk jenis file lain).",
   "wa.enable_aria": "Aturan untuk {name}",
   "wa.edit_aria": "Edit aturan untuk {name}",
   "wa.del_aria": "Hapus aturan untuk {name}",

@@ -84,6 +84,8 @@ struct AppState {
     office_download: Arc<Download>,
     merges: Arc<Mutex<Collector>>,
     watcher: Mutex<Option<watch::Running>>,
+    /// Files a watch rule saw but could not convert (its action does not fit them), per rule.
+    watch_skips: Mutex<std::collections::HashMap<String, WatchSkips>>,
     /// Files the chooser window currently shows (it reads them on load; the event can be early).
     dropped: Mutex<Vec<PathBuf>>,
     /// The chooser was opened by the "Custom settings" verb: it starts on its custom page.
@@ -530,6 +532,15 @@ struct WatchInfo {
     #[serde(flatten)]
     watch: watch::Watch,
     status: Vec<watch::RuleStatus>,
+    /// Rule id -> files skipped since the app started.
+    skips: std::collections::HashMap<String, WatchSkips>,
+}
+
+/// How many files a rule skipped and the name of the last one.
+#[derive(Serialize, Clone, Default)]
+struct WatchSkips {
+    count: u32,
+    last: String,
 }
 
 fn watch_info(app: &AppHandle) -> WatchInfo {
@@ -542,7 +553,12 @@ fn watch_info(app: &AppHandle) -> WatchInfo {
         .as_ref()
         .map(|r| r.status.clone())
         .unwrap_or_default();
-    WatchInfo { watch, status }
+    let skips = state.watch_skips.lock().unwrap().clone();
+    WatchInfo {
+        watch,
+        status,
+        skips,
+    }
 }
 
 /// (Re)starts the folder watchers from the saved settings. Pending files are dropped.
@@ -569,6 +585,16 @@ fn enqueue_watch(app: &AppHandle, rule: &watch::WatchRule, path: PathBuf) {
     let state = app.state::<AppState>();
     let s = state.settings.lock().unwrap().clone();
     let Some((target, opts)) = watch::plan_job(rule, &path, &s) else {
+        // the rule matched the file but its action cannot make anything of it: say so in Settings
+        let name = path
+            .file_name()
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+        let mut skips = state.watch_skips.lock().unwrap();
+        let e = skips.entry(rule.id.clone()).or_default();
+        e.count += 1;
+        e.last = name;
+        drop(skips);
+        let _ = app.emit("watch-changed", ());
         return;
     };
     let folder = Path::new(&rule.folder)
@@ -1622,6 +1648,7 @@ pub fn run() {
                 office_download: Arc::default(),
                 merges: Arc::new(Mutex::new(Collector::new(batch::QUIET_MS))),
                 watcher: Mutex::new(None),
+                watch_skips: Mutex::default(),
                 dropped: Mutex::new(vec![]),
                 drop_custom: std::sync::atomic::AtomicBool::new(false),
                 customs: Arc::default(),

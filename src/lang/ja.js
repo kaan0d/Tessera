@@ -333,6 +333,8 @@ I18N['ja'] = {
   "wa.types_more": "{list} ほか {n} 種類",
   "wa.recursive": "サブフォルダーを含む",
   "wa.live": "監視中",
+  "wa.skipped": "スキップ: {n} 件 · 最新: {name}",
+  "wa.skipped_tip": "これらのファイルはルールに一致しましたが、ルールの操作では変換できません (別のファイルの種類用のプリセットなど)。",
   "wa.enable_aria": "{name} のルール",
   "wa.edit_aria": "{name} のルールを編集",
   "wa.del_aria": "{name} のルールを削除",

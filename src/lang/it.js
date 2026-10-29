@@ -336,6 +336,8 @@ I18N['it'] = {
   "wa.types_more": "{list} e altri {n}",
   "wa.recursive": "Con sottocartelle",
   "wa.live": "Monitoraggio attivo",
+  "wa.skipped": "Ignorati: {n} · ultimo: {name}",
+  "wa.skipped_tip": "Questi file corrispondono alla regola, ma la sua azione non può convertirli (per esempio un preset per un altro tipo di file).",
   "wa.enable_aria": "Regola per {name}",
   "wa.edit_aria": "Modifica la regola per {name}",
   "wa.del_aria": "Elimina la regola per {name}",

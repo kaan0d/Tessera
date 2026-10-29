@@ -336,6 +336,8 @@ I18N['pt-BR'] = {
   "wa.types_more": "{list} e mais {n}",
   "wa.recursive": "Com subpastas",
   "wa.live": "Monitorando",
+  "wa.skipped": "Ignorados: {n} · último: {name}",
+  "wa.skipped_tip": "Esses arquivos atendem à regra, mas a ação dela não consegue convertê-los (por exemplo, uma predefinição feita para outro tipo de arquivo).",
   "wa.enable_aria": "Regra para {name}",
   "wa.edit_aria": "Editar regra para {name}",
   "wa.del_aria": "Excluir regra para {name}",

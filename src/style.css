@@ -446,6 +446,7 @@ input[type=radio]:checked::after{scale:1}
 .h-msg{font-size:var(--t-xs);margin-top:4px;line-height:1.35}
 .h-msg.err{color:var(--danger)}
 .h-msg.ok{color:var(--accent)}
+.h-msg.warn{color:var(--warn-ink)}
 .h-acts{display:flex;align-items:center;gap:4px;flex:none}
 .btn.undo{min-height:28px;padding:0 10px 0 8px}
 @media (hover:hover){.btn.undo:hover .ic{rotate:-40deg}}

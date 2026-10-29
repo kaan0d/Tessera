@@ -336,6 +336,8 @@ I18N['fr'] = {
   "wa.types_more": "{list} et {n} de plus",
   "wa.recursive": "Avec les sous-dossiers",
   "wa.live": "Surveillance",
+  "wa.skipped": "Ignorés : {n} · dernier : {name}",
+  "wa.skipped_tip": "Ces fichiers correspondent à la règle, mais son action ne peut pas les convertir (par exemple un préréglage prévu pour un autre type de fichier).",
   "wa.enable_aria": "Règle pour {name}",
   "wa.edit_aria": "Modifier la règle pour {name}",
   "wa.del_aria": "Supprimer la règle pour {name}",

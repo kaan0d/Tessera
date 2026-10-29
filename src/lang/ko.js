@@ -333,6 +333,8 @@ I18N['ko'] = {
   "wa.types_more": "{list} 외 {n}개",
   "wa.recursive": "하위 폴더 포함",
   "wa.live": "감시 중",
+  "wa.skipped": "건너뜀: {n}개 · 마지막: {name}",
+  "wa.skipped_tip": "이 파일들은 규칙과 일치했지만 규칙의 작업으로 변환할 수 없습니다(예: 다른 파일 형식용 사전 설정).",
   "wa.enable_aria": "{name} 규칙",
   "wa.edit_aria": "{name} 규칙 편집",
   "wa.del_aria": "{name} 규칙 삭제",
