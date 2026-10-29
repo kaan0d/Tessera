@@ -228,11 +228,28 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
     for w in ignored_flags(&a) {
         err(&format!("warning: {w}"));
     }
-    let files = expand_inputs(&a.files, a.recursive);
+    let mut files = expand_inputs(&a.files, a.recursive);
+    // with --out inside an input folder, earlier results must not be converted again
+    let out_dir = a.out.as_ref().and_then(|d| std::fs::canonicalize(d).ok());
+    if let Some(o) = &out_dir {
+        files.retain(|f| std::fs::canonicalize(f).map_or(true, |c| !c.starts_with(o)));
+    }
     if files.is_empty() {
         err("error: no files matched");
         return EXIT_USAGE;
     }
+    // --recursive into --out keeps each file's sub-folder under the out folder
+    let sub_dirs: std::collections::HashMap<PathBuf, PathBuf> = match (&a.out, a.recursive) {
+        (Some(out), true) => files
+            .iter()
+            .filter_map(|f| {
+                let root = a.files.iter().find(|d| d.is_dir() && f.starts_with(d))?;
+                let rel = f.parent()?.strip_prefix(root).ok()?;
+                (!rel.as_os_str().is_empty()).then(|| (f.clone(), out.join(rel)))
+            })
+            .collect(),
+        _ => Default::default(),
+    };
     let target = a.target;
     let style = Style {
         dry_run: a.dry_run,
@@ -246,14 +263,37 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
                 "no file extension: add one (like .png) so Tessera can tell the format".into(),
             );
         };
-        if Format::from_ext(ext) == Some(target) && !opts.transforms() {
+        if Format::from_ext(ext) == Some(target) && !opts.transforms() && content_is(path, target) {
             return Err(format!(
                 "already {}: nothing to convert (add --strip, --max-edge, --percent or --max-size to change it)",
                 target.ext().to_uppercase()
             ));
         }
-        Ok((target, opts.clone()))
+        let mut o = opts.clone();
+        // a misnamed picture is written for real in the format its name promises
+        o.recode |= Format::from_ext(ext) == Some(target);
+        if let Some(d) = sub_dirs.get(path) {
+            o.output.dir = OutDir::Fixed(d.clone());
+        }
+        Ok((target, o))
     })
+}
+
+/// The bytes of a picture really are `target` (a PNG named .jpg is not "already JPG").
+/// Unreadable bytes are no match either: the conversion then reports the file as damaged.
+fn content_is(path: &Path, target: Format) -> bool {
+    if !target.is_image() {
+        return true;
+    }
+    let guessed = image::ImageReader::open(path)
+        .and_then(|r| r.with_guessed_format())
+        .ok()
+        .and_then(|r| r.format());
+    match (guessed, image::ImageFormat::from_extension(target.ext())) {
+        (Some(g), Some(t)) => g == t,
+        (None, Some(_)) => false,
+        _ => true,
+    }
 }
 
 /// Flags the chosen target cannot use: not an error, but silence would mislead.
