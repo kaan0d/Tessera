@@ -112,6 +112,7 @@ fn set_ffmpeg_ready(app: &AppHandle, ready: bool) {
     s.ffmpeg_ready = ready;
     let _ = shell::install(&s);
     let _ = settings::save_to(&settings::settings_path(), &s);
+    let _ = app.emit("ffmpeg-changed", ready);
 }
 
 /// Downloads ffmpeg on a background thread; no-op while one is already running.

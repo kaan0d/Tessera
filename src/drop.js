@@ -211,8 +211,9 @@ function buildPdf() {
 }
 
 function paintHead() {
-  const n = opts ? opts.count : files.length;
-  const kinds = opts ? opts.kinds : [];
+  // every dropped file counts in the title; a kind word only fits when none were skipped
+  const n = files.length;
+  const kinds = opts && !opts.skipped ? opts.kinds : [];
   const single = files.length === 1;
   $('dr-title').textContent = !files.length ? t('dr.waiting')
     : single ? fileName(files[0])
@@ -295,6 +296,20 @@ async function load(payload) {
   intro();
   $('dr-body').scrollTop = 0;
   if (first && !customOpen) first.focus({ preventScroll: true });
+}
+
+/** Asks again what the current files can become (ffmpeg or LibreOffice arrived) and redraws. */
+async function refreshOptions() {
+  if (!files.length || busy) return;
+  try {
+    const [o, s] = await Promise.all([invoke('get_drop_options', { files }), invoke('get_settings')]);
+    opts = o;
+    (ffReady = !!s.ffmpeg_ready), (st = s);
+    render();
+    if (customOpen) (buildCustom(), syncCustom());
+  } catch (e) {
+    // the old choices stay; the user can still pick one
+  }
 }
 
 /* ---------- choosing ---------- */
@@ -444,6 +459,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (T && T.event) {
     T.event.listen('drop-files', (e) => load(e.payload));
     T.event.listen('language-changed', (e) => (setLang(e.payload), relabel()));
+    // a download that finishes while the chooser is open unlocks its formats
+    T.event.listen('ffmpeg-changed', refreshOptions);
+    T.event.listen('office-changed', refreshOptions);
   }
   dragDrop();
   fetchFiles(20);
