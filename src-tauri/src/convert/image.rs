@@ -152,12 +152,51 @@ fn encode_job(
 ) -> Result<(), ConvertError> {
     if let (Format::Webp, Some(ff)) = (target, opts.lossy_webp()) {
         match super::ffmpeg::encode_webp(ff, img, q, opts.cancel.as_deref()) {
-            Ok(bytes) => return Ok(w.write_all(&bytes)?),
+            Ok(bytes) => return Ok(w.write_all(&webp_with_icc(bytes, img, icc))?),
             Err(ConvertError::Cancelled) => return Err(ConvertError::Cancelled),
             Err(_) => {}
         }
     }
     encode(img, target, q, photo, icc, w)
+}
+
+/// Adds `icc` to a WebP from libwebp (which drops it) as an ICCP chunk. A simple-format file
+/// gets the VP8X header that chunk needs; anything unexpected is returned unchanged.
+fn webp_with_icc(webp: Vec<u8>, img: &DynamicImage, icc: Option<&[u8]>) -> Vec<u8> {
+    let Some(icc) = icc.filter(|p| !p.is_empty()) else {
+        return webp;
+    };
+    if webp.len() < 20 || &webp[..4] != b"RIFF" || &webp[8..12] != b"WEBP" {
+        return webp;
+    }
+    let mut out = webp[..12].to_vec();
+    let mut body = &webp[12..];
+    if &body[..4] == b"VP8X" {
+        if body.len() < 18 || body[8] & 0x20 != 0 {
+            return webp;
+        }
+        out.extend_from_slice(&body[..18]);
+        out[20] |= 0x20;
+        body = &body[18..];
+    } else {
+        let (cw, ch) = (img.width() - 1, img.height() - 1);
+        out.extend_from_slice(b"VP8X");
+        out.extend_from_slice(&10u32.to_le_bytes());
+        out.push(0x20 | if img.color().has_alpha() { 0x10 } else { 0 });
+        out.extend_from_slice(&[0; 3]);
+        out.extend_from_slice(&cw.to_le_bytes()[..3]);
+        out.extend_from_slice(&ch.to_le_bytes()[..3]);
+    }
+    out.extend_from_slice(b"ICCP");
+    out.extend_from_slice(&(icc.len() as u32).to_le_bytes());
+    out.extend_from_slice(icc);
+    if icc.len() % 2 == 1 {
+        out.push(0);
+    }
+    out.extend_from_slice(body);
+    let riff = (out.len() - 8) as u32;
+    out[4..8].copy_from_slice(&riff.to_le_bytes());
+    out
 }
 
 /// Encodes `img` as `target`; `q` is the JPEG/AVIF quality. JPEG, PNG and WebP keep `icc`.
@@ -372,6 +411,21 @@ fn flatten_on_white(img: &DynamicImage) -> RgbImage {
 #[cfg(test)]
 mod ico_tests {
     use super::*;
+
+    #[test]
+    fn webp_gets_the_icc_profile_back() {
+        use image::codecs::webp::{WebPDecoder, WebPEncoder};
+        let img = DynamicImage::ImageRgba8(image::RgbaImage::new(5, 3));
+        let mut plain = Vec::new();
+        img.write_with_encoder(WebPEncoder::new_lossless(&mut plain)).unwrap();
+        let icc = b"odd-length profile".to_vec();
+        let out = webp_with_icc(plain, &img, Some(&icc));
+        let mut d = WebPDecoder::new(Cursor::new(&out)).unwrap();
+        assert_eq!(d.icc_profile().unwrap(), Some(icc.clone()));
+        assert_eq!(d.dimensions(), (5, 3));
+        // already has one: left alone
+        assert_eq!(webp_with_icc(out.clone(), &img, Some(b"x")), out);
+    }
 
     #[test]
     fn icons_carry_the_four_favicon_sizes() {
