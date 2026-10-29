@@ -402,8 +402,6 @@ I18N['zh-CN'] = {
   "win.controls": "窗口控件",
   "win.min": "最小化",
   "win.close": "关闭",
-  "ab.ffmpeg": "FFmpeg（LGPL 2.1 或更高版本）不随附在应用中。它会在首次需要时下载，并作为独立程序运行。其源代码：",
-  "ab.copy_link": "复制链接",
   "ld.title": "开源许可证",
   "ld.search": "搜索包和许可证",
   "ld.copy": "全部复制",

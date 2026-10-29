@@ -402,8 +402,6 @@ I18N['id'] = {
   "win.controls": "Kontrol jendela",
   "win.min": "Minimalkan",
   "win.close": "Tutup",
-  "ab.ffmpeg": "FFmpeg (LGPL 2.1 atau yang lebih baru) tidak disertakan. FFmpeg diunduh saat pertama kali diperlukan dan berjalan sebagai program terpisah. Kode sumbernya:",
-  "ab.copy_link": "Salin tautan",
   "ld.title": "Lisensi sumber terbuka",
   "ld.search": "Cari paket dan lisensi",
   "ld.copy": "Salin semua",

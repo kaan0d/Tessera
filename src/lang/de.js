@@ -405,8 +405,6 @@ I18N['de'] = {
   "win.controls": "Fenstersteuerung",
   "win.min": "Minimieren",
   "win.close": "Schließen",
-  "ab.ffmpeg": "FFmpeg (LGPL 2.1 oder höher) ist nicht enthalten. Es wird bei Bedarf heruntergeladen und läuft als separates Programm. Sein Quellcode:",
-  "ab.copy_link": "Link kopieren",
   "ld.title": "Open-Source-Lizenzen",
   "ld.search": "Pakete und Lizenzen durchsuchen",
   "ld.copy": "Alle kopieren",

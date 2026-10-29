@@ -402,8 +402,6 @@ I18N['ko'] = {
   "win.controls": "창 컨트롤",
   "win.min": "최소화",
   "win.close": "닫기",
-  "ab.ffmpeg": "FFmpeg(LGPL 2.1 이상)는 포함되어 있지 않습니다. 처음 필요할 때 다운로드되며 별도의 프로그램으로 실행됩니다. 소스 코드:",
-  "ab.copy_link": "링크 복사",
   "ld.title": "오픈 소스 라이선스",
   "ld.search": "패키지 및 라이선스 검색",
   "ld.copy": "모두 복사",

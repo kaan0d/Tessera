@@ -546,9 +546,6 @@ input[type=radio]:checked::after{scale:1}
 /* about */
 .about .mark{width:32px;height:32px;border-radius:23%}
 .about .actions{margin-top:10px}
-.ff-src p{max-width:60ch}
-.url-line{display:flex;align-items:center;gap:4px;margin-top:6px}
-.url-line .cmd{user-select:all;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* licenses dialog: tools row, then one selectable <pre> per section */
 .dialog.lic-dlg{max-width:680px;height:calc(100vh - 32px)}

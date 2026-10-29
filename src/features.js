@@ -961,7 +961,6 @@ function featuresInit() {
     invoke('open_url', { url }).then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));
   };
   $('ab-repo').onclick = () => invoke('open_url', { url: about ? about.repo_url : '' }).then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));
-  $('ab-ff-copy').onclick = (e) => copyText($('ab-ff-url').textContent, e.currentTarget, 'ab.copy_link');
   $('ld-copy').onclick = (e) => copyText(licText, e.currentTarget, 'ld.copy');
   $('ld-q').oninput = () => {
     clearTimeout(licTimer);
