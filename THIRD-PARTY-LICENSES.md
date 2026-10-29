@@ -30,18 +30,25 @@ or link LibreOffice. Only when you press Download under Settings > Advanced > Of
 does it download this unmodified official installer from The Document Foundation, check its
 SHA-256, and unpack it into `data\libreoffice\` inside the install folder. Help pages, interface
 translations and spelling dictionaries are left out; the license files stay. Tessera runs
-`soffice.exe --headless` as a separate process, only to convert files, with its own profile in
-`data\office-profile\`. If LibreOffice is already installed on the PC, Tessera uses that instead.
+`soffice.exe --headless` as separate processes (up to three at once), only to convert files, each
+with its own profile in `data\office-profile\` (`office-profile-1`, `-2`; in `%TEMP%` when the
+install path is very long). If LibreOffice is already installed on the PC, Tessera uses that
+instead. When a newer build is pinned in a Tessera update, Settings offers to replace the copy.
 
 - Build: LibreOffice 26.2.6 (build 26.2.6.3), `LibreOffice_26.2.6_Win_x86-64.msi`, SHA-256 `f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660`
 - Download: https://downloadarchive.documentfoundation.org/libreoffice/old/26.2.6.3/win/x86_64/
 - Source code: https://www.libreoffice.org/download/source-code/ and https://git.libreoffice.org/core
 - License text: https://www.mozilla.org/en-US/MPL/2.0/ and https://www.libreoffice.org/about-us/licenses/
 
-## Rust
+## Rust and its libraries
 
 Tessera is written in Rust and includes the Rust standard library. Rust is dual-licensed under
 the MIT license or the Apache License 2.0, at your option.
 
 - License texts: https://github.com/rust-lang/rust/blob/master/LICENSE-MIT and https://github.com/rust-lang/rust/blob/master/LICENSE-APACHE
 - Other notices: https://github.com/rust-lang/rust/blob/master/COPYRIGHT
+
+The exe is built from open-source Rust libraries (crates.io) under permissive licenses (MIT,
+Apache-2.0, BSD, Zlib, ISC, MPL-2.0, Unicode-3.0, CC0-1.0, CDLA-Permissive-2.0); none is GPL. Among them: Tauri (app shell), image, resvg,
+hayro (PDF rendering), pdf-writer, lopdf (PDF editing: merge, split, rotate, compress), symphonia,
+hound, flacenc, zip, ureq and winreg. Each crate's license is in its source on crates.io.
