@@ -38,10 +38,18 @@ pub fn own_dir() -> PathBuf {
 
 /// The isolated user profile every conversion runs with (never the user's own). Its name must
 /// not start with `libreoffice`: a profile URL that begins with the program folder's URL makes
-/// soffice exit at once without converting anything.
+/// soffice exit at once without converting anything. A deep install folder moves it to temp:
+/// soffice also exits silently from a profile path of about 150 characters (119 worked).
 pub fn profile_dir() -> PathBuf {
-    data_dir().join("office-profile")
+    let p = data_dir().join("office-profile");
+    if p.as_os_str().len() <= MAX_PROFILE_PATH {
+        p
+    } else {
+        std::env::temp_dir().join("tessera-office-profile")
+    }
 }
+
+const MAX_PROFILE_PATH: usize = 110;
 
 /// Where the converter comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,7 +103,34 @@ pub fn convert(
     progress: impl FnMut(f32),
 ) -> Result<PathBuf, ConvertError> {
     let (exe, _) = soffice().ok_or(ConvertError::NeedsOffice)?;
-    crate::convert::office::convert_with_office(&exe, &profile_dir(), input, target, opts, progress)
+    let mut progress = progress;
+    if !target.is_image() {
+        return crate::convert::office::convert_with_office(
+            &exe,
+            &profile_dir(),
+            input,
+            target,
+            opts,
+            progress,
+        );
+    }
+    // slides to pictures: LibreOffice writes a PDF, every page of it is rendered here
+    let scratch = crate::convert::office::Scratch::new()?;
+    let mut inner = opts.clone();
+    inner.output = crate::convert::output::OutputParams {
+        dir: crate::convert::output::OutDir::Fixed(scratch.0.clone()),
+        ..Default::default()
+    };
+    inner.max_bytes = None;
+    let pdf = crate::convert::office::convert_with_office(
+        &exe,
+        &profile_dir(),
+        input,
+        Format::Pdf,
+        &inner,
+        |p| progress(p * 0.5),
+    )?;
+    crate::convert::pages_to_images(&pdf, input, target, opts, |p| progress(0.5 + p * 0.5))
 }
 
 /// Where an unpacked file goes inside our copy, or None when conversion does not need it:

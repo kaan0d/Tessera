@@ -118,6 +118,8 @@ const TEXT: [Format; 5] = [
 ];
 const SHEETS: [Format; 4] = [Format::Xlsx, Format::Xls, Format::Ods, Format::Csv];
 const SLIDES: [Format; 3] = [Format::Pptx, Format::Ppt, Format::Odp];
+/// Slides can also become pictures, one per slide (through a PDF).
+const FROM_SLIDES: [Format; 3] = [Format::Pdf, Format::Png, Format::Jpg];
 /// Editable text recovered from a PDF (LibreOffice's PDF import; layout often breaks).
 const FROM_PDF_TEXT: [Format; 2] = [Format::Docx, Format::Odt];
 /// Targets for a video source: other containers, GIF, and audio extraction.
@@ -548,7 +550,7 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
     } else if SHEETS.contains(&src) {
         (&SHEETS, &pdf)
     } else if SLIDES.contains(&src) {
-        (&SLIDES, &pdf)
+        (&SLIDES, &FROM_SLIDES)
     } else if src.is_video() {
         (&VIDEO, &FROM_VIDEO)
     } else {
@@ -596,6 +598,14 @@ pub fn convert(
     }
 
     opts.check_cancel()?;
+    if from == Format::Pdf && target.is_image() {
+        let dest = pages_to_images(&src, &src, target, opts, &mut progress)?;
+        // a folder of pages is no replacement; one page is a normal conversion
+        if dest.is_file() && opts.output.conflict == Conflict::ReplaceOriginal {
+            output::recycle(&src)?;
+        }
+        return Ok(dest);
+    }
     let dest = output::plan(&src, target.ext(), &opts.output)?;
     progress(0.0);
     if opts.already_fits(&src, from, target) {
@@ -623,6 +633,48 @@ pub fn convert(
     }
     progress(1.0);
     Ok(dest)
+}
+
+/// Every page of `pdf` as a `target` picture. One page gives one file named after `named`;
+/// more go into a new folder `<stem>` holding `<stem>-01.png` and so on (removed on failure).
+pub fn pages_to_images(
+    pdf: &Path,
+    named: &Path,
+    target: Format,
+    opts: &Options,
+    mut progress: impl FnMut(f32),
+) -> Result<PathBuf, ConvertError> {
+    progress(0.0);
+    let count = pdf::page_count(pdf)?;
+    let render = |page: usize, dest: &Path| {
+        let o = opts.clone().page(page as u32);
+        output::write_atomic(dest, |w| {
+            image::convert(pdf, Format::Pdf, target, false, &o, w)
+        })
+    };
+    if count <= 1 {
+        let dest = output::plan(named, target.ext(), &opts.output)?;
+        render(1, &dest)?;
+        progress(1.0);
+        return Ok(dest);
+    }
+    let dir = output::new_dir(named, "", &opts.output)?;
+    let stem = named.file_stem().and_then(|s| s.to_str()).unwrap_or("page");
+    let width = count.to_string().len().max(2);
+    let result = (1..=count).try_for_each(|page| {
+        opts.check_cancel()?;
+        render(
+            page,
+            &dir.join(format!("{stem}-{page:0width$}.{}", target.ext())),
+        )?;
+        progress(page as f32 / count as f32);
+        Ok(())
+    });
+    if let Err(e) = result {
+        let _ = std::fs::remove_dir_all(&dir);
+        return Err(e);
+    }
+    Ok(dir)
 }
 
 /// Decodes a still image the way `convert` would (with the options' orientation and resize)
@@ -709,7 +761,7 @@ mod office_tests {
         use Format::*;
         assert_eq!(supported_targets("DOCX"), vec![Doc, Odt, Rtf, Txt, Pdf]);
         assert_eq!(supported_targets("csv"), vec![Xlsx, Xls, Ods, Pdf]);
-        assert_eq!(supported_targets("odp"), vec![Pptx, Ppt, Pdf]);
+        assert_eq!(supported_targets("odp"), vec![Pptx, Ppt, Pdf, Png, Jpg]);
         // no word processor to spreadsheet and the like
         assert!(!supported_targets("docx").contains(&Xlsx));
         assert!(!supported_targets("xlsx").contains(&Png));
@@ -732,5 +784,21 @@ mod office_tests {
         let shrink = Options::default().max_bytes(1000);
         assert!(!allows("docx", Format::Docx, Format::Docx, &shrink));
         assert!(allows("jpg", Format::Jpg, Format::Jpg, &shrink));
+    }
+    #[test]
+    fn every_pdf_page_becomes_a_picture() {
+        let d = tempfile::tempdir().unwrap();
+        let src = d.path().join("deck.pdf");
+        std::fs::write(&src, pdf_edit::tests::sample(3)).unwrap();
+        let out = convert(&src, Format::Png, &Options::default(), |_| {}).unwrap();
+        assert!(out.is_dir() && out.ends_with("deck"));
+        for n in ["deck-01.png", "deck-02.png", "deck-03.png"] {
+            assert!(::image::open(out.join(n)).is_ok(), "{n}");
+        }
+        // one page stays one file
+        let one = d.path().join("one.pdf");
+        std::fs::write(&one, pdf_edit::tests::sample(1)).unwrap();
+        let out = convert(&one, Format::Jpg, &Options::default(), |_| {}).unwrap();
+        assert!(out.ends_with("one.jpg"));
     }
 }
