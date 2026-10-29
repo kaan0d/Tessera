@@ -8,7 +8,9 @@ use std::path::Path;
 
 use image::codecs::avif::AvifEncoder;
 use image::codecs::jpeg::{JpegDecoder, JpegEncoder};
-use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits, Rgb, RgbImage};
+use image::{
+    DynamicImage, ImageDecoder, ImageEncoder, ImageFormat, ImageReader, Limits, Rgb, RgbImage,
+};
 
 use super::transform::{self, MAX_ALLOC, MAX_DIM};
 use super::{pdf, raw, size, svg, ConvertError, Format, Options};
@@ -40,6 +42,9 @@ pub fn convert(
     }
     opts.check_cancel()?;
     let img = load(src, from, opts)?;
+    // the colour profile is not metadata to strip: without it Adobe RGB photos shift colour
+    let icc = (!opts.strip_metadata).then(|| read_icc(src)).flatten();
+    let icc = icc.as_deref();
     opts.check_cancel()?;
     let lossy_webp = target == Format::Webp && opts.lossy_webp().is_some();
     let q = if target == Format::Webp {
@@ -48,7 +53,7 @@ pub fn convert(
         opts.quality.jpeg
     };
     match opts.max_bytes {
-        None => encode_job(&img, target, q, photo, opts, w),
+        None => encode_job(&img, target, q, photo, opts, icc, w),
         Some(max) => {
             let lossy = matches!(target, Format::Jpg | Format::Avif)
                 || (target == Format::Pdf && photo)
@@ -58,7 +63,7 @@ pub fn convert(
             let bytes = size::fit(&img, max, lossy, q, |i, q| {
                 opts.check_cancel()?;
                 let mut c = Cursor::new(Vec::new());
-                encode_job(i, target, q, photo, opts, &mut c)?;
+                encode_job(i, target, q, photo, opts, icc, &mut c)?;
                 Ok(c.into_inner())
             })?;
             w.write_all(&bytes)?;
@@ -101,6 +106,26 @@ pub fn load(src: &Path, from: Format, opts: &Options) -> Result<DynamicImage, Co
     })
 }
 
+/// The embedded ICC colour profile of a raster file, if it has one.
+fn read_icc(src: &Path) -> Option<Vec<u8>> {
+    let reader = ImageReader::open(src).ok()?.with_guessed_format().ok()?;
+    reader.into_decoder().ok()?.icc_profile().ok().flatten()
+}
+
+/// Writes `img` with `e`, carrying the colour profile when there is one.
+fn write_with_icc(
+    img: &DynamicImage,
+    mut e: impl ImageEncoder,
+    icc: Option<&[u8]>,
+) -> Result<(), ConvertError> {
+    if let Some(p) = icc {
+        // an encoder that cannot store it simply writes the picture without
+        let _ = e.set_icc_profile(p.to_vec());
+    }
+    img.write_with_encoder(e)?;
+    Ok(())
+}
+
 fn decode_raster(src: &Path) -> Result<DynamicImage, ConvertError> {
     let mut reader = ImageReader::open(src)?.with_guessed_format()?;
     if reader.format().is_none() {
@@ -122,6 +147,7 @@ fn encode_job(
     q: u8,
     photo: bool,
     opts: &Options,
+    icc: Option<&[u8]>,
     w: &mut (impl Write + Seek),
 ) -> Result<(), ConvertError> {
     if let (Format::Webp, Some(ff)) = (target, opts.lossy_webp()) {
@@ -131,28 +157,31 @@ fn encode_job(
             Err(_) => {}
         }
     }
-    encode(img, target, q, photo, w)
+    encode(img, target, q, photo, icc, w)
 }
 
-/// Encodes `img` as `target`; `q` is the JPEG/AVIF quality.
+/// Encodes `img` as `target`; `q` is the JPEG/AVIF quality. JPEG, PNG and WebP keep `icc`.
 pub fn encode(
     img: &DynamicImage,
     target: Format,
     q: u8,
     photo: bool,
+    icc: Option<&[u8]>,
     w: &mut (impl Write + Seek),
 ) -> Result<(), ConvertError> {
+    use image::codecs::{png::PngEncoder, webp::WebPEncoder};
     let q = q.clamp(1, 100);
     match target {
         Format::Jpg => {
-            JpegEncoder::new_with_quality(w, q).encode_image(&flatten_on_white(img))?;
+            let flat = DynamicImage::ImageRgb8(flatten_on_white(img));
+            write_with_icc(&flat, JpegEncoder::new_with_quality(w, q), icc)?;
         }
         Format::Avif => {
             img.write_with_encoder(AvifEncoder::new_with_speed_quality(w, AVIF_SPEED, q))?
         }
         Format::Ico => write_ico(img, w)?,
-        Format::Png => img.write_to(w, ImageFormat::Png)?,
-        Format::Webp => img.write_to(w, ImageFormat::WebP)?, // lossless
+        Format::Png => write_with_icc(img, PngEncoder::new(w), icc)?,
+        Format::Webp => write_with_icc(img, WebPEncoder::new_lossless(w), icc)?,
         Format::Bmp => img.write_to(w, ImageFormat::Bmp)?,
         Format::Gif => img.write_to(w, ImageFormat::Gif)?,
         Format::Tiff => img.write_to(w, ImageFormat::Tiff)?,
