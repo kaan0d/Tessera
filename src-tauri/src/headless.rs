@@ -698,6 +698,7 @@ fn one_file(
     };
     // ponytail: one global flag, so with --jobs the note may name a neighbouring file
     crate::convert::ALPHA_FLATTENED.store(false, std::sync::atomic::Ordering::Relaxed);
+    crate::convert::SHRUNK_TO.store(0, std::sync::atomic::Ordering::Relaxed);
     match convert_one(path, target, &opts, ffmpeg_ok, on_progress) {
         Ok(dest) => {
             if crate::convert::ALPHA_FLATTENED.swap(false, std::sync::atomic::Ordering::Relaxed)
@@ -711,6 +712,14 @@ fn one_file(
             if style.json {
                 json_line(path, true, "output", &dest.display().to_string());
             } else if !style.quiet {
+                let wh = crate::convert::SHRUNK_TO.swap(0, std::sync::atomic::Ordering::Relaxed);
+                if wh != 0 {
+                    err(&format!(
+                        "{tag}: note: made smaller ({}x{} px) to fit the size limit",
+                        wh >> 32,
+                        wh & 0xffff_ffff
+                    ));
+                }
                 out(&format!(
                     "{tag} -> {}{}",
                     dest.display(),
