@@ -222,9 +222,10 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "En fazla {max} özel hazır ayar olabilir",
     ),
     ("preset.not_found", "Preset not found", "Hazır ayar bulunamadı"),
+    ("notify.preset_skip_one", "1 file skipped: not supported by {name}", "1 dosya atlandı: {name} bu dosyayı desteklemiyor"),
     (
         "notify.preset_skip",
-        "{n} file(s) skipped: not supported by {name}",
+        "{n} files skipped: not supported by {name}",
         "{n} dosya atlandı: {name} bunları desteklemiyor",
     ),
     (
@@ -698,6 +699,21 @@ pub fn t(lang: Lang, key: &str) -> &str {
     }
 }
 
+/// Like `fmt` for a message about `n` things: `<key>_one` when `n` is 1 and that key exists.
+// shortcut: one/other only; Russian tables avoid number words instead ("Файлов: 5")
+pub fn fmt_n(lang: Lang, key: &str, n: usize, vars: &[(&str, &str)]) -> String {
+    let one = format!("{key}_one");
+    let key = if n == 1 && MSGS.iter().any(|m| m.0 == one) {
+        one.as_str()
+    } else {
+        key
+    };
+    let count = n.to_string();
+    let mut all = vec![("n", count.as_str())];
+    all.extend_from_slice(vars);
+    fmt(lang, key, &all)
+}
+
 /// Like `t`, with each `{name}` replaced from `vars`.
 pub fn fmt(lang: Lang, key: &str, vars: &[(&str, &str)]) -> String {
     let mut s = t(lang, key).to_string();
@@ -758,6 +774,20 @@ mod tests {
                 assert!(seen.contains(k), "{l:?}: missing {k}");
             }
         }
+    }
+
+    #[test]
+    fn counts_pick_the_singular_when_there_is_one() {
+        let v = [("name", "Web")];
+        assert_eq!(
+            fmt_n(Lang::En, "notify.preset_skip", 1, &v),
+            "1 file skipped: not supported by Web"
+        );
+        assert_eq!(
+            fmt_n(Lang::En, "notify.preset_skip", 3, &v),
+            "3 files skipped: not supported by Web"
+        );
+        assert_eq!(fmt_n(Lang::En, "job.merge_name", 1, &[]), "Merging 1 files");
     }
 
     #[test]

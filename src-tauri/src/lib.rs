@@ -911,11 +911,10 @@ fn run_preset(app: &AppHandle, p: preset::Preset, files: Vec<PathBuf>) {
     }
     let name = p.name(lang);
     if skipped > 0 {
-        let n = skipped.to_string();
         notify(
             app,
             t(lang, "notify.failed_title"),
-            &fmt(lang, "notify.preset_skip", &[("n", &n), ("name", &name)]),
+            &i18n::fmt_n(lang, "notify.preset_skip", skipped, &[("name", &name)]),
         );
     }
     state

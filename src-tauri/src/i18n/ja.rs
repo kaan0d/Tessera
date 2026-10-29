@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "同じ名前のファイルが既にあります"),
     ("preset.kind_target", "選んだ形式は、このプリセットのすべてのファイルの種類には使えません。"),
     ("preset.dup_name", "この名前のプリセットは既にあります。"),
+    ("notify.preset_skip_one", "1 個のファイルをスキップしました: {name} ではサポートされていません"),
 ];

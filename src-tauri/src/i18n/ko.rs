@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "같은 이름의 파일이 이미 있습니다"),
     ("preset.kind_target", "선택한 형식은 이 사전 설정의 모든 파일 형식에 맞지 않습니다."),
     ("preset.dup_name", "같은 이름의 사전 설정이 이미 있습니다."),
+    ("notify.preset_skip_one", "파일 1개를 건너뛰었습니다: {name}에서 지원하지 않습니다"),
 ];

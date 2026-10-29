@@ -34,7 +34,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("preset.same_needs_option", "Para manter o formato, é preciso redimensionar, limitar o tamanho ou remover o local e os dados da câmera"),
     ("preset.too_many", "Você pode ter no máximo {max} predefinições personalizadas"),
     ("preset.not_found", "Predefinição não encontrada"),
-    ("notify.preset_skip", "{n} arquivo(s) ignorado(s): sem suporte em {name}"),
+    ("notify.preset_skip", "{n} arquivos ignorados: sem suporte em {name}"),
     ("job.merge_name", "Mesclando {n} arquivos"),
     ("undo.not_found", "Essa entrada do histórico não existe mais"),
     ("undo.nothing", "Não há nada para desfazer nesta entrada"),
@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "Já existe um arquivo com esse nome"),
     ("preset.kind_target", "O formato escolhido não serve para todos os tipos de arquivo desta predefinição."),
     ("preset.dup_name", "Você já tem uma predefinição com este nome."),
+    ("notify.preset_skip_one", "1 arquivo ignorado: sem suporte em {name}"),
 ];

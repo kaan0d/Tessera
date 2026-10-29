@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "Esiste già un file con questo nome"),
     ("preset.kind_target", "Il formato scelto non va bene per tutti i tipi di file di questo preset."),
     ("preset.dup_name", "Hai già un preset con questo nome."),
+    ("notify.preset_skip_one", "1 file ignorato: non supportato da {name}"),
 ];

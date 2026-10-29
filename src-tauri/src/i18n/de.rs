@@ -34,7 +34,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("preset.same_needs_option", "Wenn das Format gleich bleibt, ist eine Größenänderung, eine Größengrenze oder das Entfernen von Standort- und Kameradaten nötig"),
     ("preset.too_many", "Sie können höchstens {max} eigene Vorlagen anlegen"),
     ("preset.not_found", "Vorlage nicht gefunden"),
-    ("notify.preset_skip", "{n} Datei(en) übersprungen: von {name} nicht unterstützt"),
+    ("notify.preset_skip", "{n} Dateien übersprungen: von {name} nicht unterstützt"),
     ("job.merge_name", "{n} Dateien werden zusammengeführt"),
     ("undo.not_found", "Dieser Verlaufseintrag existiert nicht mehr"),
     ("undo.nothing", "Für diesen Eintrag gibt es nichts rückgängig zu machen"),
@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "Eine Datei mit diesem Namen ist bereits vorhanden"),
     ("preset.kind_target", "Das gewählte Format passt nicht zu allen Dateitypen dieser Vorlage."),
     ("preset.dup_name", "Sie haben bereits eine Vorlage mit diesem Namen."),
+    ("notify.preset_skip_one", "1 Datei übersprungen: von {name} nicht unterstützt"),
 ];

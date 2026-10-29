@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "已存在同名文件"),
     ("preset.kind_target", "所选格式不适用于此预设的所有文件类型。"),
     ("preset.dup_name", "已有同名预设。"),
+    ("notify.preset_skip_one", "已跳过 1 个文件：{name} 不支持"),
 ];

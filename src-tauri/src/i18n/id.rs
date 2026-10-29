@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "File dengan nama itu sudah ada"),
     ("preset.kind_target", "Format yang dipilih tidak cocok untuk semua jenis file prasetel ini."),
     ("preset.dup_name", "Anda sudah punya prasetel dengan nama ini."),
+    ("notify.preset_skip_one", "1 file dilewati: tidak didukung oleh {name}"),
 ];

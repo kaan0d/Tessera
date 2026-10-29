@@ -34,7 +34,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("preset.same_needs_option", "Para mantener el formato hace falta cambiar el tamaño, limitar el tamaño o quitar la ubicación y los datos de cámara"),
     ("preset.too_many", "Puedes tener como máximo {max} ajustes personalizados"),
     ("preset.not_found", "No se encontró el ajuste"),
-    ("notify.preset_skip", "{n} archivo(s) omitido(s): {name} no los admite"),
+    ("notify.preset_skip", "{n} archivos omitidos: {name} no los admite"),
     ("job.merge_name", "Combinando {n} archivos"),
     ("undo.not_found", "Esa entrada del historial ya no existe"),
     ("undo.nothing", "No hay nada que deshacer en esta entrada"),
@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "Ya existe un archivo con ese nombre"),
     ("preset.kind_target", "El formato elegido no sirve para todos los tipos de archivo de este ajuste."),
     ("preset.dup_name", "Ya tienes un ajuste con este nombre."),
+    ("notify.preset_skip_one", "1 archivo omitido: {name} no lo admite"),
 ];

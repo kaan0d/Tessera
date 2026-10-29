@@ -34,7 +34,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("preset.same_needs_option", "Pour conserver le format, il faut un redimensionnement, une limite de taille ou la suppression de la position et des infos d'appareil photo"),
     ("preset.too_many", "Vous pouvez avoir au maximum {max} préréglages personnalisés"),
     ("preset.not_found", "Préréglage introuvable"),
-    ("notify.preset_skip", "{n} fichier(s) ignoré(s) : non pris en charge par {name}"),
+    ("notify.preset_skip", "{n} fichiers ignorés : non pris en charge par {name}"),
     ("job.merge_name", "Fusion de {n} fichiers"),
     ("undo.not_found", "Cette entrée de l'historique n'existe plus"),
     ("undo.nothing", "Il n'y a rien à annuler pour cette entrée"),
@@ -153,4 +153,5 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.exists", "Un fichier portant ce nom existe déjà"),
     ("preset.kind_target", "Le format choisi ne convient pas à tous les types de fichiers de ce préréglage."),
     ("preset.dup_name", "Vous avez déjà un préréglage portant ce nom."),
+    ("notify.preset_skip_one", "1 fichier ignoré : non pris en charge par {name}"),
 ];
