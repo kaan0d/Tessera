@@ -23,16 +23,21 @@ pub enum Action {
     Target(Format),
     /// `--folder preset:web <dir>`
     Preset(String),
+    /// `--folder docs:pdf <dir>`: every office document in the folder.
+    Docs(Format),
 }
 
 impl Action {
     pub fn parse(s: &str) -> Option<Action> {
+        let target =
+            |s: &str| Format::from_ext(s).filter(|f| Format::ALL.contains(f) && f.ext() == s);
+        if let Some(t) = s.strip_prefix("docs:") {
+            return target(t).map(Action::Docs);
+        }
         match s.strip_prefix("preset:") {
             Some(id) if !id.is_empty() => Some(Action::Preset(id.to_string())),
             Some(_) => None,
-            None => Format::from_ext(s)
-                .filter(|f| Format::ALL.contains(f) && f.ext() == s)
-                .map(Action::Target),
+            None => target(s).map(Action::Target),
         }
     }
 
@@ -41,6 +46,7 @@ impl Action {
         match self {
             Action::Target(t) => t.ext().to_string(),
             Action::Preset(id) => format!("preset:{id}"),
+            Action::Docs(t) => format!("docs:{}", t.ext()),
         }
     }
 }
@@ -146,10 +152,17 @@ mod tests {
             Action::parse("preset:web"),
             Some(Action::Preset("web".into()))
         );
-        for bad in ["", "preset:", "jpeg", "heic", "exe", "JPG"] {
+        assert_eq!(Action::parse("docs:pdf"), Some(Action::Docs(Format::Pdf)));
+        for bad in [
+            "", "preset:", "jpeg", "heic", "exe", "JPG", "docs:", "docs:xyz",
+        ] {
             assert_eq!(Action::parse(bad), None, "{bad}");
         }
-        for a in [Action::Target(Format::Flac), Action::Preset("c1".into())] {
+        for a in [
+            Action::Target(Format::Flac),
+            Action::Preset("c1".into()),
+            Action::Docs(Format::Pdf),
+        ] {
             assert_eq!(Action::parse(&a.arg()), Some(a));
         }
     }

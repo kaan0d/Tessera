@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::convert::{allows, uses_ffmpeg, Format, Options, Resize};
+use crate::convert::{allows, uses_ffmpeg, uses_office, Format, Options, Resize};
 use crate::i18n::{fmt, t, Lang};
 use crate::settings::Settings;
 
@@ -131,7 +131,7 @@ pub fn builtins() -> Vec<Preset> {
                 ..o()
             },
         ),
-        builtin("pdf", &["image"], "pdf", None, o()),
+        builtin("pdf", &["image", "document"], "pdf", None, o()),
         builtin(
             "webp",
             &["image"],
@@ -247,11 +247,13 @@ impl Preset {
         allows(ext, from, target, opts).then_some(target)
     }
 
-    /// Like `resolve`, also hidden when the job would need ffmpeg and it is not ready (menu).
+    /// Like `resolve`, also hidden when the job needs ffmpeg or LibreOffice and it is missing.
     pub fn menu_target(&self, ext: &str, s: &Settings) -> Option<Format> {
         let target = self.resolve(ext, &self.options_for(s))?;
         let from = Format::from_ext(ext)?;
-        (s.ffmpeg_ready || !uses_ffmpeg(from, target)).then_some(target)
+        let ffmpeg_ok = s.ffmpeg_ready || !uses_ffmpeg(from, target);
+        let office_ok = !uses_office(from, target) || crate::office::ready();
+        (ffmpeg_ok && office_ok).then_some(target)
     }
 
     /// Checks and normalizes a user preset in place. The error is shown to the user.
@@ -375,6 +377,17 @@ mod tests {
             ids("svg", &s),
             ["web", "whatsapp", "pdf", "webp", "ico", "instagram"]
         );
+    }
+
+    #[test]
+    fn pdf_preset_takes_documents() {
+        let s = Settings::default();
+        let pdf = find(&s, "pdf").unwrap();
+        let o = pdf.options_for(&s);
+        for ext in ["docx", "xlsx", "pptx", "odt"] {
+            assert_eq!(pdf.resolve(ext, &o), Some(Format::Pdf), "{ext}");
+        }
+        assert_eq!(pdf.resolve("pdf", &o), None);
     }
 
     #[test]

@@ -87,7 +87,7 @@ fn folder_key(root: &str) -> String {
 }
 
 /// Verbs of the folder menu as (label, action), in menu order: image formats, image presets,
-/// audio formats. Empty when the folder menu is off or nothing is allowed.
+/// audio formats, documents. Empty when the folder menu is off or nothing is allowed.
 fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
     if !s.menu.folder {
         return vec![];
@@ -140,7 +140,14 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
     } else {
         vec![]
     };
-    vec![targets(false), presets, targets(true)]
+    // documents need LibreOffice; only PDF, the one target every document kind shares
+    let docs = if crate::office::ready() && s.target_enabled(Format::Pdf) {
+        let text = i18n::fmt(lang, "menu.folder_docs_to", &[("fmt", "PDF")]);
+        vec![(text, Action::Docs(Format::Pdf))]
+    } else {
+        vec![]
+    };
+    vec![targets(false), presets, targets(true), docs]
 }
 
 /// Menu icon files, one per source kind (transparent .ico, brand colours).
@@ -199,7 +206,7 @@ fn verb_icon(dir: &Path, name: &str) -> String {
         "preset_email" => "mail",
         "preset_discord" => "game",
         "preset_strip" => "pin",
-        "preset_pdf" => "document",
+        "preset_pdf" | "docs_pdf" => "document",
         n if n.starts_with("preset_") => "sliders",
         n if n.starts_with("merge_") => "layers",
         n => Format::from_ext(n).map_or("image", Format::kind),

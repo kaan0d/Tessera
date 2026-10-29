@@ -318,6 +318,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Tüm sesleri {fmt} olarak dönüştür",
     ),
     (
+        "menu.folder_docs_to",
+        "Convert all documents to {fmt}",
+        "Tüm belgeleri {fmt} olarak dönüştür",
+    ),
+    (
         "menu.folder_preset",
         "{name} (all images)",
         "{name} (tüm resimler)",

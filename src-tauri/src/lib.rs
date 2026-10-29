@@ -1110,6 +1110,14 @@ fn start_folder(app: &AppHandle, action: folder::Action, dir: PathBuf) {
                     })
                 })
             }
+            folder::Action::Docs(target) => {
+                let (target, opts) = (*target, s.to_options());
+                Box::new(move |p| {
+                    let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    Format::from_ext(ext)
+                        .is_some_and(|f| f.is_office() && convert::allows(ext, f, target, &opts))
+                })
+            }
             folder::Action::Preset(id) => {
                 let Some(p) = preset::find(&s, id) else {
                     notify(
@@ -1156,7 +1164,9 @@ fn start_folder(app: &AppHandle, action: folder::Action, dir: PathBuf) {
             );
         }
         match action {
-            folder::Action::Target(target) => start_convert(&app, target, found.files),
+            folder::Action::Target(target) | folder::Action::Docs(target) => {
+                start_convert(&app, target, found.files)
+            }
             folder::Action::Preset(id) => start_preset(&app, &id, found.files),
         }
     });
