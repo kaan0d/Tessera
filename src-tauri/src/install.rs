@@ -137,53 +137,9 @@ pub fn default_dir() -> PathBuf {
         .join(APP_NAME)
 }
 
-/// A working ffmpeg already sits in the install's data folder, or in the v0.1.x one it moves from.
+/// A working ffmpeg already sits in the install's data folder.
 pub fn ffmpeg_present(dir: &Path) -> bool {
-    let legacy = crate::settings::legacy_data_dir().filter(|_| !dir.join("data").is_dir());
-    [Some(dir.join("data")), legacy]
-        .into_iter()
-        .flatten()
-        .any(|d| crate::ffmpeg::is_working(&d.join("ffmpeg").join("ffmpeg.exe")))
-}
-
-/// Moves every entry of `from` into `to` (rename, or copy across drives), then removes `from`.
-/// Entries already in `to` stay where they are and keep `from` alive.
-fn move_tree(from: &Path, to: &Path) -> io::Result<()> {
-    fs::create_dir_all(to)?;
-    for e in fs::read_dir(from)? {
-        let e = e?;
-        let dst = to.join(e.file_name());
-        if dst.exists() || fs::rename(e.path(), &dst).is_ok() {
-            continue;
-        }
-        if e.file_type()?.is_dir() {
-            move_tree(&e.path(), &dst)?;
-        } else {
-            fs::copy(e.path(), &dst)?;
-            fs::remove_file(e.path())?;
-        }
-    }
-    fs::remove_dir(from)
-}
-
-/// v0.1.x kept data in %APPDATA%\Tessera and the WebView2 cache in %LOCALAPPDATA%\com.tessera.app.
-/// Both move into the install's `data` folder once; a folder that already has settings wins.
-fn adopt_legacy_data(data: &Path) {
-    if let Some(old) = crate::settings::legacy_data_dir()
-        .filter(|o| o.is_dir() && !data.join("settings.json").exists())
-    {
-        if let Err(e) = move_tree(&old, data) {
-            crate::log::write("warn", &format!("old data not fully moved: {e}"));
-        }
-    }
-    // only a cache: the app rebuilds it in data\webview
-    if let Some(web) = legacy_webview_dir() {
-        let _ = fs::remove_dir_all(web);
-    }
-}
-
-fn legacy_webview_dir() -> Option<PathBuf> {
-    std::env::var_os("LOCALAPPDATA").map(|b| PathBuf::from(b).join("com.tessera.app"))
+    crate::ffmpeg::is_working(&dir.join("data").join("ffmpeg").join("ffmpeg.exe"))
 }
 
 fn is_win11() -> bool {
@@ -580,7 +536,6 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Inst
     run_step(emit, 1, "Copying files", (0.0, 0.06), &mut |sub| {
         stop_running(&dir);
         fs::create_dir_all(&dir).map_err(fail("Cannot create the folder"))?;
-        adopt_legacy_data(&dir.join("data"));
         fs::create_dir_all(dir.join("data")).map_err(fail("Cannot create the data folder"))?;
         if !same_path(&src, &dst) {
             copy_with_progress(&src, &dst, &mut *sub).map_err(fail("Cannot copy the app"))?;
@@ -743,14 +698,12 @@ fn schedule_cleanup(exe: &Path, dir: &Path, keep_data: bool) -> Result<(), Strin
     } else {
         data
     };
-    let legacy = legacy_webview_dir().unwrap_or_default();
     // raw_arg: cmd does its own quote parsing and rejects the backslash-escaped quotes `arg` adds
     let script = format!(
-        r#"/C "for /l %i in (1,1,60) do (if exist "{exe}" (del /f /q "{exe}" 2>nul & ping -n 2 127.0.0.1 >nul)) & del /f /q "{cli}" 2>nul & rmdir /s /q "{wipe}" & rmdir /s /q "{legacy}" & rmdir "{dir}"""#,
+        r#"/C "for /l %i in (1,1,60) do (if exist "{exe}" (del /f /q "{exe}" 2>nul & ping -n 2 127.0.0.1 >nul)) & del /f /q "{cli}" 2>nul & rmdir /s /q "{wipe}" & rmdir "{dir}"""#,
         exe = exe.display(),
         cli = dir.join(CLI_NAME).display(),
         wipe = wipe.display(),
-        legacy = legacy.display(),
         dir = dir.display()
     );
     Command::new("cmd")
@@ -786,29 +739,6 @@ mod tests {
         assert_eq!(c.iter().zip(&b).filter(|(x, y)| x != y).count(), 1);
         assert!(console_copy_bytes(vec![0; 16]).is_none());
         assert!(console_copy_bytes(vec![0; 0x200]).is_none());
-    }
-
-    #[test]
-    fn old_data_moves_without_overwriting() {
-        let t = tempfile::tempdir().unwrap();
-        let (old, new) = (t.path().join("old"), t.path().join("new"));
-        fs::create_dir_all(old.join("ffmpeg")).unwrap();
-        fs::write(old.join("settings.json"), "old").unwrap();
-        fs::write(old.join("ffmpeg").join("ffmpeg.exe"), "x").unwrap();
-        move_tree(&old, &new).unwrap();
-        assert!(!old.exists());
-        assert_eq!(
-            fs::read_to_string(new.join("settings.json")).unwrap(),
-            "old"
-        );
-        assert!(new.join("ffmpeg").join("ffmpeg.exe").is_file());
-
-        // an entry already in the new folder wins and keeps the old folder in place
-        fs::create_dir_all(&old).unwrap();
-        fs::write(old.join("tessera.log"), "old").unwrap();
-        fs::write(new.join("tessera.log"), "new").unwrap();
-        assert!(move_tree(&old, &new).is_err());
-        assert_eq!(fs::read_to_string(new.join("tessera.log")).unwrap(), "new");
     }
 
     #[test]

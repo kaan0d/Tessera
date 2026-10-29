@@ -88,7 +88,7 @@ Files never leave your computer. Tessera downloads two things, both pinned and S
 
 On disk, in the `data` folder inside the install folder: `ffmpeg`, `libreoffice` and `office-profile` when downloaded, `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
 
-Everything is per user. Files: the install folder only, data included (an update from v0.1.x moves the old `%APPDATA%\Tessera` into it). Registry, all under `HKCU`: the Explorer menu keys, the uninstall entry, and optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
+Everything is per user. Files: the install folder only, data included. Registry, all under `HKCU`: the Explorer menu keys, the uninstall entry, and optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
 
 ## Limits
 

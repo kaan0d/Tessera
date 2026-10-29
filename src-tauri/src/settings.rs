@@ -283,11 +283,6 @@ pub fn data_dir() -> PathBuf {
         .join("data")
 }
 
-/// Where v0.1.x kept its data; the installer moves it into `data_dir` once.
-pub fn legacy_data_dir() -> Option<PathBuf> {
-    std::env::var_os("APPDATA").map(|b| PathBuf::from(b).join(APP_NAME))
-}
-
 pub fn settings_path() -> PathBuf {
     data_dir().join("settings.json")
 }
