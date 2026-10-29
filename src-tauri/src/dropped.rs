@@ -107,6 +107,9 @@ fn merge_kinds(known: &[(&PathBuf, Format)]) -> Vec<&'static str> {
     if known.len() < 2 || known.len() > MERGE_MAX {
         return vec![];
     }
+    if known.iter().any(|(_, f)| f.is_office()) && !crate::office::ready() {
+        return vec![];
+    }
     let kinds: Vec<_> = known
         .iter()
         .map(|(f, _)| MergeKind::for_ext(ext_of(f)))

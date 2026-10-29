@@ -1209,8 +1209,11 @@ fn run_merge(app: &AppHandle, kind: MergeKind, files: Vec<PathBuf>) {
             MergeKind::Audio => "menu.merge_audio",
         },
     );
-    if files.len() == 1 {
-        // a lone file is a plain conversion
+    let lone_pdf = files[0]
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("pdf"));
+    if files.len() == 1 && !lone_pdf {
+        // a lone file is a plain conversion (a lone PDF has nothing to become, it is copied)
         let target = match (kind, files[0].extension().and_then(|e| e.to_str())) {
             (MergeKind::Pdf, _) => convert::Format::Pdf,
             (_, Some(e)) if e.eq_ignore_ascii_case("flac") => convert::Format::Wav,

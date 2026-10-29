@@ -1,16 +1,19 @@
-//! Merging several files into one output: images into a multi-page PDF, audio into one
-//! FLAC (WAV when the result would be too big for the in-memory FLAC encoder).
+//! Merging several files into one output: images, PDFs and office documents into one PDF,
+//! audio into one FLAC (WAV when the result would be too big for the in-memory FLAC encoder).
 //! The output is named `merged.<ext>` in the first file's folder; originals are never replaced.
 
 use std::path::{Path, PathBuf};
 
-use super::{audio, image, output, pdf, security, Conflict, ConvertError, Format, Options};
+use super::output::OutDir;
+use super::{
+    audio, image, output, pdf, pdf_edit, security, Conflict, ConvertError, Format, Options,
+};
 
 pub const MAX_FILES: usize = 500;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MergeKind {
-    /// Images into one PDF.
+    /// Images, PDFs and office documents into one PDF.
     Pdf,
     /// Audio files into one file.
     Audio,
@@ -35,7 +38,7 @@ impl MergeKind {
     /// Merge menu verb for a source extension, if any.
     pub fn for_ext(ext: &str) -> Option<MergeKind> {
         let f = Format::from_ext(ext)?;
-        if is_merge_image(f) {
+        if is_merge_image(f) || is_merge_document(f) {
             Some(MergeKind::Pdf)
         } else if f.kind() == "audio" {
             Some(MergeKind::Audio)
@@ -59,6 +62,11 @@ fn is_merge_image(f: Format) -> bool {
             | Format::Svg
             | Format::Raw
     )
+}
+
+/// PDFs and office documents (those need LibreOffice) join images in one PDF.
+pub fn is_merge_document(f: Format) -> bool {
+    f == Format::Pdf || f.is_office()
 }
 
 /// Output location rules: next to the first file (or the fixed folder), never replacing.
@@ -191,6 +199,62 @@ pub fn audio(
     Ok(dest)
 }
 
+/// Images, PDFs and documents into one PDF, in the given order. Documents go through
+/// LibreOffice into a private folder first. A size limit does not apply here.
+pub fn files_to_pdf(
+    files: &[PathBuf],
+    opts: &Options,
+    mut progress: impl FnMut(f32),
+) -> Result<PathBuf, ConvertError> {
+    let opts = &opts.clamped();
+    let list = check(files)?;
+    if list.iter().all(|(_, f)| is_merge_image(*f)) {
+        return images_to_pdf(files, opts, progress);
+    }
+    if list
+        .iter()
+        .any(|(_, f)| !is_merge_image(*f) && !is_merge_document(*f))
+    {
+        return Err(ConvertError::Unsupported);
+    }
+    let dest = plan(&list[0].0, "pdf", opts)?;
+    let scratch = super::office::Scratch::new()?;
+    let mut inner = opts.clone();
+    inner.output = output::OutputParams {
+        dir: OutDir::Fixed(scratch.0.clone()),
+        ..Default::default()
+    };
+    inner.max_bytes = None;
+    progress(0.0);
+    let n = list.len() as f32;
+    let mut docs = Vec::with_capacity(list.len());
+    for (i, (src, from)) in list.iter().enumerate() {
+        opts.check_cancel()?;
+        let doc = if *from == Format::Pdf {
+            pdf_edit::load(src)?
+        } else if from.is_office() {
+            let step = |p: f32| progress((i as f32 + p) / n * 0.9);
+            let made = crate::office::convert(src, Format::Pdf, &inner, step)?;
+            pdf_edit::load(&made)?
+        } else {
+            let page = image::pdf_page(src, *from, &inner)?;
+            let mut bytes = Vec::new();
+            pdf::write_pages(&[page.payload()], &mut bytes)?;
+            pdf_edit::load_mem(&bytes)?
+        };
+        docs.push(doc);
+        progress((i + 1) as f32 / n * 0.9);
+    }
+    opts.check_cancel()?;
+    let result = pdf_edit::save(&mut pdf_edit::join(docs))?;
+    output::write_atomic(&dest, |w| {
+        std::io::Write::write_all(w, &result)?;
+        Ok(())
+    })?;
+    progress(1.0);
+    Ok(dest)
+}
+
 /// Runs the merge for `kind`.
 pub fn run(
     kind: MergeKind,
@@ -199,7 +263,7 @@ pub fn run(
     progress: impl FnMut(f32),
 ) -> Result<PathBuf, ConvertError> {
     match kind {
-        MergeKind::Pdf => images_to_pdf(files, opts, progress),
+        MergeKind::Pdf => files_to_pdf(files, opts, progress),
         MergeKind::Audio => audio(files, opts, progress),
     }
 }
@@ -213,7 +277,9 @@ mod tests {
         assert_eq!(MergeKind::for_ext("PNG"), Some(MergeKind::Pdf));
         assert_eq!(MergeKind::for_ext("cr2"), Some(MergeKind::Pdf));
         assert_eq!(MergeKind::for_ext("m4a"), Some(MergeKind::Audio));
-        for e in ["heic", "avif", "pdf", "mp4", "zzz"] {
+        assert_eq!(MergeKind::for_ext("pdf"), Some(MergeKind::Pdf));
+        assert_eq!(MergeKind::for_ext("docx"), Some(MergeKind::Pdf));
+        for e in ["heic", "avif", "mp4", "zzz"] {
             assert_eq!(MergeKind::for_ext(e), None, "{e}");
         }
         assert_eq!(MergeKind::from_arg("audio"), Some(MergeKind::Audio));
@@ -257,6 +323,18 @@ mod tests {
         let out = audio(&wavs, &Options::default(), |_| {}).unwrap();
         assert!(out.ends_with("merged.flac"));
         assert!(std::fs::metadata(out).unwrap().len() > 100);
+    }
+
+    #[test]
+    fn images_and_pdfs_become_one_pdf() {
+        let d = tempfile::tempdir().unwrap();
+        let png = d.path().join("a.png");
+        ::image::RgbImage::new(4, 4).save(&png).unwrap();
+        let doc = d.path().join("b.pdf");
+        std::fs::write(&doc, pdf_edit::tests::sample(3)).unwrap();
+        let out = files_to_pdf(&[doc.clone(), png, doc], &Options::default(), |_| {}).unwrap();
+        assert!(out.ends_with("merged.pdf"));
+        assert_eq!(pdf::page_count(&out).unwrap(), 7);
     }
 
     #[test]

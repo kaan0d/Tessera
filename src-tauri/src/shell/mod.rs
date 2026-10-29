@@ -75,6 +75,9 @@ fn merge_verb(ext: &str, s: &Settings) -> Option<(MergeKind, String)> {
         return None;
     }
     let kind = MergeKind::for_ext(ext)?;
+    if Format::from_ext(ext).is_some_and(Format::is_office) && !crate::office::ready() {
+        return None;
+    }
     let key = match kind {
         MergeKind::Pdf => "menu.merge_pdf",
         MergeKind::Audio => "menu.merge_audio",

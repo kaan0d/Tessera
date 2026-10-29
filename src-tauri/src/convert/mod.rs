@@ -20,6 +20,7 @@ mod image;
 pub mod office;
 pub mod output;
 pub mod pdf;
+pub mod pdf_edit;
 mod raw;
 pub mod security;
 mod size;
