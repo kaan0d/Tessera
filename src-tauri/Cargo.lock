@@ -5370,7 +5370,7 @@ dependencies = [
 
 [[package]]
 name = "tessera"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "flacenc",
  "hayro",
