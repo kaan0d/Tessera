@@ -134,7 +134,7 @@ pub fn images_to_pdf(
     let mut result = build(&plain, false, &mut progress)?;
     if let Some(max) = opts.max_bytes.filter(|m| result.len() as u64 > *m) {
         // over the limit: JPEG pages, quality first, then smaller pictures
-        let mut fitted = None;
+        let (mut fitted, mut tries) = (None, 0u8);
         'search: for edge in [
             None,
             Some(2400),
@@ -147,6 +147,9 @@ pub fn images_to_pdf(
                 let mut o = plain.clone();
                 o.resize = edge.map(super::Resize::MaxEdge);
                 o.quality.jpeg = q;
+                // the search can take a while: keep the bar moving through its 18 tries
+                tries += 1;
+                progress(0.9 + 0.1 * tries as f32 / 18.0);
                 let bytes = build(&o, true, &mut |_| {})?;
                 if bytes.len() as u64 <= max {
                     fitted = Some(bytes);
