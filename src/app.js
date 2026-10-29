@@ -656,8 +656,9 @@ async function refreshOffice() {
   $('lo-bar').style.setProperty('--p', pct / 100);
   $('lo-bar').setAttribute('aria-valuenow', pct);
   $('lo-pct').textContent = t('pct', { n: pct });
-  $('lo-get').hidden = state === 'downloading' || state === 'ready';
-  $('lo-get').querySelector('span').textContent = t(state === 'error' ? 'ff.retry' : state === 'outdated' ? 'lo.update' : 'lo.get');
+  // our own copy can be fetched again (like ffmpeg); an installed LibreOffice updates itself
+  $('lo-get').hidden = state === 'downloading' || (state === 'ready' && f.source !== 'own');
+  $('lo-get').querySelector('span').textContent = t(state === 'error' ? 'ff.retry' : state === 'outdated' || state === 'ready' ? 'lo.update' : 'lo.get');
   $('lo-del').hidden = !((state === 'ready' || state === 'outdated') && f.source === 'own');
   if (f.downloading) loTimer = setTimeout(refreshOffice, 1000);
 }

@@ -954,6 +954,12 @@ function featuresInit() {
     invoke('import_settings').then((done) => (done ? location.reload() : msg('bk-err', '')), (e) => msg('bk-err', String(e)));
   $('ab-lic').onclick = openLicenses;
   $('ab-log').onclick = () => invoke('open_log').then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));
+  // a new GitHub issue with the version filled in; the user writes the rest in the browser
+  $('ab-bug').onclick = () => {
+    const body = `**Tessera version:** ${about ? about.version : '?'}\n**Windows:** \n**Language:** ${LANG}\n\n**What happened:**\n\n**Steps to repeat:**\n1. \n\n**What you expected:**\n`;
+    const url = (about ? about.repo_url : '') + '/issues/new?labels=bug&body=' + encodeURIComponent(body);
+    invoke('open_url', { url }).then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));
+  };
   $('ab-repo').onclick = () => invoke('open_url', { url: about ? about.repo_url : '' }).then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));
   $('ab-ff-copy').onclick = (e) => copyText($('ab-ff-url').textContent, e.currentTarget, 'ab.copy_link');
   $('ld-copy').onclick = (e) => copyText(licText, e.currentTarget, 'ld.copy');
