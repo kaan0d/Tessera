@@ -414,20 +414,12 @@ function dragDrop() {
   });
 }
 
-// Nothing is focus-ringed until the keyboard is used; Enter or Space as the very first key only
-// shows where the focus is, so a stray key never starts a conversion.
-let eatSpace = false;
-function keyboardIn(e) {
-  if (document.body.classList.contains('kb') || e.key === 'Escape') return false;
+// Nothing is focus-ringed until the keyboard is used; the first key shows the ring and still acts.
+function keyboardIn() {
   document.body.classList.add('kb');
-  eatSpace = e.key === ' ';
-  return e.key === 'Enter' || e.key === ' ';
 }
-document.addEventListener('keyup', (e) => {
-  if (e.key === ' ' && eatSpace) (eatSpace = false), e.preventDefault();
-});
 document.addEventListener('keydown', (e) => {
-  if (keyboardIn(e)) return e.preventDefault();
+  keyboardIn();
   if (e.key === 'Escape') return e.preventDefault(), customOpen && !busy ? showCustom(false) : close();
   if (e.target.closest && e.target.closest('.dr-choice')) arrows(e);
 });
