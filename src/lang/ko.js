@@ -36,7 +36,7 @@ I18N['ko'] = {
   "lang.desc": "앱과 마우스 오른쪽 단추 메뉴의 언어입니다.",
   "autostart.label": "Windows 시작 시 실행",
   "autostart.desc": "로그인하면 알림 영역에서 대기합니다.",
-  "general.aside": "<span class=\"sent\">파일을 마우스 오른쪽 단추로 클릭하고 <b>변환</b> 메뉴에서 형식을 선택하세요.</span> <span class=\"sent\">표시할 형식은 <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">형식</button>에서 변경할 수 있습니다.</span>",
+  "general.aside": "<span class=\"sent\">파일을 마우스 오른쪽 단추로 클릭하고 <b>Tessera</b> 메뉴에서 형식을 선택하세요.</span> <span class=\"sent\">표시할 형식은 <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">형식</button>에서 변경할 수 있습니다.</span>",
   "kind.image": "이미지",
   "kind.audio": "오디오",
   "kind.video": "비디오",

@@ -36,7 +36,7 @@ I18N['ja'] = {
   "lang.desc": "アプリと右クリック メニューの言語です。",
   "autostart.label": "Windows の起動時に開始",
   "autostart.desc": "サインイン後、通知領域で待機します。",
-  "general.aside": "<span class=\"sent\">ファイルを右クリックし、<b>変換</b> メニューから形式を選びます。</span> <span class=\"sent\">表示する形式は <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">形式</button> で変更できます。</span>",
+  "general.aside": "<span class=\"sent\">ファイルを右クリックし、<b>Tessera</b> メニューから形式を選びます。</span> <span class=\"sent\">表示する形式は <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">形式</button> で変更できます。</span>",
   "kind.image": "画像",
   "kind.audio": "音声",
   "kind.video": "動画",

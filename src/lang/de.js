@@ -36,7 +36,7 @@ I18N['de'] = {
   "lang.desc": "Sprache der App und ihres Kontextmenüs.",
   "autostart.label": "Mit Windows starten",
   "autostart.desc": "Wartet nach der Anmeldung im Infobereich der Taskleiste.",
-  "general.aside": "<span class=\"sent\">Klicken Sie mit der rechten Maustaste auf eine Datei, und wählen Sie im Menü <b>Konvertieren</b> ein Format aus.</span> <span class=\"sent\">Welche Formate dort erscheinen, legen Sie unter <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Formate</button> fest.</span>",
+  "general.aside": "<span class=\"sent\">Klicken Sie mit der rechten Maustaste auf eine Datei, und wählen Sie im Menü <b>Tessera</b> ein Format aus.</span> <span class=\"sent\">Welche Formate dort erscheinen, legen Sie unter <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Formate</button> fest.</span>",
   "kind.image": "Bild",
   "kind.audio": "Audio",
   "kind.video": "Video",

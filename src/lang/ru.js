@@ -36,7 +36,7 @@ I18N['ru'] = {
   "lang.desc": "Язык приложения и его контекстного меню.",
   "autostart.label": "Запускать вместе с Windows",
   "autostart.desc": "Ожидает в области уведомлений после входа в систему.",
-  "general.aside": "<span class=\"sent\">Щёлкните файл правой кнопкой мыши и выберите формат в меню <b>Конвертировать</b>.</span> <span class=\"sent\">Какие форматы там показываются, можно изменить в разделе <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Форматы</button>.</span>",
+  "general.aside": "<span class=\"sent\">Щёлкните файл правой кнопкой мыши и выберите формат в меню <b>Tessera</b>.</span> <span class=\"sent\">Какие форматы там показываются, можно изменить в разделе <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Форматы</button>.</span>",
   "kind.image": "Изображения",
   "kind.audio": "Аудио",
   "kind.video": "Видео",

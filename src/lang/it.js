@@ -36,7 +36,7 @@ I18N['it'] = {
   "lang.desc": "Lingua dell'app e del suo menu di scelta rapida.",
   "autostart.label": "Avvia con Windows",
   "autostart.desc": "Resta in attesa nell'area di notifica dopo l'accesso.",
-  "general.aside": "<span class=\"sent\">Fai clic con il pulsante destro su un file e scegli un formato dal menu <b>Converti</b>.</span> <span class=\"sent\">Puoi cambiare i formati visualizzati in <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Formati</button>.</span>",
+  "general.aside": "<span class=\"sent\">Fai clic con il pulsante destro su un file e scegli un formato dal menu <b>Tessera</b>.</span> <span class=\"sent\">Puoi cambiare i formati visualizzati in <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Formati</button>.</span>",
   "kind.image": "Immagine",
   "kind.audio": "Audio",
   "kind.video": "Video",

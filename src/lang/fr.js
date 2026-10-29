@@ -36,7 +36,7 @@ I18N['fr'] = {
   "lang.desc": "Langue de l'application et de son menu contextuel.",
   "autostart.label": "Lancer au démarrage de Windows",
   "autostart.desc": "Attend dans la zone de notification après votre connexion.",
-  "general.aside": "<span class=\"sent\">Cliquez avec le bouton droit sur un fichier et choisissez un format dans le menu <b>Convertir</b>.</span> <span class=\"sent\">Vous pouvez choisir les formats proposés dans <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Formats</button>.</span>",
+  "general.aside": "<span class=\"sent\">Cliquez avec le bouton droit sur un fichier et choisissez un format dans le menu <b>Tessera</b>.</span> <span class=\"sent\">Vous pouvez choisir les formats proposés dans <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Formats</button>.</span>",
   "kind.image": "Image",
   "kind.audio": "Audio",
   "kind.video": "Vidéo",

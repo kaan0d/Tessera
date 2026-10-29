@@ -36,7 +36,7 @@ I18N['es'] = {
   "lang.desc": "Idioma de la aplicación y de su menú contextual.",
   "autostart.label": "Iniciar con Windows",
   "autostart.desc": "Espera en la bandeja del sistema después de iniciar sesión.",
-  "general.aside": "<span class=\"sent\">Haz clic con el botón derecho en un archivo y elige un formato en el menú <b>Convertir</b>.</span> <span class=\"sent\">Puedes cambiar qué formatos aparecen en <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Formatos</button>.</span>",
+  "general.aside": "<span class=\"sent\">Haz clic con el botón derecho en un archivo y elige un formato en el menú <b>Tessera</b>.</span> <span class=\"sent\">Puedes cambiar qué formatos aparecen en <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Formatos</button>.</span>",
   "kind.image": "Imagen",
   "kind.audio": "Audio",
   "kind.video": "Vídeo",

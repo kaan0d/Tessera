@@ -36,7 +36,7 @@ I18N['zh-CN'] = {
   "lang.desc": "应用及其右键菜单的语言。",
   "autostart.label": "随 Windows 启动",
   "autostart.desc": "登录后在系统托盘中待命。",
-  "general.aside": "<span class=\"sent\">右键单击文件，然后从<b>转换</b>菜单中选择格式。</span> <span class=\"sent\">可以在<button type=\"button\" class=\"link\" data-goto=\"t-bicim\">格式</button>中更改显示哪些格式。</span>",
+  "general.aside": "<span class=\"sent\">右键单击文件，然后从<b>Tessera</b>菜单中选择格式。</span> <span class=\"sent\">可以在<button type=\"button\" class=\"link\" data-goto=\"t-bicim\">格式</button>中更改显示哪些格式。</span>",
   "kind.image": "图像",
   "kind.audio": "音频",
   "kind.video": "视频",

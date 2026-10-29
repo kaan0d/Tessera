@@ -36,7 +36,7 @@ I18N['id'] = {
   "lang.desc": "Bahasa aplikasi dan menu klik kanannya.",
   "autostart.label": "Mulai bersama Windows",
   "autostart.desc": "Menunggu di baki sistem setelah Anda masuk.",
-  "general.aside": "<span class=\"sent\">Klik kanan file, lalu pilih format dari menu <b>Konversi</b>.</span> <span class=\"sent\">Anda dapat mengubah format yang muncul di <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Format</button>.</span>",
+  "general.aside": "<span class=\"sent\">Klik kanan file, lalu pilih format dari menu <b>Tessera</b>.</span> <span class=\"sent\">Anda dapat mengubah format yang muncul di <button type=\"button\" class=\"link\" data-goto=\"t-bicim\">Format</button>.</span>",
   "kind.image": "Gambar",
   "kind.audio": "Audio",
   "kind.video": "Video",
