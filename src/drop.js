@@ -186,6 +186,30 @@ function buildMerge() {
     t(m === 'pdf' ? 'dr.merge_pdf' : 'dr.merge_audio'), t(m === 'pdf' ? 'dr.merge_pdf_sub' : 'dr.merge_audio_sub', { n: opts.count }))));
 }
 
+const PDF_CARDS = [
+  [{ tool: 'split' }, 'i-doc', 'dr.pdf_split', 'dr.pdf_split_sub'],
+  [{ tool: 'compress', strong: false }, 'i-download', 'dr.pdf_compress', 'dr.pdf_compress_sub'],
+  [{ tool: 'compress', strong: true }, 'i-download', 'dr.pdf_compress_strong', 'dr.pdf_compress_strong_sub'],
+];
+const PDF_TURNS = [[90, 'dr.pdf_right'], [270, 'dr.pdf_left'], [180, 'dr.pdf_180']];
+
+function buildPdf() {
+  $('sec-pdf').hidden = !opts.pdf_tools;
+  if (!opts.pdf_tools) return;
+  $('dr-pdf').replaceChildren(...PDF_CARDS.map(([pdf, ic, name, sub]) => card('', { kind: 'pdf', pdf }, ic, t(name), t(sub, { n: opts.count }))));
+  $('dr-rotate').replaceChildren(...PDF_TURNS.map(([angle, key]) => {
+    const c = choiceBtn('chip dr-choice', { kind: 'pdf', pdf: { tool: 'rotate', angle, pages: '' } });
+    c.append(t(key));
+    return c;
+  }));
+  // the page list is read when one of these is chosen
+  $('dr-pageops').replaceChildren(...[['extract', 'dr.pdf_keep'], ['delete', 'dr.pdf_delete']].map(([op, key]) => {
+    const c = choiceBtn('chip dr-choice', { kind: 'pdf_pages', op });
+    c.append(t(key));
+    return c;
+  }));
+}
+
 function paintHead() {
   const n = opts ? opts.count : files.length;
   const kinds = opts ? opts.kinds : [];
@@ -212,6 +236,7 @@ function render() {
   buildTargets();
   buildPresets();
   buildMerge();
+  buildPdf();
   buildCustomCard();
   if (customOpen && !customAvailable()) showCustom(false);
   if (customOpen) (buildCustom(), syncCustom());
@@ -280,8 +305,13 @@ async function choose(b) {
     b.classList.add('nudge');
     return status(b.title);
   }
-  const choice = JSON.parse(b.dataset.choice);
+  let choice = JSON.parse(b.dataset.choice);
   if (choice.kind === 'custom_open') return showCustom(true);
+  if (choice.kind === 'pdf_pages') {
+    const pages = $('dr-pages').value.trim();
+    if (!pages) return $('dr-pages').focus(), status(t('dr.pdf_pages_needed'), true);
+    choice = { kind: 'pdf', pdf: { tool: choice.op, pages } };
+  }
   go(choice, b);
 }
 
@@ -387,6 +417,9 @@ document.addEventListener('click', (e) => {
   if (b) choose(b);
 });
 $('dr-cancel').onclick = close;
+$('dr-pages').onkeydown = (e) => {
+  if (e.key === 'Enter') e.preventDefault(), choose($('dr-pageops').firstElementChild);
+};
 // The window is created at startup and can load before the backend answers commands, and a
 // `drop-files` sent while the page was still loading is lost: ask for the files, retrying briefly.
 async function fetchFiles(tries) {

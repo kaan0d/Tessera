@@ -81,6 +81,7 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("pdf.rotate_left", "Rotate left", "Sola döndür"),
     ("pdf.rotate_180", "Turn upside down", "Ters çevir"),
     ("pdf.compress", "Compress PDF", "PDF'i sıkıştır"),
+    ("menu.pdf_more", "More PDF tools...", "Diğer PDF araçları..."),
     // merge verbs
     ("menu.merge_pdf", "Merge into PDF", "PDF olarak birleştir"),
     (

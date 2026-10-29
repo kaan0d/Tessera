@@ -19,7 +19,7 @@ function normalize(x) {
   x.language = x.language === 'tr' ? 'tr' : 'en';
   x.quality = { jpeg: 85, webp: 80, webp_lossless: false, mp3_q: 2, ogg_q: 6, video_mbps: 8, gif_fps: 15, gif_width: 480, ...x.quality };
   x.panel = { corner: 'top_right', seconds: 7, windows_toast: false, ...x.panel };
-  x.menu = { icons: true, sort: 'default', presets_enabled: true, merge: true, folder: true, folder_recursive: false, sendto: false, ...x.menu };
+  x.menu = { icons: true, sort: 'default', presets_enabled: true, merge: true, pdf_tools: true, folder: true, folder_recursive: false, sendto: false, ...x.menu };
   x.updates = { check_on_start: false, ...x.updates };
   x.history_enabled ??= true;
   x.enabled_targets ||= [];
@@ -459,6 +459,7 @@ function render() {
   $('icons-sw').checked = s.menu.icons;
   $('presets-sw').checked = s.menu.presets_enabled;
   $('merge-sw').checked = s.menu.merge;
+  $('pdftools-sw').checked = s.menu.pdf_tools;
   $('folder-sw').checked = s.menu.folder;
   $('folder-rec-sw').checked = s.menu.folder_recursive;
   $('folder-rec-sw').disabled = !s.menu.folder;
@@ -699,6 +700,7 @@ function bind() {
   $('icons-sw').onchange = (e) => setIn('menu', 'icons', e.target.checked);
   $('presets-sw').onchange = (e) => setIn('menu', 'presets_enabled', e.target.checked);
   $('merge-sw').onchange = (e) => setIn('menu', 'merge', e.target.checked);
+  $('pdftools-sw').onchange = (e) => setIn('menu', 'pdf_tools', e.target.checked);
   $('folder-sw').onchange = (e) => setIn('menu', 'folder', e.target.checked);
   $('folder-rec-sw').onchange = (e) => setIn('menu', 'folder_recursive', e.target.checked);
   $('sendto-sw').onchange = (e) => setIn('menu', 'sendto', e.target.checked);

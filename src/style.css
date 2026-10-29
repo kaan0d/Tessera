@@ -622,6 +622,9 @@ body.busy .dr-stack .s0 .outline,body.busy .dr-stack .s0 .fold{stroke:var(--acce
 .chip.dr-choice:focus-visible{background-size:100% 100%;color:var(--accent);border-color:var(--accent)}
 .chip.dr-choice.chosen{background:var(--accent);color:var(--on-accent);border-color:transparent}
 .dr-cards{display:flex;flex-direction:column;gap:6px}
+#sec-pdf .dr-kind{margin-top:12px}
+.dr-pages{display:flex;align-items:center;gap:8px;margin-top:6px}
+.dr-pages .field{flex:1;min-width:0;width:auto;height:34px;margin:0}
 .dr-card{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;text-align:left;cursor:pointer;
   border:1px solid var(--line);border-radius:var(--r-lg);color:var(--ink);box-shadow:var(--shadow-1),var(--hi);
   background:linear-gradient(var(--accent-soft),var(--accent-soft)) bottom/100% 0% no-repeat,var(--surface);

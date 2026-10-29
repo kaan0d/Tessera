@@ -940,8 +940,8 @@ fn handle_drop(app: &AppHandle, paths: Vec<PathBuf>, custom: bool) {
 }
 
 /// Explorer starts one process per selected file; gather them (same quiet window as merge) and
-/// open the chooser once, on its custom page.
-fn start_custom(app: &AppHandle, files: Vec<PathBuf>) {
+/// open the chooser once, on its custom page when `custom`.
+fn start_custom(app: &AppHandle, files: Vec<PathBuf>, custom: bool) {
     let customs = app.state::<AppState>().customs.clone();
     let first = {
         let mut c = customs.lock().unwrap();
@@ -961,7 +961,7 @@ fn start_custom(app: &AppHandle, files: Vec<PathBuf>) {
             (mono_ms().saturating_sub(c.1) >= batch::QUIET_MS).then(|| std::mem::take(&mut c.0))
         };
         if let Some(files) = ready {
-            handle_drop(&app, files, true);
+            handle_drop(&app, files, custom);
             break;
         }
     });
@@ -1000,6 +1000,7 @@ struct DropOptions {
     presets: Vec<PresetInfo>,
     /// "pdf" / "audio"
     merge: Vec<&'static str>,
+    pdf_tools: bool,
     count: usize,
     skipped: usize,
 }
@@ -1019,6 +1020,7 @@ fn get_drop_options(files: Vec<String>, state: State<AppState>) -> DropOptions {
         targets: c.targets,
         presets,
         merge: c.merge,
+        pdf_tools: c.pdf_tools,
         count: c.count,
         skipped: c.skipped,
     }
@@ -1064,6 +1066,12 @@ fn run_drop(
                 return bad();
             }
             start_preset(&app, &id, known);
+        }
+        dropped::Choice::Pdf { pdf } => {
+            if !c.pdf_tools || !pdf.valid() {
+                return bad();
+            }
+            start_pdf(&app, pdf, known);
         }
         dropped::Choice::Merge { merge } => {
             let Some(kind) = MergeKind::from_arg(&merge).filter(|k| c.merge.contains(&k.arg()))
@@ -1511,7 +1519,8 @@ pub fn run() {
                 Cli::Pdf { tool, files } => start_pdf(app, tool, files),
                 Cli::Folder { action, dir } => start_folder(app, action, dir),
                 Cli::Drop { files } => handle_drop(app, files, false),
-                Cli::Custom { files } => start_custom(app, files),
+                Cli::Custom { files } => start_custom(app, files, true),
+                Cli::Choose { files } => start_custom(app, files, false),
                 Cli::Normal => show_window(app),
                 _ => {}
             }
@@ -1649,7 +1658,8 @@ pub fn run() {
                     start_folder(app.handle(), action.clone(), dir.clone())
                 }
                 Cli::Drop { files } => handle_drop(app.handle(), files.clone(), false),
-                Cli::Custom { files } => start_custom(app.handle(), files.clone()),
+                Cli::Custom { files } => start_custom(app.handle(), files.clone(), true),
+                Cli::Choose { files } => start_custom(app.handle(), files.clone(), false),
                 Cli::Normal => show_window(app.handle()),
                 _ => {}
             }

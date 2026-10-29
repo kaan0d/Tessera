@@ -63,6 +63,8 @@ pub struct MenuOpts {
     pub presets_enabled: bool,
     /// "Merge into PDF" / "Merge audio" verbs.
     pub merge: bool,
+    /// PDF tool verbs on PDF files (split, rotate, compress, more tools).
+    pub pdf_tools: bool,
     /// Folder verbs ("Convert all images in this folder").
     pub folder: bool,
     /// Folder verbs also read sub-folders.
@@ -78,6 +80,7 @@ impl Default for MenuOpts {
             sort: MenuSort::Default,
             presets_enabled: true,
             merge: true,
+            pdf_tools: true,
             folder: true,
             folder_recursive: false,
             sendto: false,

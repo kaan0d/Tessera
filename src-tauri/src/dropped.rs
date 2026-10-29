@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::convert::combine::{MergeKind, MAX_FILES as MERGE_MAX};
+use crate::convert::pdf_tools::PdfTool;
 use crate::convert::{needs_ffmpeg, supported_targets, uses_ffmpeg, Format};
 use crate::folder;
 use crate::preset::PresetOptions;
@@ -27,6 +28,10 @@ pub enum Choice {
     },
     Merge {
         merge: String,
+    },
+    /// A PDF tool on every file (all of them PDFs).
+    Pdf {
+        pdf: PdfTool,
     },
     /// One-off settings from the chooser's custom page. `target` is a format or "same".
     Custom {
@@ -57,6 +62,8 @@ pub struct Choices {
     pub preset_ids: Vec<String>,
     /// "pdf" and/or "audio": the whole selection can be merged into one file.
     pub merge: Vec<&'static str>,
+    /// Every file is a PDF: the PDF tools apply.
+    pub pdf_tools: bool,
     /// Convertible files.
     pub count: usize,
     /// Dropped files with an unknown extension.
@@ -178,6 +185,7 @@ pub fn choices(files: &[PathBuf], s: &Settings) -> Choices {
         targets,
         preset_ids,
         merge: merge_kinds(&known),
+        pdf_tools: !known.is_empty() && known.iter().all(|(_, f)| *f == Format::Pdf),
         count: known.len(),
         skipped,
         skipped_names,

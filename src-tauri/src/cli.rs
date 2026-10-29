@@ -55,6 +55,10 @@ pub enum Cli {
     Custom {
         files: Vec<PathBuf>,
     },
+    /// "More PDF tools" verb: the chooser opens on its main page for the gathered files.
+    Choose {
+        files: Vec<PathBuf>,
+    },
     /// Folder verb: convert the matching files of a folder.
     Folder {
         action: Action,
@@ -229,6 +233,10 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         }
         Some("--custom") => match files(&args[1..], cwd) {
             Some(files) => Cli::Custom { files },
+            None => Cli::Normal,
+        },
+        Some("--choose") => match files(&args[1..], cwd) {
+            Some(files) => Cli::Choose { files },
             None => Cli::Normal,
         },
         Some("--folder") => {

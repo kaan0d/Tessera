@@ -9,6 +9,7 @@ use winreg::RegKey;
 
 use crate::app_info::APP_NAME;
 use crate::convert::combine::MergeKind;
+use crate::convert::pdf_tools::PdfTool;
 use crate::convert::{needs_ffmpeg, supported_targets, uses_ffmpeg, uses_office, Format};
 use crate::folder::Action;
 use crate::i18n::{self, Lang};
@@ -83,6 +84,40 @@ fn merge_verb(ext: &str, s: &Settings) -> Option<(MergeKind, String)> {
         MergeKind::Audio => "menu.merge_audio",
     };
     Some((kind, i18n::t(s.language, key).to_string()))
+}
+
+/// PDF tool verbs for `ext` as (verb name, label, arguments); only PDFs have them.
+fn pdf_verbs(ext: &str, s: &Settings) -> Vec<(String, String, String)> {
+    if ext != "pdf" || !s.menu.pdf_tools || !s.menu_sources.iter().any(|e| e == ext) {
+        return vec![];
+    }
+    let lang = s.language;
+    let mut v: Vec<_> = [
+        PdfTool::Split,
+        PdfTool::Rotate {
+            angle: 90,
+            pages: String::new(),
+        },
+        PdfTool::Rotate {
+            angle: 270,
+            pages: String::new(),
+        },
+        PdfTool::Compress { strong: false },
+    ]
+    .iter()
+    .map(|tool| {
+        let name = format!("pdf_{}", tool.arg().replace(':', "_"));
+        let text = i18n::t(lang, tool.label_key()).to_string();
+        (name, text, format!("--pdf {}", tool.arg()))
+    })
+    .collect();
+    // pages to keep or delete need typing: the chooser has the full set
+    v.push((
+        "pdf_more".into(),
+        i18n::t(lang, "menu.pdf_more").to_string(),
+        "--choose".into(),
+    ));
+    v
 }
 
 fn folder_key(root: &str) -> String {
@@ -212,6 +247,8 @@ fn verb_icon(dir: &Path, name: &str) -> String {
         "preset_pdf" | "docs_pdf" => "document",
         n if n.starts_with("preset_") => "sliders",
         n if n.starts_with("merge_") => "layers",
+        "pdf_more" => "sliders",
+        n if n.starts_with("pdf_") => "document",
         n => Format::from_ext(n).map_or("image", Format::kind),
     };
     dir.join(format!("{icon}-{ICON_REV}.ico"))
@@ -247,7 +284,8 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
         let targets = verbs(ext, s);
         let presets = preset_verbs(ext, s);
         let merge = merge_verb(ext, s);
-        if targets.is_empty() && presets.is_empty() && merge.is_none() {
+        let tools = pdf_verbs(ext, s);
+        if targets.is_empty() && presets.is_empty() && merge.is_none() && tools.is_empty() {
             continue;
         }
         let (menu, _) = hkcu.create_subkey(menu_key(root, ext))?;
@@ -289,6 +327,7 @@ pub fn install_at(root: &str, exe: &Path, s: &Settings) -> io::Result<()> {
                 })
                 .collect(),
         );
+        groups.push(tools);
         // one-off settings: opens the chooser on its custom page (not for documents)
         if Format::from_ext(ext).is_some_and(|f| f.kind() != "document") {
             groups.push(vec![(
@@ -572,6 +611,28 @@ mod tests {
         // 10 formats, then email/discord/strip presets
         assert_eq!((names[0].as_str(), names.len()), ("00_mkv", 14));
         assert_eq!(names[10], "10_preset_email");
+        // PDFs end with merge, the PDF tools and the full set in the chooser
+        let pdf = hkcu.open_subkey(menu_key(&root, "pdf")).unwrap();
+        let names = verb_names(&pdf);
+        let tail: Vec<&str> = names[names.len() - 6..].iter().map(|n| &n[3..]).collect();
+        assert_eq!(
+            tail,
+            [
+                "merge_pdf",
+                "pdf_split",
+                "pdf_rotate_90",
+                "pdf_rotate_270",
+                "pdf_compress",
+                "pdf_more"
+            ]
+        );
+        let more = pdf
+            .open_subkey(format!(r"shell\{}\command", names[names.len() - 1]))
+            .unwrap();
+        assert_eq!(
+            more.get_value::<String, _>("").unwrap(),
+            r#""C:\Program Files\X\x.exe" --choose "%1""#
+        );
 
         remove_at(&root).unwrap();
         remove_at(&root).unwrap();
