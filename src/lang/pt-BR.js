@@ -125,7 +125,7 @@ I18N['pt-BR'] = {
   "ff.initial": "Verificando status…",
   "ff.bar": "Progresso do download do ffmpeg",
   "ff.retry": "Tentar novamente",
-  "ff.update": "Atualizar o ffmpeg",
+  "ff.update": "Atualizar (cerca de 170 MB)",
   "ff.foot": "Gratuito e de código aberto. Baixado durante a instalação ou quando você clicar no botão. Fotos, PDFs, WAV e FLAC são convertidos sem ele; fotos HEIC e AVIF precisam dele.",
   "ff.ready": "Pronto. Arquivos de vídeo e áudio podem ser convertidos.",
   "ff.downloading": "Baixando em segundo plano.",

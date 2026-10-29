@@ -124,7 +124,7 @@ I18N['zh-CN'] = {
   "ff.initial": "正在检查状态…",
   "ff.bar": "ffmpeg 下载进度",
   "ff.retry": "重试",
-  "ff.update": "更新 ffmpeg",
+  "ff.update": "更新（约 170 MB）",
   "ff.foot": "免费且开源。在安装期间或你按下按钮时下载。照片、PDF、WAV 和 FLAC 无需它即可转换；HEIC 和 AVIF 照片需要它。",
   "ff.ready": "已就绪。可以转换视频和音频文件。",
   "ff.downloading": "正在后台下载。",

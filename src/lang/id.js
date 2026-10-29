@@ -124,7 +124,7 @@ I18N['id'] = {
   "ff.initial": "Memeriksa status…",
   "ff.bar": "Kemajuan unduhan ffmpeg",
   "ff.retry": "Coba lagi",
-  "ff.update": "Perbarui ffmpeg",
+  "ff.update": "Perbarui (sekitar 170 MB)",
   "ff.foot": "Gratis dan sumber terbuka. Diunduh saat penyiapan atau kapan pun Anda menekan tombol. Foto, PDF, WAV, dan FLAC dapat dikonversi tanpanya; foto HEIC dan AVIF memerlukannya.",
   "ff.ready": "Siap. File video dan audio dapat dikonversi.",
   "ff.downloading": "Mengunduh di latar belakang.",

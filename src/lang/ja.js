@@ -124,7 +124,7 @@ I18N['ja'] = {
   "ff.initial": "状態を確認しています…",
   "ff.bar": "ffmpeg のダウンロードの進行状況",
   "ff.retry": "再試行",
-  "ff.update": "ffmpeg を更新",
+  "ff.update": "更新 (約 170 MB)",
   "ff.foot": "無料のオープンソースです。セットアップ中、またはボタンを押したときにダウンロードされます。写真、PDF、WAV、FLAC は ffmpeg なしで変換できますが、HEIC と AVIF の写真には必要です。",
   "ff.ready": "準備完了。動画と音声のファイルを変換できます。",
   "ff.downloading": "バックグラウンドでダウンロードしています。",
