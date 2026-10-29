@@ -14,6 +14,9 @@ pub mod combine;
 /// reads and clears it to print a note.
 pub static ALPHA_FLATTENED: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
+/// Set (width << 32 | height) when a size limit was met by making the picture smaller; the
+/// CLI reads and clears it to say so. 0 = not shrunk.
+pub static SHRUNK_TO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 mod error;
 pub mod ffmpeg;
 mod image;

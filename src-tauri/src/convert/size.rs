@@ -69,11 +69,19 @@ pub fn fit(
         } else {
             let b = enc(view, 100)?;
             if b.len() as u64 <= max {
+                if view.width() != w0 {
+                    let wh = u64::from(view.width()) << 32 | u64::from(view.height());
+                    super::SHRUNK_TO.store(wh, std::sync::atomic::Ordering::Relaxed);
+                }
                 return Ok(b);
             }
             (b.len() as u64, None)
         };
         if let Some(b) = found {
+            if view.width() != w0 {
+                let wh = u64::from(view.width()) << 32 | u64::from(view.height());
+                super::SHRUNK_TO.store(wh, std::sync::atomic::Ordering::Relaxed);
+            }
             return Ok(b);
         }
         // bytes scale roughly with area; aim a bit under the limit so the next round fits
