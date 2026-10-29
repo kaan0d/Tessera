@@ -636,7 +636,7 @@ function wdCollect() {
   if (!wd.folder) errs.folder = t('wd.e_folder');
   if (!$('wd-all').checked && !wd.exts.length) errs.exts = t('wd.e_exts');
   const sub = $('wd-sub').value.trim();
-  if (out === 'sub' && (!sub || /[\\/:*?"<>|{}]/.test(sub) || /[. ]$/.test(sub))) errs.out = t('wd.e_sub');
+  if (out === 'sub' && (!sub || /[\\/:*?"<>|{}]/.test(sub) || /[. ]$/.test(sub) || /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(sub))) errs.out = t('wd.e_sub');
   if (out === 'fixed' && !wd.fixed) errs.out = t('wd.e_fixed');
   msg('wd-folder-msg', errs.folder);
   msg('wd-exts-msg', errs.exts);
