@@ -478,6 +478,8 @@ input[type=radio]:checked::after{scale:1}
 .upd-tile.new{color:var(--on-accent);background:var(--accent);border-color:transparent}
 .upd-tile.err{color:var(--danger);background:var(--danger-soft);border-color:transparent}
 .upd-result{transition:color var(--d2)}
+/* "Update now" and "See what's new" sit under the message, only when there is a new version */
+.upd-acts:not(:has(>:not([hidden]))){display:none}
 .upd-tile.err+.grow .upd-result{color:var(--danger)}
 .upd-tile.new+.grow .upd-result{color:var(--ink)}
 .upd-banner{display:flex;align-items:center;gap:var(--s3);padding:10px 10px 10px 12px;border-radius:var(--r-lg);
@@ -547,7 +549,8 @@ input[type=radio]:checked::after{scale:1}
 .q.off .slider{cursor:default}
 
 /* dependent switch: indented under its parent, dims while the parent is off */
-.row.sub{padding-left:60px;padding-top:10px}
+.row.sub{position:relative;padding-left:60px;padding-top:10px}
+.sub-arrow{position:absolute;left:34px;top:10px;color:var(--muted)}
 .row+.row.sub{border-top:0}
 .row.sub .label{font-size:var(--t-sm)}
 .row.sub.off .grow{opacity:.5;transition:opacity var(--d2)}
@@ -911,7 +914,9 @@ body.settings{
 .p-timer{height:3px}
 
 /* superscript 1 (ffmpeg) or 2 (LibreOffice) on format chips */
-.tool-mark{font-size:9px;font-weight:700;line-height:1;margin-left:1px;color:var(--muted);position:relative;top:-.55em}
+.tool-mark{display:inline-grid;place-items:center;min-width:13px;height:13px;padding:0 3px;margin-left:3px;border-radius:999px;position:relative;top:-.5em;
+  font-size:8.5px;font-weight:700;line-height:1;color:var(--muted);background:color-mix(in srgb,currentColor 16%,transparent)}
+.chip[aria-pressed=true] .tool-mark{color:var(--accent);background:var(--accent-soft)}
 
 /* the small "ffmpeg" tag next to formats that need it */
 .badge.tag{display:inline-block;padding:1px 6px;border-radius:6px;font-size:9.5px;font-weight:600;letter-spacing:.03em;line-height:1.5;

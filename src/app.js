@@ -152,6 +152,8 @@ const KINDS = [['image', 'kind.image', 'i-image'], ['audio', 'kind.audio', 'i-au
 const FF_SOURCES = ['heic', 'heif', 'avif'];
 const RAW = ['dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf'];
 const srcNeedsFf = (x) => x.kind === 'video' || FF_SOURCES.includes(x.ext);
+// every document type but PDF is opened by LibreOffice (convert::Format::is_office)
+const srcNeedsLo = (x) => x.kind === 'document' && x.ext !== 'pdf';
 
 function buildKinds(box, items, sources) {
   box.replaceChildren();
@@ -204,11 +206,11 @@ function buildKinds(box, items, sources) {
         c.dataset.ff = '';
         c.append(toolMark(1));
       }
-      if (!sources && it.needs_office) {
+      if (sources ? srcNeedsLo(it) : it.needs_office) {
         c.dataset.lo = '';
         c.append(toolMark(2));
       }
-      if (sources) c.title = srcNeedsFf(it) ? t('chip.src_ff') : RAW.includes(it.ext) ? t('chip.raw') : '';
+      if (sources) c.title = srcNeedsFf(it) ? t('chip.src_ff') : srcNeedsLo(it) ? t('chip.lo') : RAW.includes(it.ext) ? t('chip.raw') : '';
       c.onclick = () => (sources ? toggleSource(it.ext) : toggleTarget(it, c));
       chips.append(c);
     }
@@ -336,7 +338,7 @@ function paintHints(flash) {
   $('s-count').textContent = t('fmt.src_count', { n });
   const raw = s.menu_sources.some((e) => RAW.includes(e));
   hint($('s-hint'), n ? '' : 'warn', n
-    ? [t('hint.sources', { n }), ' ', t('hint.src_ff'), ...(raw ? [' ' + t('hint.raw')] : [])]
+    ? [t('hint.sources', { n }), ' ', t('hint.src_ff'), ' ', t('hint.lo'), ...(raw ? [' ' + t('hint.raw')] : [])]
     : [icon('i-alert'), t('hint.none_sources')]);
 }
 

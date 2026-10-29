@@ -38,6 +38,7 @@
   <symbol id="i-shapes" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><circle cx="16.5" cy="7.5" r="3.5"/><path d="m7.5 13.5 4 6.5h-8z"/><rect x="13" y="13" width="7" height="7" rx="3.5"/></symbol>
   <symbol id="i-pointer" viewBox="0 0 24 24"><path d="M5 4.5 18.5 10l-5.8 1.9-2 5.9z"/><path d="m13 12.2 5 5"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/></symbol>
+  <symbol id="i-sub" viewBox="0 0 24 24"><path d="M7 4v7a3 3 0 0 0 3 3h9"/><path d="m15.5 10.5 3.5 3.5-3.5 3.5"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m5.5 12.5 4.2 4.2 8.8-9.2"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.6a2 2 0 0 1 3.4 0l7.2 12.6a2 2 0 0 1-1.7 3H4.8a2 2 0 0 1-1.7-3z"/><path d="M12 9.5v4"/><path d="M12 16.8v.2"/></symbol>
   <symbol id="i-retry" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
@@ -161,9 +162,11 @@
           <div class="grow">
             <span class="label" data-i18n="upd.now_label"></span>
             <p id="upd-result" class="desc upd-result" role="status" aria-live="polite" data-i18n="upd.never"></p>
+            <div class="actions upd-acts">
+              <button type="button" id="upd-now" class="btn primary sm" hidden data-i18n="upd.now"></button>
+              <button type="button" id="upd-open" class="btn sm" hidden><span data-i18n="upd.get"></span><svg class="ic" aria-hidden="true"><use href="#i-external"/></svg></button>
+            </div>
           </div>
-          <button type="button" id="upd-now" class="btn primary sm" hidden data-i18n="upd.now"></button>
-          <button type="button" id="upd-open" class="btn sm" hidden><span data-i18n="upd.get"></span><svg class="ic" aria-hidden="true"><use href="#i-external"/></svg></button>
           <button type="button" id="upd-check" class="btn sm" data-i18n="upd.check"></button>
         </div>
       </div>
@@ -457,6 +460,7 @@
           <input type="checkbox" id="folder-sw" class="switch" role="switch" aria-describedby="d-folder">
         </div>
         <div class="row sub">
+          <svg class="ic sub-arrow" aria-hidden="true"><use href="#i-sub"/></svg>
           <div class="grow">
             <label for="folder-rec-sw" class="label" data-i18n="mn.folder_rec"></label>
             <p class="desc" id="d-folder-rec" data-i18n="mn.folder_rec_desc"></p>
