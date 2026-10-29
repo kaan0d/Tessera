@@ -1082,6 +1082,17 @@ const plural = (n) => plurals.select(n);
 /** A known language code, else English. */
 const langOf = (code) => (code in I18N ? code : 'en');
 
+/** The browser's language (Windows' display language in WebView2) mapped to ours: zh-CN and pt-BR
+    as they are, everything else by its first part (de-AT is de). */
+function langOfBrowser() {
+  const nav = navigator.language || 'en';
+  if (nav in I18N) return nav;
+  const base = nav.split('-')[0];
+  if (base === 'zh') return 'zh-CN';
+  if (base === 'pt') return 'pt-BR';
+  return langOf(base);
+}
+
 /** Switches the language and rewrites every marked element. */
 function setLang(code) {
   LANG = langOf(code);

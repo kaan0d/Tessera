@@ -823,6 +823,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     render();
     paintNav(); // header text in the saved language
   } catch (e) {
+    // no saved language to go by: follow Windows (the browser language mirrors it)
+    setLang(langOfBrowser());
+    paintNav();
     const why = t('err.load', { err: e });
     showError(`${why}${/[.!?]$/.test(why) ? '' : '.'} ${t('err.load_dim')}`);
     const retry = document.createElement('button');
