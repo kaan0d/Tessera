@@ -1019,3 +1019,7 @@ kbd{font-size:12px}
 
 /* the settings scrollbar starts under the window buttons, not behind them */
 main::-webkit-scrollbar-track{margin:52px 0 8px}
+
+/* history search sits between the header and the list */
+.hist-search{display:flex;margin:0 0 10px}
+.hist-search .field{width:100%}

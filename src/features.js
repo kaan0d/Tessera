@@ -439,16 +439,29 @@ async function undo(e, btn) {
   if (row) (row.querySelector('.undo') || row.querySelector('.iconbtn')).focus();
 }
 
+/** History rows that match the search box: file names, the action and the error text. */
+function histMatches() {
+  const q = $('hist-q').value.trim().toLocaleLowerCase(LANG);
+  if (!q) return hist;
+  return hist.filter((e) => [e.input, e.output, e.label, e.error]
+    .some((x) => x && String(x).toLocaleLowerCase(LANG).includes(q)));
+}
+
 function renderHistory() {
   const list = $('hist');
+  const shown = histMatches();
   const f = document.createDocumentFragment();
-  hist.forEach((e) => f.append(histRow(e)));
+  shown.forEach((e) => f.append(histRow(e)));
   list.replaceChildren(f);
   const empty = !hist.length;
-  list.hidden = empty;
+  const q = $('hist-q').value.trim();
+  list.hidden = empty || !shown.length;
+  $('hist-find').hidden = empty;
+  $('hist-none').hidden = empty || shown.length > 0;
+  $('hist-none').textContent = t('hi.no_match', { q });
   $('hist-empty').hidden = !empty;
   $('hist-clear').hidden = empty;
-  $('hist-count').textContent = empty ? '' : t('hi.count', { n: hist.length });
+  $('hist-count').textContent = empty ? '' : q ? t('hi.count_match', { n: shown.length, total: hist.length }) : t('hi.count', { n: hist.length });
   const off = s && !s.history_enabled;
   $('hist-empty-title').textContent = t(off ? 'hi.off_title' : 'hi.empty_title');
   $('hist-empty-text').textContent = t(off ? 'hi.off_text' : 'hi.empty_text');
@@ -963,6 +976,7 @@ function featuresInit() {
   $('bk-imp').onclick = () =>
     invoke('import_settings').then((done) => (done ? location.reload() : msg('bk-err', '')), (e) => msg('bk-err', String(e)));
   $('ab-lic').onclick = openLicenses;
+  $('hist-q').oninput = renderHistory;
   $('ab-log').onclick = () => invoke('open_log').then(() => msg('ab-err', ''), (e) => msg('ab-err', String(e)));
   // a new GitHub issue with the version filled in; the user writes the rest in the browser
   $('ab-bug').onclick = () => {
