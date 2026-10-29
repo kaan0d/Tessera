@@ -141,7 +141,10 @@ mod tests {
         ));
         let empty = d.path().join("e.png");
         fs::write(&empty, b"").unwrap();
-        assert!(matches!(validate_input(&empty), Err(ConvertError::EmptyFile)));
+        assert!(matches!(
+            validate_input(&empty),
+            Err(ConvertError::EmptyFile)
+        ));
         let exe = d.path().join("a.exe");
         fs::write(&exe, b"MZ").unwrap();
         assert!(matches!(

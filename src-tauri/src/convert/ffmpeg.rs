@@ -327,6 +327,9 @@ const MIN_COPY_BPS: u64 = 250_000;
 const MIN_VIDEO_BPS: f64 = 30_000.0;
 /// Below this an audio track is not worth producing (bit/s).
 const MIN_AUDIO_BPS: f64 = 24_000.0;
+/// libvorbis floors: stereo below the first fails to open, mono below the second.
+const OGG_STEREO_MIN_BPS: f64 = 48_000.0;
+const OGG_MONO_MIN_BPS: f64 = 32_000.0;
 
 /// Bitrates that should land `target` under `max_bytes` for a clip of `duration_us`.
 /// Never above the quality defaults (a big budget keeps normal quality). Audio gets a fixed
@@ -358,9 +361,11 @@ pub fn plan_bitrates(
         x.video_bps = Some(video.min(f64::from(q.video_mbps) * 1e6) as u64);
         x.audio_bps = has_audio.then_some(audio as u64);
     } else if matches!(target, Format::Mp3 | Format::Ogg | Format::Aac) {
-        if total < MIN_AUDIO_BPS {
+        if total < MIN_AUDIO_BPS || (target == Format::Ogg && total < OGG_MONO_MIN_BPS) {
             return Err(ConvertError::TargetSize);
         }
+        // libvorbis refuses stereo this small; one channel still sounds fine
+        x.mono = target == Format::Ogg && total < OGG_STEREO_MIN_BPS;
         x.audio_bps = Some(total.min(192_000.0) as u64);
     }
     Ok(x)
@@ -496,6 +501,7 @@ pub fn convert_with_ffmpeg(
                 let b =
                     plan_bitrates(max, d, target, p.has_audio && !opts.no_audio, &opts.quality)?;
                 (x.video_bps, x.audio_bps) = (b.video_bps, b.audio_bps);
+                x.mono |= b.mono;
             }
         }
         // a re-encode never needs more bits than the source had: small clips stay small
