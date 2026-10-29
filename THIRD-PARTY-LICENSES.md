@@ -1,16 +1,18 @@
 # Third-party licenses
 
 Tessera is MIT-licensed (see LICENSE). It is written in Rust and runs two separate programs
-it downloads: FFmpeg (on first use) and LibreOffice (only when you ask for document support).
+it downloads: FFmpeg (during setup, or when the app starts unless you chose Later) and LibreOffice
+(only when you ask for document support).
 
 ## FFmpeg (downloaded at runtime, not bundled)
 
 FFmpeg is licensed under the GNU Lesser General Public License, version 2.1 or later
-(LGPL-2.1+). Tessera does not contain or link FFmpeg. On first use it downloads this
+(LGPL-2.1+). Tessera does not contain or link FFmpeg. During setup (or at the next start, unless
+you chose Later in the app) it downloads this
 unmodified build and runs `ffmpeg.exe` as a separate process:
 
 - Build: BtbN FFmpeg-Builds, release `autobuild-2026-10-20-13-08`, asset `ffmpeg-n8.1.3-18-g46d899d7a0-win64-lgpl-8.1.zip` (an LGPL build: no GPL components such as x264 or x265)
-- Download: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-20-13-08/ffmpeg-n8.1.3-18-g46d899d7a0-win64-lgpl-8.1.zip
+- Download: first from a copy of the same file on Tessera's own release page (https://github.com/kaan0d/Tessera/releases/tag/ffmpeg-8.1.3), then from https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-20-13-08/ffmpeg-n8.1.3-18-g46d899d7a0-win64-lgpl-8.1.zip
 - Release page: https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-10-20-13-08
 - Build scripts: https://github.com/BtbN/FFmpeg-Builds
 - FFmpeg source of this build (n8.1.3, commit `46d899d7a0`): https://github.com/FFmpeg/FFmpeg/commit/46d899d7a0 and https://ffmpeg.org/download.html

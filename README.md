@@ -44,7 +44,7 @@ Prefer a window? Drop files on it and choose there. Prefer scripts? There is a f
 - **Stay safe:** originals are kept, output gets a new name, nothing is overwritten unless you turn it on. Every job goes into a history with undo, and any running job can be cancelled.
 - **Feel at home:** English, Türkçe, Español, 简体中文, Português (Brasil), Русский, Deutsch, Français, 日本語, 한국어, Italiano and Bahasa Indonesia (follows Windows), light and dark, keyboard friendly.
 
-Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OGG, AAC and HEIC use ffmpeg, which the installer can download for you (see below). Office documents use LibreOffice as a hidden converter: download it under Settings > Advanced (about 360 MB, 700 MB on disk), or Tessera uses the one already installed.
+Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OGG, AAC, HEIC and AVIF input use ffmpeg, which the installer can download for you (see below). Office documents use LibreOffice as a hidden converter: download it under Settings > Advanced (about 360 MB, 700 MB on disk), or Tessera uses the one already installed.
 
 ## Install
 
@@ -98,6 +98,8 @@ Everything is per user. Files: the install folder only, data included (an update
 - RAW files use the embedded JPEG preview, not a full demosaic.
 - Office documents convert up to three at a time; the first one after a start takes about 10 seconds, later ones about 2. A PDF turned into DOCX keeps the text but often not the layout.
 - PDF tools that keep or delete pages drop bookmarks and form fields; Compress only touches RGB and gray pictures.
+- A one-page PDF or one-slide deck turned into pictures gives one file; more pages go into a folder named after the file.
+- Lossy WebP (made by ffmpeg) leaves out the colour profile; JPEG and PNG keep it.
 
 ## Built with
 
