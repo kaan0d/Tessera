@@ -173,7 +173,22 @@ pub fn parse_size(s: &str) -> Option<u64> {
 /// `args` excludes the executable name. Unknown or malformed input falls back to `Normal`.
 /// Relative file paths are resolved against `cwd` (a forwarded launch has another cwd).
 pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
-    match args.first().map(String::as_str) {
+    const SUBCOMMANDS: [&str; 6] = [
+        "convert",
+        "preset",
+        "merge",
+        "pdf",
+        "list-presets",
+        "formats",
+    ];
+    let first = args.first().map(String::as_str);
+    // `convert --help` and the like show the help instead of a usage error
+    if first.is_some_and(|f| SUBCOMMANDS.contains(&f))
+        && args.iter().any(|a| a == "--help" || a == "-h")
+    {
+        return Cli::Cmd(Command::Help);
+    }
+    match first {
         Some("--install-menu") => Cli::InstallMenu,
         Some("--remove-menu") => Cli::RemoveMenu,
         Some("--setup") => Cli::Setup,
@@ -273,6 +288,10 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
             Some(files) => Cli::Drop { files },
             None => Cli::Normal,
         },
+        // a typo must not open the window and exit 0
+        Some(a) => Cli::Cmd(usage(&format!(
+            "unknown option {a}: the commands are convert, preset, merge, pdf, list-presets and formats"
+        ))),
         _ => Cli::Normal,
     }
 }
@@ -607,7 +626,6 @@ mod tests {
             }
         );
         assert_eq!(parse(&a(&["--background"]), None), Cli::Background);
-        assert_eq!(parse(&a(&["--bogus"]), None), Cli::Normal);
     }
 
     #[test]
@@ -643,7 +661,7 @@ mod tests {
                 files: vec![PathBuf::from(r"C:\w\x.png")]
             }
         );
-        assert_eq!(parse(&a(&["--wat", "x.png"]), None), Cli::Normal);
+        assert!(matches!(parse(&a(&["--wat", "x.png"]), None), Cli::Cmd(Command::Usage(_))));
         assert_eq!(parse(&a(&["--install-sendto"]), None), Cli::InstallSendTo);
         assert_eq!(parse(&a(&["--remove-sendto"]), None), Cli::RemoveSendTo);
         // subcommands and flags still win
@@ -731,6 +749,14 @@ mod tests {
             Command::Convert(c) => c,
             other => panic!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn typos_and_subcommand_help() {
+        assert!(usage_err(&["--bogus"]).contains("unknown option --bogus"));
+        assert_eq!(cmd(&["convert", "--help"]), Command::Help);
+        assert_eq!(cmd(&["pdf", "split", "-h"]), Command::Help);
+        assert_eq!(parse(&a(&["--background"]), None), Cli::Background);
     }
 
     #[test]
