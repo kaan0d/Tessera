@@ -125,6 +125,7 @@ I18N['ko'] = {
   "ff.bar": "ffmpeg 다운로드 진행률",
   "ff.retry": "다시 시도",
   "ff.update": "업데이트(약 170 MB)",
+  "ff.removed": "ffmpeg를 제거했습니다",
   "ff.foot": "무료 오픈 소스입니다. 설치 중이나 단추를 누를 때 다운로드됩니다. 사진, PDF, WAV, FLAC는 없이도 변환되지만 HEIC 및 AVIF 사진에는 필요합니다.",
   "ff.ready": "준비되었습니다. 비디오 및 오디오 파일을 변환할 수 있습니다.",
   "ff.downloading": "백그라운드에서 다운로드하는 중입니다.",

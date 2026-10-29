@@ -142,6 +142,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     // setup window title
     ("setup.title", "Tessera Setup", "Tessera Kurulum"),
     ("setup.uninstall_title", "Uninstall Tessera", "Tessera'yı Kaldır"),
+    (
+        "ff.busy",
+        "ffmpeg is downloading; remove it once the download ends",
+        "ffmpeg indiriliyor; indirme bitince kaldırın",
+    ),
     // context menu
     ("menu.convert_to", "Convert to {fmt}", "{fmt} olarak dönüştür"),
     // PDF tools

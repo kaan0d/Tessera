@@ -1,6 +1,7 @@
 //! Backend strings, ru. Same keys and {placeholders} as `MSGS` (a test checks).
 
 pub const MSGS: &[(&str, &str)] = &[
+    ("ff.busy", "ffmpeg загружается; удалите его после завершения загрузки"),
     ("setup.title", "Установка Tessera"),
     ("setup.uninstall_title", "Удаление Tessera"),
     ("menu.convert_to", "Конвертировать в {fmt}"),

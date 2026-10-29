@@ -1,6 +1,7 @@
 //! Backend strings, zh-CN. Same keys and {placeholders} as `MSGS` (a test checks).
 
 pub const MSGS: &[(&str, &str)] = &[
+    ("ff.busy", "正在下载 ffmpeg；请在下载完成后再删除"),
     ("setup.title", "Tessera 安装程序"),
     ("setup.uninstall_title", "卸载 Tessera"),
     ("menu.convert_to", "转换为 {fmt}"),

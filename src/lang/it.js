@@ -126,6 +126,7 @@ I18N['it'] = {
   "ff.bar": "Avanzamento del download di ffmpeg",
   "ff.retry": "Riprova",
   "ff.update": "Aggiorna (circa 170 MB)",
+  "ff.removed": "ffmpeg rimosso",
   "ff.foot": "Gratuito e open source. Viene scaricato durante l'installazione o quando premi il pulsante. Foto, PDF, WAV e FLAC si convertono anche senza; serve per le foto HEIC e AVIF.",
   "ff.ready": "Pronto. I file video e audio possono essere convertiti.",
   "ff.downloading": "Download in background.",

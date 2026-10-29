@@ -211,6 +211,27 @@ fn office_remove(app: AppHandle) -> Result<(), String> {
     r
 }
 
+/// Deletes the downloaded ffmpeg (Remove in Settings) and records "later", so nothing is fetched
+/// again until the user asks. Refused while a download runs.
+#[tauri::command]
+fn ffmpeg_remove(app: AppHandle) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    if state.download.status(false, i18n::lang()).downloading {
+        return Err(t(i18n::lang(), "ff.busy").to_string());
+    }
+    let r = match std::fs::remove_dir_all(ffmpeg::ffmpeg_dir()) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+        _ => Ok(()),
+    };
+    {
+        let mut s = state.settings.lock().unwrap();
+        s.ffmpeg_later = true;
+        s.ffmpeg_notice_seen = true;
+    }
+    set_ffmpeg_ready(&app, ffmpeg::is_working(&ffmpeg::exe_path()));
+    r
+}
+
 /// Startup check: a working ffmpeg is marked ready, a missing or corrupt one is downloaded.
 fn ensure_ffmpeg(app: &AppHandle) {
     let app = app.clone();
@@ -1539,6 +1560,7 @@ pub fn run() {
             office_status,
             office_download,
             office_remove,
+            ffmpeg_remove,
             open_folder,
             panel_preview,
             list_presets,

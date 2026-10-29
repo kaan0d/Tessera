@@ -598,6 +598,7 @@ function ffView(state, text, pct) {
   $('ff-pct').hidden = state !== 'downloading';
   $('ff-pct').textContent = t('pct', { n: Math.round(p) });
   $('ff-retry').hidden = state !== 'error' && state !== 'later' && state !== 'ready';
+  $('ff-del').hidden = state !== 'ready';
   $('ff-retry').querySelector('span').textContent = t(state === 'later' ? 'ff.download_now' : state === 'ready' ? 'ff.update' : 'ff.retry');
   const dl = state === 'downloading' ? Math.round(pct) : null;
   if (dl !== ffPct) {
@@ -742,6 +743,18 @@ function bind() {
       showError(t('err.dl_start', { err: e }));
     }
     refreshOffice();
+  };
+  $('ff-del').onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      await invoke('ffmpeg_remove');
+      if (s) { s.ffmpeg_later = true; s.ffmpeg_notice_seen = true; }
+      toast(t('ff.removed'));
+    } catch (err) {
+      toast(t('err.action', { err }), true);
+    }
+    e.currentTarget.disabled = false;
+    refreshFfmpeg();
   };
   $('lo-del').onclick = async (e) => {
     e.currentTarget.disabled = true;

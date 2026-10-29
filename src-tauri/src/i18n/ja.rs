@@ -1,6 +1,7 @@
 //! Backend strings, ja. Same keys and {placeholders} as `MSGS` (a test checks).
 
 pub const MSGS: &[(&str, &str)] = &[
+    ("ff.busy", "ffmpeg をダウンロード中です。ダウンロードが終わってから削除してください"),
     ("setup.title", "Tessera セットアップ"),
     ("setup.uninstall_title", "Tessera のアンインストール"),
     ("menu.convert_to", "{fmt} に変換"),

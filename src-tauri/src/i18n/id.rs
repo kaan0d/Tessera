@@ -1,6 +1,7 @@
 //! Backend strings, id. Same keys and {placeholders} as `MSGS` (a test checks).
 
 pub const MSGS: &[(&str, &str)] = &[
+    ("ff.busy", "ffmpeg sedang diunduh; hapus setelah unduhan selesai"),
     ("setup.title", "Penyiapan Tessera"),
     ("setup.uninstall_title", "Hapus Instalan Tessera"),
     ("menu.convert_to", "Konversi ke {fmt}"),
