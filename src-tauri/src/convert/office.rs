@@ -139,7 +139,7 @@ fn csv_separator(text: &[u8]) -> u8 {
         }
     }
     let best = (0..3).max_by_key(|&i| (counts[i], i == 2)).unwrap_or(2);
-    [b';', b'\t', b','][best]
+    b";\t,"[best]
 }
 
 /// Rejects files whose bytes do not match their extension before LibreOffice sees them:

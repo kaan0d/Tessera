@@ -508,7 +508,7 @@ pub fn convert_with_ffmpeg(
                 x.video_bps = Some(cur.min(cap));
             }
         }
-        let (mut q, mut shrunk) = (opts.quality.clone(), 0);
+        let (mut q, mut shrunk) = (opts.quality, 0);
         output::write_via_temp(&dest, |tmp| {
             for attempt in 0..RETRIES {
                 let args = build_args(&src, tmp, target, &q, &x);
