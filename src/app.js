@@ -599,7 +599,7 @@ function ffView(state, text, pct) {
   $('ff-pct').textContent = t('pct', { n: Math.round(p) });
   $('ff-retry').hidden = state !== 'error' && state !== 'later' && state !== 'ready';
   $('ff-del').hidden = state !== 'ready';
-  $('ff-retry').querySelector('span').textContent = t(state === 'later' ? 'ff.download_now' : state === 'ready' ? 'ff.update' : 'ff.retry');
+  $('ff-retry').querySelector('span').textContent = t(state === 'later' ? 'ff.download_now' : state === 'ready' ? 'ff.redownload' : 'ff.retry');
   const dl = state === 'downloading' ? Math.round(pct) : null;
   if (dl !== ffPct) {
     ffPct = dl;
@@ -655,7 +655,7 @@ async function refreshOffice() {
   $('lo-pct').textContent = t('pct', { n: pct });
   // our own copy can be fetched again (like ffmpeg); an installed LibreOffice updates itself
   $('lo-get').hidden = state === 'downloading' || (state === 'ready' && f.source !== 'own');
-  $('lo-get').querySelector('span').textContent = t(state === 'error' ? 'ff.retry' : state === 'outdated' || state === 'ready' ? 'lo.update' : 'lo.get');
+  $('lo-get').querySelector('span').textContent = t(state === 'error' ? 'ff.retry' : state === 'outdated' ? 'lo.update' : state === 'ready' ? 'lo.redownload' : 'lo.get');
   $('lo-del').hidden = !((state === 'ready' || state === 'outdated') && f.source === 'own');
   if (f.downloading) loTimer = setTimeout(refreshOffice, 1000);
 }
