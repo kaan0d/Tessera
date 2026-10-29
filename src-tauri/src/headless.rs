@@ -426,8 +426,14 @@ fn preset_cmd(id: &str, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
 
 fn merge_cmd(kind: crate::MergeKind, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
     let files = expand_inputs(files, false);
-    if files.len() < 2 {
-        err("error: a merge needs at least two files");
+    // one file is enough for a PDF (a picture or document becomes one); audio needs two
+    let least = if kind == crate::MergeKind::Pdf { 1 } else { 2 };
+    if files.len() < least {
+        err(if least == 1 {
+            "error: no files matched"
+        } else {
+            "error: a merge needs at least two files"
+        });
         return EXIT_USAGE;
     }
     let mut opts = settings::load_from(&settings::settings_path()).to_options();
@@ -439,11 +445,12 @@ fn merge_cmd(kind: crate::MergeKind, files: &[PathBuf], flags: crate::cli::RunFl
     }
     opts.max_bytes = flags.max_bytes;
     if flags.dry_run {
-        out(&format!(
-            "{} files -> one {} (dry run)",
-            files.len(),
-            kind.arg()
-        ));
+        let what = format!("{} files -> one {} (dry run)", files.len(), kind.arg());
+        if flags.json {
+            json_line(&files[0], true, "dry_run", &what);
+        } else {
+            out(&what);
+        }
         return EXIT_OK;
     }
     let merged = crate::convert::combine::run(kind, &files, &opts, |_| {}).and_then(|dest| {
@@ -466,7 +473,8 @@ fn merge_cmd(kind: crate::MergeKind, files: &[PathBuf], flags: crate::cli::RunFl
                 .map(|m| human(m.len()))
                 .unwrap_or_default();
             if flags.json {
-                json_line(&dest, true, "merged", &files.len().to_string());
+                let v = serde_json::json!({ "ok": true, "output": dest.display().to_string(), "merged": files.len() });
+                out(&v.to_string());
             } else if !flags.quiet {
                 out(&format!(
                     "{} files -> {} ({size})",

@@ -303,7 +303,10 @@ fn parse_merge(args: &[String]) -> Command {
             Some(kind) => Command::MergeFiles { kind, files, flags },
             None => usage("merge needs pdf or audio first: merge pdf a.png b.png"),
         },
-        Command::Usage(_) => usage("merge needs pdf or audio and at least one file"),
+        // the specific complaint (bad --to, --max-size, ...) is more useful than a general one
+        Command::Usage(m) if m.starts_with("preset needs") => {
+            usage("merge needs pdf or audio and at least one file")
+        }
         other => other,
     }
 }

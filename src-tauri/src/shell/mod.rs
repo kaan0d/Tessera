@@ -603,7 +603,14 @@ mod tests {
         let mp3 = hkcu.open_subkey(menu_key(&root, "mp3")).unwrap();
         assert_eq!(
             verb_names(&mp3),
-            ["00_wav", "01_flac", "02_ogg", "03_aac", "04_merge_audio", "05_custom"]
+            [
+                "00_wav",
+                "01_flac",
+                "02_ogg",
+                "03_aac",
+                "04_merge_audio",
+                "05_custom"
+            ]
         );
         let mp4 = hkcu.open_subkey(menu_key(&root, "mp4")).unwrap();
         let names = verb_names(&mp4);
