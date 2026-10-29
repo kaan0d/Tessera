@@ -31,6 +31,18 @@ pub enum ConvertError {
     NeedsOffice,
     /// Page numbers that are malformed or not in the PDF (the page count is the detail).
     BadPages(u32),
+    /// The pages chosen for deletion are all the pages there are.
+    NoPagesLeft,
+    /// A zero-byte input.
+    EmptyFile,
+    /// LibreOffice ran past its time limit (usually a very large document).
+    OfficeTimeout,
+    /// Replace original on a drive without a Recycle Bin: the original is kept.
+    NoRecycleBin,
+    /// A target file of that name exists and may not be replaced.
+    Exists,
+    /// An error about one file of a multi-file job (merge): the file name comes first.
+    InFile(String, Box<ConvertError>),
     Cancelled,
     Encode(String),
     Io(String),
@@ -74,7 +86,21 @@ impl ConvertError {
             E::Protected => plain("ce.protected"),
             E::NeedsFfmpeg => plain("ce.needs_ffmpeg"),
             E::NeedsOffice => plain("ce.needs_office"),
-            E::BadPages(n) => tf(lang, "ce.bad_pages", &[("n", &n.to_string())]),
+            E::BadPages(n) => tf(
+                lang,
+                if *n == 1 {
+                    "ce.bad_pages_one"
+                } else {
+                    "ce.bad_pages"
+                },
+                &[("n", &n.to_string())],
+            ),
+            E::NoPagesLeft => plain("ce.no_pages_left"),
+            E::EmptyFile => plain("ce.empty_file"),
+            E::OfficeTimeout => plain("ce.office_timeout"),
+            E::NoRecycleBin => plain("ce.no_recycle"),
+            E::Exists => plain("ce.exists"),
+            E::InFile(name, e) => format!("{name}: {}", e.message(lang)),
             E::Cancelled => plain("ce.cancelled"),
             E::Encode(d) => with("ce.encode", d),
             E::Io(d) => with("ce.io", d),
@@ -102,9 +128,14 @@ impl From<io::Error> for ConvertError {
         if matches!(e.raw_os_error(), Some(112 | 39)) || e.kind() == io::ErrorKind::StorageFull {
             return Self::DiskFull;
         }
+        // 123 = ERROR_INVALID_NAME (also a path past the length limit)
+        if e.raw_os_error() == Some(123) {
+            return Self::InvalidPath(PathIssue::BadName);
+        }
         match e.kind() {
             io::ErrorKind::PermissionDenied => Self::AccessDenied,
             io::ErrorKind::NotFound => Self::NotFound,
+            io::ErrorKind::AlreadyExists => Self::Exists,
             io::ErrorKind::UnexpectedEof | io::ErrorKind::InvalidData => Self::Corrupt,
             _ => Self::Io(e.to_string()),
         }
@@ -148,6 +179,13 @@ mod tests {
             ConvertError::NeedsFfmpeg,
             ConvertError::NeedsOffice,
             ConvertError::BadPages(3),
+            ConvertError::BadPages(1),
+            ConvertError::NoPagesLeft,
+            ConvertError::EmptyFile,
+            ConvertError::OfficeTimeout,
+            ConvertError::NoRecycleBin,
+            ConvertError::Exists,
+            ConvertError::InFile("a.pdf".into(), Box::new(ConvertError::Corrupt)),
             ConvertError::Cancelled,
             ConvertError::Encode("x".into()),
             ConvertError::Io("x".into()),

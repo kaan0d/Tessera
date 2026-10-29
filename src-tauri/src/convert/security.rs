@@ -12,7 +12,7 @@ pub fn validate_input(path: &Path) -> Result<(PathBuf, Format), ConvertError> {
         return Err(ConvertError::InvalidPath(PathIssue::NotFile));
     }
     if meta.len() == 0 {
-        return Err(ConvertError::Corrupt);
+        return Err(ConvertError::EmptyFile);
     }
     let ext = canon.extension().and_then(|e| e.to_str()).unwrap_or("");
     let fmt = Format::from_ext(ext).ok_or(ConvertError::Unsupported)?;
@@ -22,6 +22,10 @@ pub fn validate_input(path: &Path) -> Result<(PathBuf, Format), ConvertError> {
 /// Same checks for a user-chosen output directory; it is created if missing.
 pub fn validate_output_dir(dir: &Path) -> Result<PathBuf, ConvertError> {
     reject_device(dir)?;
+    // a file in the way would otherwise surface as a raw "already exists" from Windows
+    if dir.exists() && !dir.is_dir() {
+        return Err(ConvertError::InvalidPath(PathIssue::NotDir));
+    }
     fs::create_dir_all(dir)?;
     let canon = canonical(dir)?;
     if !canon.is_dir() {
@@ -137,7 +141,7 @@ mod tests {
         ));
         let empty = d.path().join("e.png");
         fs::write(&empty, b"").unwrap();
-        assert!(matches!(validate_input(&empty), Err(ConvertError::Corrupt)));
+        assert!(matches!(validate_input(&empty), Err(ConvertError::EmptyFile)));
         let exe = d.path().join("a.exe");
         fs::write(&exe, b"MZ").unwrap();
         assert!(matches!(

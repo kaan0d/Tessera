@@ -145,4 +145,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ff.run", "ffmpeg를 실행할 수 없습니다"),
     ("lo.unpack", "문서 지원의 압축을 풀 수 없습니다: {detail}"),
     ("lo.missing", "문서 지원 패키지가 불완전합니다"),
+    ("ce.bad_pages_one", "페이지 번호를 확인하세요. 이 PDF는 한 페이지뿐입니다."),
+    ("ce.no_pages_left", "모든 페이지가 삭제됩니다. 한 페이지 이상 남겨 두세요."),
+    ("ce.empty_file", "파일이 비어 있습니다"),
+    ("ce.office_timeout", "LibreOffice가 5분 안에 끝나지 않았습니다. 문서가 너무 클 수 있습니다."),
+    ("ce.no_recycle", "원본을 유지했습니다. 이 드라이브에는 휴지통이 없습니다"),
+    ("ce.exists", "같은 이름의 파일이 이미 있습니다"),
+    ("preset.kind_target", "선택한 형식은 이 사전 설정의 모든 파일 형식에 맞지 않습니다."),
+    ("preset.dup_name", "같은 이름의 사전 설정이 이미 있습니다."),
 ];

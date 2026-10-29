@@ -145,4 +145,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ff.run", "Não foi possível executar o ffmpeg"),
     ("lo.unpack", "Não foi possível descompactar o suporte a documentos: {detail}"),
     ("lo.missing", "O pacote de suporte a documentos está incompleto"),
+    ("ce.bad_pages_one", "Verifique os números das páginas: este PDF tem só uma página."),
+    ("ce.no_pages_left", "Isso removeria todas as páginas. Mantenha pelo menos uma."),
+    ("ce.empty_file", "O arquivo está vazio"),
+    ("ce.office_timeout", "O LibreOffice não terminou em 5 minutos. O documento provavelmente é grande demais."),
+    ("ce.no_recycle", "O original foi mantido: esta unidade não tem Lixeira"),
+    ("ce.exists", "Já existe um arquivo com esse nome"),
+    ("preset.kind_target", "O formato escolhido não serve para todos os tipos de arquivo desta predefinição."),
+    ("preset.dup_name", "Você já tem uma predefinição com este nome."),
 ];

@@ -1,7 +1,10 @@
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use super::{security, ConvertError, PathIssue};
 use crate::i18n::{fmt, t, Lang};
@@ -46,11 +49,59 @@ fn local_date() -> String {
     format!("{:04}-{:02}-{:02}", t.wYear, t.wMonth, t.wDay)
 }
 
+/// One pass over the template, so a file name that itself contains `{date}` stays as it is.
 fn expand(template: &str, name: &str, format: &str, date: &str) -> String {
-    template
-        .replace("{name}", name)
-        .replace("{format}", format)
-        .replace("{date}", date)
+    let mut out = String::new();
+    let mut rest = template;
+    while let Some(i) = rest.find('{') {
+        out.push_str(&rest[..i]);
+        rest = &rest[i..];
+        let token = [("{name}", name), ("{format}", format), ("{date}", date)]
+            .into_iter()
+            .find(|(t, _)| rest.starts_with(t));
+        match token {
+            Some((t, v)) => {
+                out.push_str(v);
+                rest = &rest[t.len()..];
+            }
+            None => {
+                out.push('{');
+                rest = &rest[1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Names handed out by `plan` whose file is not written yet: jobs running side by side must not
+/// pick the same free name. An entry is dropped when the write ends (or after an hour, for a
+/// job that failed between planning and writing).
+static TAKEN: Mutex<Option<HashMap<String, Instant>>> = Mutex::new(None);
+const TAKEN_FOR: Duration = Duration::from_secs(3600);
+
+fn taken_key(p: &Path) -> String {
+    p.to_string_lossy().to_lowercase()
+}
+
+/// Claims `p` if no other job holds it; true when it is ours now.
+fn claim(p: &Path) -> bool {
+    let mut g = TAKEN.lock().unwrap_or_else(|e| e.into_inner());
+    let map = g.get_or_insert_with(HashMap::new);
+    map.retain(|_, at| at.elapsed() < TAKEN_FOR);
+    let key = taken_key(p);
+    if map.contains_key(&key) {
+        return false;
+    }
+    map.insert(key, Instant::now());
+    true
+}
+
+fn release(p: &Path) {
+    let mut g = TAKEN.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(map) = g.as_mut() {
+        map.remove(&taken_key(p));
+    }
 }
 
 /// Checks a template; the error is in `lang` and shown to the user as is.
@@ -102,13 +153,16 @@ pub fn plan(source: &Path, ext: &str, p: &OutputParams) -> Result<PathBuf, Conve
     let is_source = first
         .to_string_lossy()
         .eq_ignore_ascii_case(&source.to_string_lossy());
-    if !is_source && (p.conflict == Conflict::Overwrite || !first.exists()) {
+    if !is_source && p.conflict == Conflict::Overwrite {
+        return Ok(first);
+    }
+    if !is_source && !first.exists() && claim(&first) {
         return Ok(first);
     }
     // ReplaceOriginal also renames: the original must survive until the new file is verified
-    (1u32..)
+    (1u32..10_000)
         .map(|n| dir.join(format!("{stem} ({n}).{ext}")))
-        .find(|c| !c.exists())
+        .find(|c| !c.exists() && claim(c))
         .ok_or(ConvertError::InvalidPath(PathIssue::NoFreeName))
 }
 
@@ -159,16 +213,16 @@ pub fn write_atomic(
 
 /// Like `write_atomic`, but `produce` gets the temp path and creates the file itself
 /// (used when another process writes the output).
-// ponytail: AutoRename has a check-then-rename race with other writers; fine for one app instance.
+// ponytail: names are claimed per process; a second Tessera process writing the same folder
+// at the same moment could still race.
 pub fn write_via_temp(
     dest: &Path,
     produce: impl FnOnce(&Path) -> Result<(), ConvertError>,
 ) -> Result<(), ConvertError> {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos());
-    let name = dest.file_name().and_then(|n| n.to_str()).unwrap_or("out");
-    let tmp = dest.with_file_name(format!(".{name}.{nanos}.tmp"));
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    // short and fixed-length, so a long output name still fits in the folder's path limit
+    let n = SEQ.fetch_add(1, Ordering::Relaxed);
+    let tmp = dest.with_file_name(format!(".tsr{}-{n}.tmp", std::process::id()));
 
     let result = (|| {
         produce(&tmp)?;
@@ -181,6 +235,7 @@ pub fn write_via_temp(
     if result.is_err() {
         let _ = fs::remove_file(&tmp);
     }
+    release(dest);
     result
 }
 
@@ -205,7 +260,7 @@ fn on_fixed_drive(path: &Path) -> bool {
 pub fn recycle(path: &Path) -> Result<(), ConvertError> {
     // removable and network drives have no Recycle Bin: the shell would delete for good
     if !on_fixed_drive(path) {
-        return Err(ConvertError::Recycle("no Recycle Bin on this drive".into()));
+        return Err(ConvertError::NoRecycleBin);
     }
     trash::delete(path).map_err(|e| ConvertError::Recycle(e.to_string()))
 }

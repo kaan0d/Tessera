@@ -145,4 +145,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ff.run", "无法运行 ffmpeg"),
     ("lo.unpack", "无法解压文档支持：{detail}"),
     ("lo.missing", "文档支持包不完整"),
+    ("ce.bad_pages_one", "请检查页码：此 PDF 只有一页。"),
+    ("ce.no_pages_left", "这样会删除所有页面。请至少保留一页。"),
+    ("ce.empty_file", "文件为空"),
+    ("ce.office_timeout", "LibreOffice 未能在 5 分钟内完成。文档可能太大。"),
+    ("ce.no_recycle", "已保留原文件：此驱动器没有回收站"),
+    ("ce.exists", "已存在同名文件"),
+    ("preset.kind_target", "所选格式不适用于此预设的所有文件类型。"),
+    ("preset.dup_name", "已有同名预设。"),
 ];

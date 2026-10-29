@@ -145,4 +145,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ff.run", "No se pudo ejecutar ffmpeg"),
     ("lo.unpack", "No se pudo descomprimir la compatibilidad con documentos: {detail}"),
     ("lo.missing", "El paquete de compatibilidad con documentos está incompleto"),
+    ("ce.bad_pages_one", "Revisa los números de página: este PDF tiene una sola página."),
+    ("ce.no_pages_left", "Así se eliminarían todas las páginas. Deja al menos una."),
+    ("ce.empty_file", "El archivo está vacío"),
+    ("ce.office_timeout", "LibreOffice no terminó en 5 minutos. Probablemente el documento es demasiado grande."),
+    ("ce.no_recycle", "Se conservó el original: esta unidad no tiene Papelera de reciclaje"),
+    ("ce.exists", "Ya existe un archivo con ese nombre"),
+    ("preset.kind_target", "El formato elegido no sirve para todos los tipos de archivo de este ajuste."),
+    ("preset.dup_name", "Ya tienes un ajuste con este nombre."),
 ];

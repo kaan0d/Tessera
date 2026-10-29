@@ -143,7 +143,13 @@ fn target(src: &Path, suffix: &str, opts: &Options) -> Result<PathBuf, ConvertEr
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("document");
-    output::plan(&src.with_file_name(format!("{stem}{suffix}")), "pdf", &p)
+    // any extension keeps every dot of "contract.v1" in the stem `plan` takes; not ".pdf", or
+    // `plan` would see the planned name as the source and number it
+    output::plan(
+        &src.with_file_name(format!("{stem}{suffix}.src")),
+        "pdf",
+        &p,
+    )
 }
 
 fn write(bytes: &[u8], dest: &Path) -> Result<(), ConvertError> {
@@ -183,7 +189,7 @@ pub fn run(
             let kids: Vec<_> = all.iter().copied().filter(|p| !gone.contains(p)).collect();
             if kids.is_empty() {
                 // deleting every page would leave nothing to save
-                return Err(ConvertError::BadPages(count));
+                return Err(ConvertError::NoPagesLeft);
             }
             pdf_edit::keep_pages(&mut doc, &kids);
             ("-edited", pdf_edit::save(&mut doc)?)
@@ -327,7 +333,13 @@ fn shrink(s: &Stream, max_edge: u32, quality: u8) -> Option<(Vec<u8>, u32, u32, 
         }
         [b"FlateDecode"] => {
             let len = (w * h) as usize * if gray { 1 } else { 3 };
-            let raw = s.decompressed_content_with_limit(len).ok()?;
+            // PNG predictors add a filter byte per row before they are undone
+            let raw = s
+                .decompressed_content_with_limit(len + h as usize + 64)
+                .ok()?;
+            if raw.len() != len {
+                return None;
+            }
             if gray {
                 DynamicImage::ImageLuma8(ImageBuffer::from_raw(w, h, raw)?)
             } else {
@@ -451,8 +463,14 @@ mod tests {
                 &o,
                 |_| {}
             ),
-            Err(ConvertError::BadPages(4))
+            Err(ConvertError::NoPagesLeft)
         ));
+        // a dotted name keeps its dots: contract.v1.pdf -> contract.v1-pages.pdf
+        let dotted = d.path().join("contract.v1.pdf");
+        std::fs::copy(&src, &dotted).unwrap();
+        let one = PdfTool::Extract { pages: "1".into() };
+        let out = run(&one, &dotted, &o, |_| {}).unwrap();
+        assert!(out.ends_with("contract.v1-pages.pdf"), "{out:?}");
         let rot = run(
             &PdfTool::Rotate {
                 angle: 90,

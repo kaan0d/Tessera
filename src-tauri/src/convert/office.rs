@@ -92,14 +92,54 @@ fn export_filter(target: Format) -> &'static str {
 }
 
 /// `--infilter` for sources LibreOffice would guess wrong or not at all.
-fn import_filter(from: Format) -> Option<&'static str> {
+/// `sep` is the CSV field separator as a character code (see `csv_separator`).
+fn import_filter(from: Format, sep: u8) -> Option<String> {
     match from {
-        Format::Pdf => Some("writer_pdf_import"),
-        Format::Txt => Some("Text (encoded):UTF8"),
-        // comma, semicolon or tab, double quotes, UTF-8
-        Format::Csv => Some("Text - txt - csv (StarCalc):44/59/9,34,76"),
+        Format::Pdf => Some("writer_pdf_import".into()),
+        Format::Txt => Some("Text (encoded):UTF8".into()),
+        // one separator, double quotes, UTF-8 (the scratch copy is always UTF-8)
+        Format::Csv => Some(format!("Text - txt - csv (StarCalc):{sep},34,76")),
         _ => None,
     }
+}
+
+/// Text in UTF-8: as it is when it already is, else read in the Windows ANSI code page
+/// (Windows-1254 on a Turkish PC), which is what Notepad and Excel wrote for years.
+fn as_utf8(bytes: Vec<u8>) -> Vec<u8> {
+    use windows::Win32::Globalization::{
+        MultiByteToWideChar, CP_ACP, MULTI_BYTE_TO_WIDE_CHAR_FLAGS,
+    };
+    if std::str::from_utf8(&bytes).is_ok() {
+        return bytes;
+    }
+    let flags = MULTI_BYTE_TO_WIDE_CHAR_FLAGS(0);
+    // SAFETY: both slices are valid for the lengths the calls read and write.
+    let n = unsafe { MultiByteToWideChar(CP_ACP, flags, &bytes, None) };
+    if n <= 0 {
+        return bytes;
+    }
+    let mut wide = vec![0u16; n as usize];
+    // SAFETY: as above; `wide` holds exactly the length the first call reported.
+    let n = unsafe { MultiByteToWideChar(CP_ACP, flags, &bytes, Some(&mut wide)) };
+    String::from_utf16_lossy(&wide[..n.max(0) as usize]).into_bytes()
+}
+
+/// The field separator of a CSV, judged by its first line outside quotes: semicolon files
+/// (decimal commas, as Excel writes them in Turkey and most of Europe), tab, else comma.
+fn csv_separator(text: &[u8]) -> u8 {
+    let line = text.split(|b| *b == b'\n').next().unwrap_or(&[]);
+    let (mut quoted, mut counts) = (false, [0usize; 3]);
+    for b in line {
+        match b {
+            b'"' => quoted = !quoted,
+            b';' if !quoted => counts[0] += 1,
+            b'\t' if !quoted => counts[1] += 1,
+            b',' if !quoted => counts[2] += 1,
+            _ => {}
+        }
+    }
+    let best = (0..3).max_by_key(|&i| (counts[i], i == 2)).unwrap_or(2);
+    [b';', b'\t', b','][best]
 }
 
 /// Rejects files whose bytes do not match their extension before LibreOffice sees them:
@@ -185,12 +225,14 @@ impl Drop for Scratch {
 }
 
 /// Runs soffice on `input` (already in `dir`) and returns the written file.
+#[allow(clippy::too_many_arguments)]
 fn run_soffice(
     soffice: &Path,
     profile: &Path,
     input: &Path,
     from: Format,
     target: Format,
+    sep: u8,
     dir: &Path,
     cancel: Option<&AtomicBool>,
 ) -> Result<PathBuf, ConvertError> {
@@ -204,7 +246,7 @@ fn run_soffice(
             "--nodefault",
             "--nolockcheck",
         ]);
-    if let Some(f) = import_filter(from) {
+    if let Some(f) = import_filter(from, sep) {
         cmd.arg(format!("--infilter={f}"));
     }
     let mut child = cmd
@@ -232,9 +274,7 @@ fn run_soffice(
         if started.elapsed() > TIMEOUT {
             kill_tree(child.id());
             let _ = child.wait();
-            return Err(ConvertError::Encode(
-                "LibreOffice did not finish in 5 minutes".into(),
-            ));
+            return Err(ConvertError::OfficeTimeout);
         }
         std::thread::sleep(Duration::from_millis(100));
     }
@@ -287,18 +327,36 @@ pub fn convert_with_office(
     let scratch = Scratch::new()?;
     // a plain ASCII name: LibreOffice names its output after the input
     let local = scratch.0.join(format!("in.{}", from.ext()));
-    fs::copy(&src, &local)?;
+    let mut sep = b',';
+    if matches!(from, Format::Txt | Format::Csv) {
+        let text = as_utf8(fs::read(&src)?);
+        sep = csv_separator(&text);
+        fs::write(&local, text)?;
+    } else {
+        fs::copy(&src, &local)?;
+    }
     let out = run_soffice(
         soffice,
         profile,
         &local,
         from,
         target,
+        sep,
         &scratch.0,
         opts.cancel.as_deref(),
     )?;
     output::write_atomic(&dest, |w| {
-        std::io::copy(&mut fs::File::open(&out)?, w)?;
+        let mut file = fs::File::open(&out)?;
+        // Excel reads a CSV as ANSI unless it starts with a byte order mark
+        if target == Format::Csv {
+            let mut head = [0u8; 3];
+            let n = std::io::Read::read(&mut file, &mut head)?;
+            if head[..n] != [0xEF, 0xBB, 0xBF] {
+                std::io::Write::write_all(w, &[0xEF, 0xBB, 0xBF])?;
+            }
+            std::io::Write::write_all(w, &head[..n])?;
+        }
+        std::io::copy(&mut file, w)?;
         Ok(())
     })?;
     if opts.output.conflict == Conflict::ReplaceOriginal {
@@ -311,6 +369,24 @@ pub fn convert_with_office(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn csv_separator_follows_the_first_line() {
+        assert_eq!(csv_separator(b"ad;tutar\nIsmet;12,5"), b';');
+        assert_eq!(csv_separator(b"a,b,c\n1,2,3"), b',');
+        assert_eq!(csv_separator(b"a\tb\n1\t2"), b'\t');
+        assert_eq!(csv_separator(b"\"x;y\",z\n"), b',');
+        assert_eq!(csv_separator(b"tek"), b',');
+    }
+
+    #[test]
+    fn ansi_text_becomes_utf8() {
+        let utf8 = "Özgür".as_bytes().to_vec();
+        assert_eq!(as_utf8(utf8.clone()), utf8);
+        // 0xD6 is Ö in Windows-1252 and -1254 alike; the result is valid UTF-8 either way
+        let out = as_utf8(vec![0xD6, b'z']);
+        assert!(std::str::from_utf8(&out).is_ok() && out.len() > 2);
+    }
 
     #[test]
     fn slots_get_their_own_profiles() {

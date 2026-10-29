@@ -145,4 +145,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ff.run", "ffmpeg tidak dapat dijalankan"),
     ("lo.unpack", "Tidak dapat mengekstrak dukungan dokumen: {detail}"),
     ("lo.missing", "Paket dukungan dokumen tidak lengkap"),
+    ("ce.bad_pages_one", "Periksa nomor halaman: PDF ini hanya punya satu halaman."),
+    ("ce.no_pages_left", "Itu akan menghapus semua halaman. Sisakan setidaknya satu."),
+    ("ce.empty_file", "File kosong"),
+    ("ce.office_timeout", "LibreOffice tidak selesai dalam 5 menit. Dokumen kemungkinan terlalu besar."),
+    ("ce.no_recycle", "File asli dipertahankan: drive ini tidak punya Keranjang Sampah"),
+    ("ce.exists", "File dengan nama itu sudah ada"),
+    ("preset.kind_target", "Format yang dipilih tidak cocok untuk semua jenis file prasetel ini."),
+    ("preset.dup_name", "Anda sudah punya prasetel dengan nama ini."),
 ];

@@ -145,4 +145,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ff.run", "Impossible d'exécuter ffmpeg"),
     ("lo.unpack", "Impossible de décompresser la prise en charge des documents : {detail}"),
     ("lo.missing", "Le paquet de prise en charge des documents est incomplet"),
+    ("ce.bad_pages_one", "Vérifiez les numéros de page : ce PDF n'a qu'une page."),
+    ("ce.no_pages_left", "Cela supprimerait toutes les pages. Gardez-en au moins une."),
+    ("ce.empty_file", "Le fichier est vide"),
+    ("ce.office_timeout", "LibreOffice n'a pas terminé en 5 minutes. Le document est probablement trop volumineux."),
+    ("ce.no_recycle", "L'original a été conservé : ce lecteur n'a pas de Corbeille"),
+    ("ce.exists", "Un fichier portant ce nom existe déjà"),
+    ("preset.kind_target", "Le format choisi ne convient pas à tous les types de fichiers de ce préréglage."),
+    ("preset.dup_name", "Vous avez déjà un préréglage portant ce nom."),
 ];

@@ -145,4 +145,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ff.run", "Impossibile eseguire ffmpeg"),
     ("lo.unpack", "Impossibile estrarre il supporto documenti: {detail}"),
     ("lo.missing", "Il pacchetto del supporto documenti è incompleto"),
+    ("ce.bad_pages_one", "Controlla i numeri di pagina: questo PDF ha una sola pagina."),
+    ("ce.no_pages_left", "Così verrebbero rimosse tutte le pagine. Tienine almeno una."),
+    ("ce.empty_file", "Il file è vuoto"),
+    ("ce.office_timeout", "LibreOffice non ha finito entro 5 minuti. Probabilmente il documento è troppo grande."),
+    ("ce.no_recycle", "L'originale è stato mantenuto: questa unità non ha il Cestino"),
+    ("ce.exists", "Esiste già un file con questo nome"),
+    ("preset.kind_target", "Il formato scelto non va bene per tutti i tipi di file di questo preset."),
+    ("preset.dup_name", "Hai già un preset con questo nome."),
 ];

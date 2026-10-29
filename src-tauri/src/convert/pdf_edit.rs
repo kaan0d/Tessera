@@ -10,7 +10,9 @@ use lopdf::{dictionary, Document, LoadOptions, Object, ObjectId};
 use super::ConvertError;
 
 const MAX_FILE: u64 = 256 * 1024 * 1024;
-const MAX_STREAM: usize = 512 * 1024 * 1024;
+/// Per object or cross-reference stream (those are decoded while loading); real files stay far
+/// below this, a crafted one pays at most this much per stream.
+const MAX_STREAM: usize = 32 * 1024 * 1024;
 /// Page attributes a page may inherit from its parents in the page tree.
 const INHERITED: [&[u8]; 4] = [b"Resources", b"MediaBox", b"CropBox", b"Rotate"];
 
@@ -118,7 +120,12 @@ pub fn keep_pages(doc: &mut Document, kids: &[ObjectId]) {
         dictionary! { "Type" => "Pages", "Kids" => refs, "Count" => kids.len() as i64 }.into(),
     );
     let catalog = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => tree });
+    // title and author survive
+    let info = doc.trailer.get(b"Info").ok().cloned();
     doc.trailer = dictionary! { "Root" => catalog };
+    if let Some(info) = info {
+        doc.trailer.set("Info", info);
+    }
     doc.prune_objects();
 }
 

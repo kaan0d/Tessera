@@ -145,4 +145,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ff.run", "ffmpeg konnte nicht ausgeführt werden"),
     ("lo.unpack", "Die Dokumentunterstützung konnte nicht entpackt werden: {detail}"),
     ("lo.missing", "Das Paket der Dokumentunterstützung ist unvollständig"),
+    ("ce.bad_pages_one", "Prüfen Sie die Seitenzahlen: Diese PDF-Datei hat nur eine Seite."),
+    ("ce.no_pages_left", "Damit würden alle Seiten entfernt. Behalten Sie mindestens eine."),
+    ("ce.empty_file", "Die Datei ist leer"),
+    ("ce.office_timeout", "LibreOffice ist nicht innerhalb von 5 Minuten fertig geworden. Das Dokument ist vermutlich zu groß."),
+    ("ce.no_recycle", "Das Original wurde behalten: Dieses Laufwerk hat keinen Papierkorb"),
+    ("ce.exists", "Eine Datei mit diesem Namen ist bereits vorhanden"),
+    ("preset.kind_target", "Das gewählte Format passt nicht zu allen Dateitypen dieser Vorlage."),
+    ("preset.dup_name", "Sie haben bereits eine Vorlage mit diesem Namen."),
 ];

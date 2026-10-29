@@ -228,20 +228,36 @@ pub fn files_to_pdf(
     progress(0.0);
     let n = list.len() as f32;
     let mut docs = Vec::with_capacity(list.len());
+    let mut held = 0u64;
     for (i, (src, from)) in list.iter().enumerate() {
         opts.check_cancel()?;
-        let doc = if *from == Format::Pdf {
-            pdf_edit::load(src)?
-        } else if from.is_office() {
-            let step = |p: f32| progress((i as f32 + p) / n * 0.9);
-            let made = crate::office::convert(src, Format::Pdf, &inner, step)?;
-            pdf_edit::load(&made)?
-        } else {
-            let page = image::pdf_page(src, *from, &inner)?;
-            let mut bytes = Vec::new();
-            pdf::write_pages(&[page.payload()], &mut bytes)?;
-            pdf_edit::load_mem(&bytes)?
+        let mut one = || -> Result<(lopdf::Document, u64), ConvertError> {
+            Ok(if *from == Format::Pdf {
+                (pdf_edit::load(src)?, std::fs::metadata(src)?.len())
+            } else if from.is_office() {
+                let step = |p: f32| progress((i as f32 + p) / n * 0.9);
+                let made = crate::office::convert(src, Format::Pdf, &inner, step)?;
+                (pdf_edit::load(&made)?, std::fs::metadata(&made)?.len())
+            } else {
+                let page = image::pdf_page(src, *from, &inner)?;
+                let mut bytes = Vec::new();
+                pdf::write_pages(&[page.payload()], &mut bytes)?;
+                (pdf_edit::load_mem(&bytes)?, bytes.len() as u64)
+            })
         };
+        // the error names the file, so a bad one in a long list can be found
+        let name = src
+            .file_name()
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+        let (doc, bytes) = match one() {
+            Err(ConvertError::Cancelled) => return Err(ConvertError::Cancelled),
+            Err(e) => return Err(ConvertError::InFile(name, Box::new(e))),
+            Ok(x) => x,
+        };
+        held += bytes;
+        if held > super::transform::MAX_ALLOC {
+            return Err(ConvertError::TooLarge);
+        }
         docs.push(doc);
         progress((i + 1) as f32 / n * 0.9);
     }
