@@ -9,7 +9,7 @@
 html,body{height:100%;margin:0}
 body{
   background:var(--ground-2);color:var(--ink);overflow:hidden;
-  font:14px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  font:14px/1.45 "Segoe UI Variable Text","Segoe UI","Yu Gothic UI","Microsoft YaHei UI","Malgun Gothic",system-ui,sans-serif;
   display:grid;place-items:center;-webkit-font-smoothing:antialiased;
 }
 .stage{

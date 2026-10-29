@@ -25,6 +25,14 @@
   --hi:inset 0 1px 0 rgba(255,255,255,.7);
   --scrim:rgba(18,16,16,.32);
 }
+
+/* CJK: Segoe UI has no such glyphs; name the Windows UI font of each script so Japanese, Chinese
+   and Korean do not fall back to whatever comes first. Japanese wraps at phrase boundaries. */
+html:lang(ja){--font:"Segoe UI Variable Text","Segoe UI","Yu Gothic UI","Meiryo UI",sans-serif;--font-display:"Segoe UI Variable Display","Segoe UI","Yu Gothic UI",sans-serif}
+html:lang(zh-CN){--font:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif;--font-display:"Segoe UI Variable Display","Segoe UI","Microsoft YaHei UI",sans-serif}
+html:lang(ko){--font:"Segoe UI Variable Text","Segoe UI","Malgun Gothic",sans-serif;--font-display:"Segoe UI Variable Display","Segoe UI","Malgun Gothic",sans-serif}
+html:lang(ja) body{word-break:auto-phrase}
+html:lang(ko) body{word-break:keep-all}
 @media (prefers-color-scheme:dark){:root{
   --ground:#0f0f12;--ground-2:#0a0a0c;--surface:#17171b;--surface-2:#1d1d22;
   --ink:#f2f2f0;--muted:#b4b4ba;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16);
