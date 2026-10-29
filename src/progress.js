@@ -143,8 +143,9 @@ function removeJob(id, animate) {
 function getJob(id, name) {
   let j = jobs.get(id);
   if (j) return j;
-  // the window was hidden since the last batch: start clean
-  if (![...jobs.values()].some((x) => x.state === 'run')) [...jobs.keys()].forEach((k) => removeJob(k, false));
+  // a new batch clears finished rows, but failures and results that can still be undone stay
+  if (![...jobs.values()].some((x) => x.state === 'run'))
+    [...jobs.entries()].filter(([, x]) => x.state !== 'err' && !x.btns.undo).forEach(([k]) => removeJob(k, false));
   enter();
   const li = el('li', 'job entering');
   const inner = el('div', 'job-in');
@@ -194,11 +195,12 @@ function paintSummary() {
   const ok = all.filter((j) => j.state === 'ok').length;
   const err = all.filter((j) => j.state === 'err').length;
   const cancelled = all.filter((j) => j.state === 'cancel').length;
+  const onlyCancelled = !run && !ok && !err && cancelled > 0;
   const pct = all.length ? all.reduce((a, j) => a + (j.state === 'run' ? j.percent : 100), 0) / all.length : 0;
   const head = document.getElementById('head');
   head.classList.toggle('done', !run && all.length > 0);
   head.classList.toggle('fail', !run && err > 0);
-  document.getElementById('p-title').textContent = run ? t('p.running') : err ? t('p.some_failed') : t('p.done');
+  document.getElementById('p-title').textContent = run ? t('p.running') : err ? t('p.some_failed') : onlyCancelled ? t('p.cancelled') : t('p.done');
   document.getElementById('p-sub').textContent = run
     ? all.length === 1 ? t('p.sub_one') : t('p.sub_run', { done: all.length - run, total: all.length })
     : err ? t('p.sub_fail', { ok, err }) : cancelled ? t(ok ? 'p.sub_cancel' : 'p.sub_cancel_only', { ok, n: cancelled }) : t('p.sub_ok', { n: ok }) + savedNote(all);
@@ -227,7 +229,9 @@ function progress({ id, name, percent }) {
 const isCancel = (msg) => Object.values(I18N).some((d) => d['p.cancelled'] === msg);
 
 // "1.99 MB", "412 KB"
-const fmtBytes = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)} MB` : `${Math.max(1, Math.ceil(n / 1e3))} KB`);
+const fmtBytes = (n) => (n >= 1e6
+  ? t('unit.mb', { n: new Intl.NumberFormat(LANG, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n / 1e6) })
+  : t('unit.kb', { n: Math.max(1, Math.ceil(n / 1e3)) }));
 
 function done({ id, name, ok, message, output, history_id: hid, bytes, from_bytes: was }) {
   const j = getJob(id, name);
@@ -256,6 +260,9 @@ function done({ id, name, ok, message, output, history_id: hid, bytes, from_byte
         j.mk = ['p.undone'];
         j.msg.textContent = t('p.undone');
         j.li.classList.add('is-undone');
+        // an undone result no longer counts as converted or as space saved
+        j.state = 'undone';
+        summary();
         undo.remove();
         delete j.btns.undo;
         if (j.btns.open) j.btns.open.remove(), delete j.btns.open;
@@ -263,8 +270,9 @@ function done({ id, name, ok, message, output, history_id: hid, bytes, from_byte
       } catch (e) {
         j.mk = null;
         j.msg.textContent = String(e);
+        j.li.classList.remove('is-ok');
         j.li.classList.add('is-err');
-        undo.disabled = false;
+        // History has Undo too; here a second click would only repeat the same answer
       }
       j.msg.title = j.msg.textContent;
     };
