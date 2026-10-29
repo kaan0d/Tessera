@@ -24,6 +24,9 @@ pub const SOURCES: [&str; 2] = [
     "https://downloadarchive.documentfoundation.org/libreoffice/old/26.2.6.3/win/x86_64/LibreOffice_26.2.6.3_Win_x86-64.msi",
 ];
 pub const SHA256: &str = "f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660";
+/// Written into our copy after an install; a different value means a newer pin exists.
+pub const VERSION: &str = "26.2.6.3";
+const VERSION_FILE: &str = "tessera-version.txt";
 const EXPECTED_SIZE: u64 = 373_252_096;
 const MAX_MSI: u64 = 700 << 20;
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -54,6 +57,13 @@ pub fn soffice() -> Option<(PathBuf, Source)> {
         return Some((own, Source::Own));
     }
     system_soffice().map(|p| (p, Source::System))
+}
+
+/// Our copy is older than the pinned version (an update with security fixes is waiting).
+pub fn outdated() -> bool {
+    let dir = own_dir();
+    dir.join(r"program\soffice.exe").is_file()
+        && fs::read_to_string(dir.join(VERSION_FILE)).map_or(true, |v| v.trim() != VERSION)
 }
 
 /// Office conversions can run (our copy or an installed LibreOffice).
@@ -207,9 +217,13 @@ fn install_in(work: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), FfError>
     if !kept.join(r"program\soffice.exe").is_file() {
         return Err(FfError::new("lo.missing"));
     }
+    fs::write(kept.join(VERSION_FILE), VERSION).map_err(|e| FfError::with("ff.write", e))?;
     let dir = own_dir();
-    let _ = fs::remove_dir_all(&dir);
-    fs::rename(&kept, &dir).map_err(|e| FfError::with("ff.write", e))?;
+    crate::convert::office::exclusive(|| {
+        let _ = fs::remove_dir_all(&dir);
+        fs::rename(&kept, &dir)
+    })
+    .map_err(|e| FfError::with("ff.write", e))?;
     progress(100.0);
     Ok(())
 }

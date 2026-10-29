@@ -724,6 +724,10 @@ pub fn run_uninstall(
         if !keep_data && !done(fs::remove_dir_all(crate::settings::data_dir())) {
             left.push("data");
         }
+        // kept settings are small; the 700 MB LibreOffice copy is downloaded again when wanted
+        if keep_data && !done(crate::office::remove()) {
+            left.push("libreoffice");
+        }
         if schedule_cleanup(&exe, &dir, keep_data).is_err() {
             left.push("files");
         }

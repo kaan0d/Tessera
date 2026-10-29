@@ -207,6 +207,12 @@ fn run_soffice(
     }
 }
 
+/// Runs `f` while no conversion is running (swapping the LibreOffice folder on an update).
+pub fn exclusive<T>(f: impl FnOnce() -> T) -> T {
+    let _turn = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    f()
+}
+
 /// Converts `input` with LibreOffice at `soffice`, using `profile` as its user profile.
 /// `progress` gets 0.0 when the job starts and 1.0 when it is written.
 pub fn convert_with_office(

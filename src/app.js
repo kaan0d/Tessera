@@ -638,11 +638,12 @@ async function refreshOffice() {
     $('lo-status').textContent = t('lo.status_err', { err: e });
     return;
   }
-  const state = f.downloading ? 'downloading' : f.ready ? 'ready' : f.error ? 'error' : 'missing';
+  const state = f.downloading ? 'downloading' : f.ready ? (f.outdated ? 'outdated' : 'ready') : f.error ? 'error' : 'missing';
   $('lo').dataset.state = state;
   const pct = Math.round(f.percent || 0);
   $('lo-status').textContent = state === 'downloading' ? t('lo.downloading')
     : state === 'ready' ? t(f.source === 'system' ? 'lo.system' : 'lo.ready')
+    : state === 'outdated' ? t('lo.outdated')
     : state === 'error' ? t('ff.failed', { err: f.error })
     : t('lo.missing');
   $('lo-bar').hidden = $('lo-pct').hidden = state !== 'downloading';
@@ -650,8 +651,8 @@ async function refreshOffice() {
   $('lo-bar').setAttribute('aria-valuenow', pct);
   $('lo-pct').textContent = t('pct', { n: pct });
   $('lo-get').hidden = state === 'downloading' || state === 'ready';
-  $('lo-get').querySelector('span').textContent = t(state === 'error' ? 'ff.retry' : 'lo.get');
-  $('lo-del').hidden = !(state === 'ready' && f.source === 'own');
+  $('lo-get').querySelector('span').textContent = t(state === 'error' ? 'ff.retry' : state === 'outdated' ? 'lo.update' : 'lo.get');
+  $('lo-del').hidden = !((state === 'ready' || state === 'outdated') && f.source === 'own');
   if (f.downloading) loTimer = setTimeout(refreshOffice, 1000);
 }
 

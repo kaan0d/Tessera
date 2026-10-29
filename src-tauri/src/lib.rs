@@ -151,6 +151,8 @@ struct OfficeStatus {
     error: Option<String>,
     /// "own" (downloaded by Tessera, removable) | "system" (an installed LibreOffice) | none.
     source: Option<&'static str>,
+    /// Our copy is older than the pinned version; Download replaces it.
+    outdated: bool,
 }
 
 #[tauri::command]
@@ -166,6 +168,7 @@ fn office_status(state: State<AppState>) -> OfficeStatus {
             office::Source::Own => "own",
             office::Source::System => "system",
         }),
+        outdated: found == Some(office::Source::Own) && office::outdated(),
     }
 }
 
