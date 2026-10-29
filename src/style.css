@@ -320,8 +320,6 @@ input[type=radio]:checked::after{scale:1}
 .ff-status{transition:color var(--d2)}
 .ff[data-state=error] .ff-status{color:var(--danger)}
 .ff[data-state=ready] .ff-status{color:var(--ink)}
-.ff-tile{background:transparent;border:0;width:32px}
-.ff-tile .sheet{width:26px;height:31px}
 .ff[data-state=checking] .sheet .outline{animation:breathe 1.6s var(--ease) infinite alternate}
 @keyframes breathe{to{opacity:.4}}
 

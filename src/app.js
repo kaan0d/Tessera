@@ -588,14 +588,10 @@ let flashing = false; // a flash message owns the targets hint
 let ffPct = null; // percent while downloading, else null
 
 function ffView(state, text, pct) {
-  const sheet = $('ff-sheet'), bar = $('ff-bar');
+  const bar = $('ff-bar');
   $('ff').dataset.state = state;
   $('ff-status').textContent = text;
-  sheet.classList.toggle('working', state === 'downloading');
-  sheet.classList.toggle('ok', state === 'ready');
-  sheet.classList.toggle('err', state === 'error');
   const p = state === 'ready' ? 100 : state === 'downloading' ? pct : 0;
-  sheet.style.setProperty('--p', p / 100);
   bar.hidden = state !== 'downloading';
   bar.style.setProperty('--p', p / 100);
   bar.setAttribute('aria-valuenow', Math.round(p));
