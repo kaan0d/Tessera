@@ -5,7 +5,7 @@
 **Right-click any file, pick a format, done.** Tessera is a **100% free**, open-source file converter with a **modern interface**. It lives in the Windows right-click menu, turns photos, audio, video, PDFs and office documents into the format you need, shrinks them for email or WhatsApp, and never sends a file anywhere.
 
 - **Free, for real:** MIT licensed. No price, no subscription, no premium tier, no account, no ads, no telemetry, no admin rights.
-- **Modern interface:** a clean, fast window in dark and light, smooth motion, keyboard friendly, English and Turkish. Built for Windows 10 and 11.
+- **Modern interface:** a clean, fast window in dark and light, smooth motion, keyboard friendly, in 12 languages. Built for Windows 10 and 11.
 
 Most converter apps cost money, run on subscriptions or bury the exit under upsells, and all of them do the same job: decode a file and encode it again. Tessera does that on your own machine, from the Explorer menu you already use. There is nothing to buy and nothing to unlock.
 
@@ -33,15 +33,16 @@ Prefer a window? Drop files on it and choose there. Prefer scripts? There is a f
 ## What you can do
 
 - **Convert:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. It also reads SVG, HEIC, RAW (embedded preview) and PDF pages, and turns animated GIFs into MP4 or WebM.
-- **Office documents:** DOCX, DOC, ODT, RTF, TXT; XLSX, XLS, ODS, CSV; PPTX, PPT, ODP. Each converts to the others of its kind and to PDF, and a PDF can come back as DOCX or ODT.
+- **Office documents:** DOCX, DOC, ODT, RTF, TXT; XLSX, XLS, ODS, CSV; PPTX, PPT, ODP. Each converts to the others of its kind and to PDF, slides become one PNG or JPG each, and a PDF can come back as DOCX or ODT.
+- **PDF tools:** split into pages, keep or delete pages (`1-3, 5`), rotate, compress the pictures inside. A multi-page PDF turned into images gives one picture per page.
 - **Shrink to a size:** "under 10 MB" or "under 2 MB" for images, video, audio and PDF. A file that already fits is copied as is when its format stays the same.
 - **Presets:** web, WhatsApp, email, Discord (all under 10 MB where it matters), strip location data, PDF, WebP, icon, Instagram, podcast. Save your own from any custom settings.
 - **Edit on the way:** resize, strip metadata, fix orientation, cut audio and video, audio bitrate, mono, GIF fps and width.
-- **Batch:** merge images into one PDF or audio files into one, convert whole folders, drop many files at once.
+- **Batch:** merge images, PDFs and documents into one PDF or audio files into one, convert whole folders, drop many files at once. Several files convert in parallel.
 - **Automate:** watch folders with rules, a Send To entry, and `tessera-cli` for scripts.
 - **Move your setup:** export all settings, presets and watch rules to a file and import them on another PC.
 - **Stay safe:** originals are kept, output gets a new name, nothing is overwritten unless you turn it on. Every job goes into a history with undo, and any running job can be cancelled.
-- **Feel at home:** English and Turkish (follows Windows), light and dark, keyboard friendly.
+- **Feel at home:** English, Türkçe, Español, 简体中文, Português (Brasil), Русский, Deutsch, Français, 日本語, 한국어, Italiano and Bahasa Indonesia (follows Windows), light and dark, keyboard friendly.
 
 Images, audio and PDF are converted in pure Rust, no extra tools. Video, MP3, OGG, AAC and HEIC use ffmpeg, which the installer can download for you (see below). Office documents use LibreOffice as a hidden converter: download it under Settings > Advanced (about 360 MB, 700 MB on disk), or Tessera uses the one already installed.
 
@@ -71,12 +72,15 @@ tessera-cli convert clip.mov --to mp4 --max-size 8MB
 tessera-cli convert talk.mp4 --to mp3 --start 1:30 --end 4:00 --mono
 tessera-cli convert report.docx --to pdf
 tessera-cli preset whatsapp beach.jpg --out D:\Sent
-tessera-cli merge pdf page1.png page2.png page3.png
+tessera-cli merge pdf cover.png report.docx appendix.pdf
+tessera-cli pdf extract contract.pdf --pages 1-3,5
+tessera-cli pdf compress scan.pdf --strong
+tessera-cli convert *.jpg --to webp --jobs 4
 tessera-cli list-presets
 tessera-cli formats png
 ```
 
-`tessera-cli.exe` sits next to `tessera.exe` and is the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`. Exit codes: 0 ok, 1 a file failed (or every file was skipped), 2 usage error. `merge audio ... --to mp3` joins audio, `--max-size` keeps a merged PDF small. `tessera-cli --help` lists everything.
+`tessera-cli.exe` sits next to `tessera.exe` and is the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`. Exit codes: 0 ok, 1 a file failed (or every file was skipped), 2 usage error. `merge audio ... --to mp3` joins audio, `--max-size` keeps a merged PDF of images small, `--jobs` converts several files at once. `tessera-cli --help` lists everything.
 
 ## Privacy
 
@@ -92,13 +96,14 @@ Everything is per user. Files: the install folder only, data included (an update
 - The installer is not code-signed, so SmartScreen may warn on first run.
 - A full-screen exclusive game hides the progress panel.
 - RAW files use the embedded JPEG preview, not a full demosaic.
-- Office documents convert one at a time; the first one after a start takes about 10 seconds, later ones about 2. A PDF turned into DOCX keeps the text but often not the layout.
+- Office documents convert up to three at a time; the first one after a start takes about 10 seconds, later ones about 2. A PDF turned into DOCX keeps the text but often not the layout.
+- PDF tools that keep or delete pages drop bookmarks and form fields; Compress only touches RGB and gray pictures.
 
 ## Built with
 
 <p align="center"><img src="docs/img/languages.svg" alt="Languages used in Tessera: Rust, JavaScript, CSS and HTML" width="760"></p>
 
-A Rust engine does the converting and runs the menu, the queue, the watchers and the installer. The window is plain HTML, CSS and JavaScript with no framework and no bundler, hosted by [Tauri 2](https://tauri.app) and the WebView2 that Windows already has, which is why the whole app is one small exe. The app speaks English and Turkish.
+A Rust engine does the converting and runs the menu, the queue, the watchers and the installer. The window is plain HTML, CSS and JavaScript with no framework and no bundler, hosted by [Tauri 2](https://tauri.app) and the WebView2 that Windows already has, which is why the whole app is one small exe.
 
 ## License
 
@@ -127,22 +132,24 @@ The UI in `src/` is served as is, so edit it and reload. A running exe locks its
 ```
 src/                     UI: index.html (settings), drop.html (chooser), progress.html (panel),
                          install.html (setup window); app.js, drop.js, progress.js, install.js,
-                         features.js, i18n.js, style.css
+                         features.js, i18n.js (en, tr), lang/*.js (other languages), style.css
 src-tauri/src/
-  convert/               engine: image, audio, pdf, svg, raw, ffmpeg, size search, merge, output naming
+  convert/               engine: image, audio, pdf, pdf_edit + pdf_tools (lopdf), svg, raw, ffmpeg,
+                         office (LibreOffice runner), size search, merge, output naming
   queue.rs  batch.rs     job queue, progress events, history records
   shell/                 Explorer menu: registry verbs, icons, presets
   watch.rs  folder.rs    watch folders and folder verbs
   cli.rs  headless.rs    command-line parsing and the `tessera-cli` commands
   install.rs             the self-installer and uninstaller
   office.rs              document support: LibreOffice download and lookup (runner in convert/office.rs)
-  settings.rs  preset.rs history.rs  update.rs  log.rs  i18n.rs  ffmpeg.rs
+  settings.rs  preset.rs history.rs  update.rs  log.rs  ffmpeg.rs
+  i18n.rs  i18n/         backend strings: en and tr in i18n.rs, one table per other language
 src-tauri/menu-icons/    one .ico per menu verb (embedded in the exe)
 ```
 
 **Things worth knowing**
 
-- **Two languages, two files:** UI strings live in `src/i18n.js`, Rust strings in `src-tauri/src/i18n.rs`. A new key needs both English and Turkish, so keep the two in step.
+- **Twelve languages:** UI strings live in `src/i18n.js` (English, Turkish) and `src/lang/<code>.js`, Rust strings in `src-tauri/src/i18n.rs` and `src-tauri/src/i18n/<code>.rs`. A new key goes into every language; `cargo test` checks the Rust tables.
 - **No inline styles:** the content security policy is `default-src 'self'`, so style with classes in `style.css` (colors are tokens on `:root`).
 - **Conversion rules:** every converter writes through `output::write_atomic`, never overwrites the source, and honors the size limit through `size::fit` or ffmpeg bitrates. New formats go in `convert/mod.rs` (`Format`, `supported_targets`).
 - **Menu icons:** bump `ICON_REV` in `shell/mod.rs` when you change an icon so Explorer drops its cache.
