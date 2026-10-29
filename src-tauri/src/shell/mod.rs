@@ -830,8 +830,12 @@ mod tests {
         let menu = hkcu.open_subkey(folder_key(&root)).unwrap();
         assert_eq!(menu.get_value::<String, _>("MUIVerb").unwrap(), APP_NAME);
         let names = verb_names(&menu);
-        // 8 image formats, 6 presets, wav + flac
-        assert_eq!((names[0].as_str(), names.len()), ("00_png", 8 + 6 + 2 + 1));
+        // 8 image formats, 6 presets, wav + flac, custom; documents to PDF with LibreOffice here
+        let docs = usize::from(crate::office::ready());
+        assert_eq!(
+            (names[0].as_str(), names.len()),
+            ("00_png", 8 + 6 + 2 + docs + 1)
+        );
         assert!(names.last().unwrap().ends_with("_custom"));
         assert!(names.contains(&"08_preset_web".to_string()));
         assert!(names.iter().any(|n| n.ends_with("_wav")));

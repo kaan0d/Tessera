@@ -265,7 +265,9 @@ fn install_in(work: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), FfError>
 
 /// Deletes our copy and its profile; an installed LibreOffice is never touched.
 pub fn remove() -> std::io::Result<()> {
-    let _ = fs::remove_dir_all(profile_dir());
+    for p in crate::convert::office::slot_profiles(&profile_dir()) {
+        let _ = fs::remove_dir_all(p);
+    }
     match fs::remove_dir_all(own_dir()) {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
         _ => Ok(()),

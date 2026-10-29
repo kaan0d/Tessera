@@ -19,7 +19,7 @@ pub const EXIT_USAGE: i32 = 2;
 pub const HELP: &str = "\
 Usage:
   {p} convert <files, folders or *.png> --to <ext> [options]
-  {p} preset <id> <files...> [--dry-run --json --quiet --out <dir> --conflict <mode>]
+  {p} preset <id> <files...> [--dry-run --json --quiet --out <dir> --conflict <mode> --jobs <n>]
   {p} merge <pdf|audio> <files...> [--out <dir>] [--max-size <size>] [--to mp3|wav|flac]
                       images, PDFs and documents into one PDF, or audio files into one (audio is FLAC unless --to)
   {p} pdf <split|extract|delete|rotate|compress> <files...> [--pages 1-3,5] [--angle 90|180|270] [--strong]
@@ -38,6 +38,7 @@ Convert options:
   --out <dir>         output folder (default: next to the source)
   --conflict <mode>   rename (default) or overwrite
   --recursive         with a folder: go into its subfolders too
+  --jobs <1-16>       convert this many files at the same time (default 1)
   --dry-run           show what would happen, change nothing
   --json              one JSON line per file instead of text
   --quiet             only errors and the summary
@@ -186,6 +187,8 @@ struct Style {
     dry_run: bool,
     json: bool,
     quiet: bool,
+    /// Files converted at the same time (`--jobs`).
+    jobs: usize,
 }
 
 fn convert_cmd(a: ConvertArgs) -> i32 {
@@ -234,6 +237,7 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
         dry_run: a.dry_run,
         json: a.json,
         quiet: a.quiet,
+        jobs: a.jobs.into(),
     };
     run_files(&files, style, |path| {
         let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
@@ -402,6 +406,7 @@ fn preset_cmd(id: &str, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
         dry_run: flags.dry_run,
         json: flags.json,
         quiet: flags.quiet,
+        jobs: flags.jobs.max(1).into(),
     };
     let files = expand_inputs(files, false);
     run_files(&files, style, |path| {
@@ -516,92 +521,40 @@ fn json_line(file: &Path, ok: bool, key: &str, text: &str) {
 }
 
 /// Converts each file with what `plan` picks. Exit 1 if any failed or nothing could be done.
-fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i32 {
-    let (mut failed, mut skipped, mut done, mut ffmpeg_ok) = (0, 0, 0, None);
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Outcome {
+    Done,
+    Failed,
+    Skipped,
+}
+
+/// Runs `plan` and the conversion for every file, `style.jobs` at a time (lines may then come
+/// in any order; each names its file).
+fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan + Sync) -> i32 {
     let n = files.len();
-    for (i, path) in files.iter().enumerate() {
-        let tag = format!("[{}/{n}] {}", i + 1, path.display());
-        let (target, opts) = match plan(path) {
-            Ok(p) => p,
-            Err(reason) => {
-                if style.json {
-                    json_line(path, false, "skipped", &reason);
-                } else {
-                    err(&format!("{tag}: skipped: {reason}"));
-                }
-                skipped += 1;
-                continue;
-            }
-        };
-        // the same checks a real run makes, so a dry run never promises what would fail
-        if let Err(why) = precheck(path, target, &mut ffmpeg_ok) {
-            if style.json {
-                json_line(path, false, "error", &why);
-            } else {
-                err(&format!("{tag}: {why}"));
-            }
-            failed += 1;
-            continue;
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let tally = std::sync::Mutex::new([0usize; 3]);
+    let work = || {
+        // each worker checks ffmpeg on its own first need
+        let mut ffmpeg_ok = None;
+        loop {
+            let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let Some(path) = files.get(i) else { break };
+            let r = one_file(i, n, path, style, &plan, &mut ffmpeg_ok);
+            tally.lock().unwrap()[r as usize] += 1;
         }
-        if style.dry_run {
-            let name = dry_name(path, target, &opts);
-            if style.json {
-                json_line(path, true, "output", &name.display().to_string());
-            } else if !style.quiet {
-                out(&format!("{tag} -> {} (dry run)", name.display()));
+    };
+    let jobs = style.jobs.clamp(1, n.max(1));
+    if jobs == 1 {
+        work();
+    } else {
+        std::thread::scope(|s| {
+            for _ in 0..jobs {
+                s.spawn(work);
             }
-            done += 1;
-            continue;
-        }
-        let mut last = 0.0f32;
-        let on_progress = |p: f32| {
-            let step = (p * 4.0).floor() / 4.0;
-            if step > last && step < 1.0 && !style.quiet && !style.json {
-                last = step;
-                out(&format!("{tag} {:.0}%", step * 100.0));
-            }
-        };
-        crate::convert::ALPHA_FLATTENED.store(false, std::sync::atomic::Ordering::Relaxed);
-        match convert_one(path, target, &opts, &mut ffmpeg_ok, on_progress) {
-            Ok(dest) => {
-                done += 1;
-                if crate::convert::ALPHA_FLATTENED.swap(false, std::sync::atomic::Ordering::Relaxed)
-                    && !style.quiet
-                {
-                    err(&format!(
-                        "{tag}: note: transparency was replaced with white ({} has none)",
-                        target.ext().to_uppercase()
-                    ));
-                }
-                if style.json {
-                    json_line(path, true, "output", &dest.display().to_string());
-                } else if !style.quiet {
-                    let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).ok();
-                    let note = match (size(&dest), size(path)) {
-                        (Some(n), Some(o)) => format!(" ({}, was {})", human(n), human(o)),
-                        (Some(n), None) => format!(" ({})", human(n)),
-                        _ => String::new(),
-                    };
-                    out(&format!("{tag} -> {}{note}", dest.display()));
-                }
-                let big = std::fs::metadata(&dest).is_ok_and(|m| m.len() > 20_000_000);
-                if big && target == Format::Gif {
-                    err(&format!(
-                        "warning: {} is over 20 MB: lower --gif-width or --gif-fps for a smaller GIF",
-                        dest.display()
-                    ));
-                }
-            }
-            Err(e) => {
-                if style.json {
-                    json_line(path, false, "error", &e);
-                } else {
-                    err(&format!("{tag}: {e}"));
-                }
-                failed += 1;
-            }
-        }
+        });
     }
+    let [done, failed, skipped] = *tally.lock().unwrap();
     if failed > 0 {
         err(&format!("{failed} of {n} failed"));
     }
@@ -612,6 +565,95 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan) -> i
         EXIT_FAILED
     } else {
         EXIT_OK
+    }
+}
+
+fn one_file(
+    i: usize,
+    n: usize,
+    path: &Path,
+    style: Style,
+    plan: &impl Fn(&Path) -> Plan,
+    ffmpeg_ok: &mut Option<bool>,
+) -> Outcome {
+    let tag = format!("[{}/{n}] {}", i + 1, path.display());
+    let (target, opts) = match plan(path) {
+        Ok(p) => p,
+        Err(reason) => {
+            if style.json {
+                json_line(path, false, "skipped", &reason);
+            } else {
+                err(&format!("{tag}: skipped: {reason}"));
+            }
+            return Outcome::Skipped;
+        }
+    };
+    // the same checks a real run makes, so a dry run never promises what would fail
+    if let Err(why) = precheck(path, target, ffmpeg_ok) {
+        if style.json {
+            json_line(path, false, "error", &why);
+        } else {
+            err(&format!("{tag}: {why}"));
+        }
+        return Outcome::Failed;
+    }
+    if style.dry_run {
+        let name = dry_name(path, target, &opts);
+        if style.json {
+            json_line(path, true, "output", &name.display().to_string());
+        } else if !style.quiet {
+            out(&format!("{tag} -> {} (dry run)", name.display()));
+        }
+        return Outcome::Done;
+    }
+    let mut last = 0.0f32;
+    let on_progress = |p: f32| {
+        let step = (p * 4.0).floor() / 4.0;
+        if step > last && step < 1.0 && !style.quiet && !style.json {
+            last = step;
+            out(&format!("{tag} {:.0}%", step * 100.0));
+        }
+    };
+    // ponytail: one global flag, so with --jobs the note may name a neighbouring file
+    crate::convert::ALPHA_FLATTENED.store(false, std::sync::atomic::Ordering::Relaxed);
+    match convert_one(path, target, &opts, ffmpeg_ok, on_progress) {
+        Ok(dest) => {
+            if crate::convert::ALPHA_FLATTENED.swap(false, std::sync::atomic::Ordering::Relaxed)
+                && !style.quiet
+            {
+                err(&format!(
+                    "{tag}: note: transparency was replaced with white ({} has none)",
+                    target.ext().to_uppercase()
+                ));
+            }
+            if style.json {
+                json_line(path, true, "output", &dest.display().to_string());
+            } else if !style.quiet {
+                let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).ok();
+                let note = match (size(&dest), size(path)) {
+                    (Some(n), Some(o)) => format!(" ({}, was {})", human(n), human(o)),
+                    (Some(n), None) => format!(" ({})", human(n)),
+                    _ => String::new(),
+                };
+                out(&format!("{tag} -> {}{note}", dest.display()));
+            }
+            let big = std::fs::metadata(&dest).is_ok_and(|m| m.len() > 20_000_000);
+            if big && target == Format::Gif {
+                err(&format!(
+                    "warning: {} is over 20 MB: lower --gif-width or --gif-fps for a smaller GIF",
+                    dest.display()
+                ));
+            }
+            Outcome::Done
+        }
+        Err(e) => {
+            if style.json {
+                json_line(path, false, "error", &e);
+            } else {
+                err(&format!("{tag}: {e}"));
+            }
+            Outcome::Failed
+        }
     }
 }
 

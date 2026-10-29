@@ -98,6 +98,8 @@ pub struct ConvertArgs {
     pub dry_run: bool,
     pub json: bool,
     pub quiet: bool,
+    /// Files converted at the same time, 1..=16.
+    pub jobs: u8,
 }
 
 #[derive(Debug, PartialEq)]
@@ -291,6 +293,8 @@ pub struct RunFlags {
     pub max_bytes: Option<u64>,
     /// `--to` of `merge audio`: mp3, wav or flac.
     pub to: Option<String>,
+    /// `--jobs` of `preset`: files converted at the same time (0 = not given, means 1).
+    pub jobs: u8,
 }
 
 fn parse_merge(args: &[String]) -> Command {
@@ -376,6 +380,10 @@ fn parse_run(args: &[String], merge: bool) -> Command {
                 Some(d) => flags.out = Some(PathBuf::from(d)),
                 None => return usage("--out needs a folder"),
             },
+            "--jobs" if !merge => match it.next().and_then(|v| v.parse::<u8>().ok()) {
+                Some(n @ 1..=16) => flags.jobs = n,
+                _ => return usage("--jobs must be a number from 1 to 16"),
+            },
             "--max-size" => match it.next().and_then(|v| parse_size(v)) {
                 Some(n) => flags.max_bytes = Some(n),
                 None => return usage("--max-size must look like 8MB or 500KB"),
@@ -412,8 +420,9 @@ fn parse_convert(args: &[String]) -> Command {
     }
 }
 
-const VALUE_FLAGS: [&str; 13] = [
+const VALUE_FLAGS: [&str; 14] = [
     "to",
+    "jobs",
     "max-edge",
     "percent",
     "max-size",
@@ -436,6 +445,7 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
     let (mut video_mbps, mut recursive, mut dry_run, mut json, mut quiet) =
         (None, false, false, false, false);
     let mut conflict = Conflict::AutoRename;
+    let mut jobs = 1u8;
     let mut it = args.iter();
     while let Some(a) = it.next() {
         let Some(flag) = a.strip_prefix("--") else {
@@ -493,6 +503,7 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
             "gif-fps" => gif_fps = Some(num(5, 30)? as u8),
             "gif-width" => gif_width = Some(num(120, 1280)? as u16),
             "video-mbps" => video_mbps = Some(num(1, 30)? as u8),
+            "jobs" => jobs = num(1, 16)? as u8,
             "out" => out = Some(PathBuf::from(&v)),
             "conflict" => {
                 conflict = match v.as_str() {
@@ -535,6 +546,7 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
         dry_run,
         json,
         quiet,
+        jobs,
     })
 }
 
@@ -716,6 +728,25 @@ mod tests {
             Command::Convert(c) => c,
             other => panic!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn jobs_flag() {
+        match cmd(&["convert", "a.png", "--to", "jpg", "--jobs", "4"]) {
+            Command::Convert(c) => assert_eq!(c.jobs, 4),
+            other => panic!("{other:?}"),
+        }
+        match cmd(&["convert", "a.png", "--to", "jpg"]) {
+            Command::Convert(c) => assert_eq!(c.jobs, 1),
+            other => panic!("{other:?}"),
+        }
+        usage_err(&["convert", "a.png", "--to", "jpg", "--jobs", "0"]);
+        usage_err(&["convert", "a.png", "--to", "jpg", "--jobs", "17"]);
+        match cmd(&["preset", "web", "a.png", "--jobs", "3"]) {
+            Command::Preset { flags, .. } => assert_eq!(flags.jobs, 3),
+            other => panic!("{other:?}"),
+        }
+        usage_err(&["merge", "pdf", "a.png", "--jobs", "3"]);
     }
 
     #[test]

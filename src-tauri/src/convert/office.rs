@@ -1,7 +1,8 @@
 //! Office documents through LibreOffice (`soffice --headless --convert-to`). The input is copied
 //! into a private temp folder so LibreOffice never writes lock files next to the user's file,
 //! and it runs with Tessera's own hardened profile (macros, remote links, OLE and DDE off).
-//! One conversion at a time: two processes on one profile make the second fail.
+//! Two processes on one profile make the second fail, so each of the few parallel slots has
+//! its own profile (`office-profile`, `office-profile-1`, ...).
 
 use std::fs;
 use std::os::windows::process::CommandExt;
@@ -17,7 +18,45 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 /// A document that takes longer than this is treated as stuck.
 const TIMEOUT: Duration = Duration::from_secs(300);
 
-static ONE_AT_A_TIME: Mutex<()> = Mutex::new(());
+/// Most LibreOffice processes at once; each takes a few hundred MB of memory.
+const MAX_SLOTS: usize = 3;
+static SLOTS: [Mutex<()>; MAX_SLOTS] = [const { Mutex::new(()) }; MAX_SLOTS];
+
+/// Slots in use on this PC: half the cores, 1 to `MAX_SLOTS`.
+fn slot_count() -> usize {
+    let cores = std::thread::available_parallelism().map_or(2, |n| n.get());
+    (cores / 2).clamp(1, MAX_SLOTS)
+}
+
+/// Profile of slot `i`: the base profile for slot 0, `<base>-<i>` for the others.
+fn slot_profile(base: &Path, i: usize) -> PathBuf {
+    if i == 0 {
+        return base.to_path_buf();
+    }
+    let mut name = base.as_os_str().to_owned();
+    name.push(format!("-{i}"));
+    PathBuf::from(name)
+}
+
+/// Waits for a free slot (or the cancel flag) and returns its lock and profile.
+fn take_slot<'a>(
+    base: &Path,
+    opts: &Options,
+) -> Result<(std::sync::MutexGuard<'a, ()>, PathBuf), ConvertError> {
+    loop {
+        for (i, slot) in SLOTS.iter().take(slot_count()).enumerate() {
+            match slot.try_lock() {
+                Ok(g) => return Ok((g, slot_profile(base, i))),
+                Err(std::sync::TryLockError::Poisoned(e)) => {
+                    return Ok((e.into_inner(), slot_profile(base, i)))
+                }
+                Err(std::sync::TryLockError::WouldBlock) => {}
+            }
+        }
+        opts.check_cancel()?;
+        std::thread::sleep(Duration::from_millis(100));
+    }
+}
 
 /// Written into a fresh profile before LibreOffice first starts (see development/OFFICE.md).
 const HARDENING: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -209,8 +248,16 @@ fn run_soffice(
 
 /// Runs `f` while no conversion is running (swapping the LibreOffice folder on an update).
 pub fn exclusive<T>(f: impl FnOnce() -> T) -> T {
-    let _turn = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    let _all: Vec<_> = SLOTS
+        .iter()
+        .map(|s| s.lock().unwrap_or_else(|e| e.into_inner()))
+        .collect();
     f()
+}
+
+/// Every profile folder the slots may have made from `base` (for removal).
+pub fn slot_profiles(base: &Path) -> Vec<PathBuf> {
+    (0..MAX_SLOTS).map(|i| slot_profile(base, i)).collect()
 }
 
 /// Converts `input` with LibreOffice at `soffice`, using `profile` as its user profile.
@@ -233,7 +280,8 @@ pub fn convert_with_office(
     let dest = output::plan(&src, target.ext(), &opts.output)?;
     progress(0.0);
 
-    let _turn = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    let (_turn, profile) = take_slot(profile, opts)?;
+    let profile = profile.as_path();
     opts.check_cancel()?;
     ensure_profile(profile)?;
     let scratch = Scratch::new()?;
@@ -263,6 +311,15 @@ pub fn convert_with_office(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn slots_get_their_own_profiles() {
+        let base = Path::new(r"C:\d\office-profile");
+        assert_eq!(slot_profile(base, 0), base);
+        assert_eq!(slot_profile(base, 2), Path::new(r"C:\d\office-profile-2"));
+        assert_eq!(slot_profiles(base).len(), MAX_SLOTS);
+        assert!((1..=MAX_SLOTS).contains(&slot_count()));
+    }
 
     #[test]
     fn profile_urls_are_percent_encoded() {
