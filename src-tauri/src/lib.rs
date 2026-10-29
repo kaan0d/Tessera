@@ -1469,13 +1469,11 @@ fn run_setup(mode: install::Mode) {
                 // a temp cache: the installer may run from Downloads and install anywhere
                 let mut w = tauri::WebviewWindowBuilder::from_config(app.handle(), cfg)?
                     .data_directory(std::env::temp_dir().join("Tessera-setup"));
-                let tr = i18n::system_lang() == i18n::Lang::Tr;
-                w = w.title(match (mode, tr) {
-                    (install::Mode::Uninstall, true) => "Tessera Kaldır",
-                    (install::Mode::Uninstall, false) => "Uninstall Tessera",
-                    (_, true) => "Tessera Kurulum",
-                    (_, false) => "Tessera Setup",
-                });
+                let key = match mode {
+                    install::Mode::Uninstall => "setup.uninstall_title",
+                    _ => "setup.title",
+                };
+                w = w.title(t(i18n::system_lang(), key));
                 w.build()?;
             }
             Ok(())

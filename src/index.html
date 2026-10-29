@@ -7,6 +7,16 @@
 <title>Tessera</title>
 <link rel="stylesheet" href="style.css">
 <script src="i18n.js" defer></script>
+<script src="lang/es.js" defer></script>
+<script src="lang/zh-CN.js" defer></script>
+<script src="lang/pt-BR.js" defer></script>
+<script src="lang/ru.js" defer></script>
+<script src="lang/de.js" defer></script>
+<script src="lang/fr.js" defer></script>
+<script src="lang/ja.js" defer></script>
+<script src="lang/ko.js" defer></script>
+<script src="lang/it.js" defer></script>
+<script src="lang/id.js" defer></script>
 <script src="summary.js" defer></script>
 <script src="app.js" defer></script>
 <script src="features.js" defer></script>
@@ -121,11 +131,10 @@
           <span id="l-lang" class="label" data-i18n="lang.label"></span>
           <p class="desc" data-i18n="lang.desc"></p>
         </div>
-        <div class="seg seg-sm" role="radiogroup" aria-labelledby="l-lang">
-          <span class="seg-thumb" aria-hidden="true"></span>
-          <label><input type="radio" name="lang" value="en"><span lang="en">English</span></label>
-          <label><input type="radio" name="lang" value="tr"><span lang="tr">Türkçe</span></label>
-        </div>
+        <span class="select">
+          <select id="lang" aria-labelledby="l-lang"></select>
+          <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </span>
       </div>
       <div class="row">
         <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-power"/></svg></span>

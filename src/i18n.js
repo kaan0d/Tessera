@@ -1,10 +1,19 @@
 'use strict';
-/* UI strings in English and Turkish. Add a string: one key in both `en` and `tr`
-   (development/check-i18n.js fails otherwise), then use it with
+/* UI strings. English and Turkish live here, the other languages in src/lang/<code>.js. Add a
+   string: one key in `en`, `tr` and every language file (development/check-i18n.js fails
+   otherwise), then use it with
    t('key', {vars}), data-i18n="key", data-i18n-html="key" or
    data-i18n-attr="aria-label:key;title:key2" in the HTML.
-   Plurals: define `key.one` and `key.other`, call t('key', {n}).
+   Plurals: define `key.other` and the forms the language has (`.one`, `.few`, `.many`, as
+   Intl.PluralRules names them), call t('key', {n}).
    {placeholders} must match between the languages. The app name is not in here. */
+/** Every language: code -> its own name (the settings list). Each but en and tr has src/lang/<code>.js. */
+const LANGS = {
+  en: 'English', tr: 'Türkçe', es: 'Español', 'zh-CN': '简体中文', 'pt-BR': 'Português (Brasil)', ru: 'Русский',
+  de: 'Deutsch', fr: 'Français', ja: '日本語', ko: '한국어', it: 'Italiano', id: 'Bahasa Indonesia',
+};
+/** Setup window strings of the languages in src/lang (en and tr live in install.js). */
+const SETUP = {};
 const I18N = {
   en: {
     'app.settings': 'Settings',
@@ -1060,17 +1069,25 @@ function t(key, vars) {
   const d = I18N[LANG];
   let k = key;
   if (vars && typeof vars.n === 'number') {
-    const p = key + (vars.n === 1 ? '.one' : '.other');
-    if (p in d) k = p;
+    // the language's own plural form (one, few, many, other), else .other
+    const p = key + '.' + plural(vars.n);
+    k = p in d ? p : key + '.other' in d ? key + '.other' : key;
   }
   let s = k in d ? d[k] : k in I18N.en ? I18N.en[k] : key;
   if (vars) for (const v in vars) s = s.replaceAll('{' + v + '}', () => vars[v]);
   return s;
 }
 
+let plurals = new Intl.PluralRules('en');
+const plural = (n) => plurals.select(n);
+
+/** A known language code, else English. */
+const langOf = (code) => (code in I18N ? code : 'en');
+
 /** Switches the language and rewrites every marked element. */
 function setLang(code) {
-  LANG = code === 'tr' ? 'tr' : 'en';
+  LANG = langOf(code);
+  plurals = new Intl.PluralRules(LANG);
   document.documentElement.lang = LANG;
   applyI18n();
 }
@@ -1086,4 +1103,4 @@ function applyI18n(root = document) {
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { I18N };
+if (typeof module !== 'undefined') module.exports = { I18N, LANGS, SETUP };

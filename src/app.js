@@ -16,7 +16,7 @@ setLang('en'); // until settings say otherwise
 
 // ponytail: fills only what an older settings.json may lack; the backend owns the real defaults
 function normalize(x) {
-  x.language = x.language === 'tr' ? 'tr' : 'en';
+  x.language = langOf(x.language);
   x.quality = { jpeg: 85, webp: 80, webp_lossless: false, mp3_q: 2, ogg_q: 6, video_mbps: 8, gif_fps: 15, gif_width: 480, ...x.quality };
   x.panel = { corner: 'top_right', seconds: 7, windows_toast: false, ...x.panel };
   x.menu = { icons: true, sort: 'default', presets_enabled: true, merge: true, pdf_tools: true, folder: true, folder_recursive: false, sendto: false, ...x.menu };
@@ -474,10 +474,15 @@ function render() {
     r.checked = r.value === s.menu.sort;
     if (r.checked) seg(r.closest('.seg'), i);
   });
-  document.querySelectorAll('input[name=lang]').forEach((r, i) => {
-    r.checked = r.value === s.language;
-    if (r.checked) seg(r.closest('.seg'), i);
-  });
+  if (!$('lang').options.length) {
+    // each language in its own name and script
+    for (const [code, name] of Object.entries(LANGS)) {
+      const o = new Option(name, code);
+      o.lang = code;
+      $('lang').add(o);
+    }
+  }
+  $('lang').value = s.language;
   paintChips();
 }
 
@@ -665,7 +670,7 @@ function bind() {
     if (g) select(tabs.indexOf($(g.dataset.goto)), true);
   });
   $('autostart').onchange = (e) => change({ autostart: e.target.checked });
-  $$('input[name=lang]').forEach((r) => (r.onchange = () => { setLang(r.value); change({ language: r.value }); relabel(); }));
+  $('lang').onchange = (e) => { setLang(e.target.value); change({ language: LANG }); relabel(); };
   $$('input[name=dir]').forEach((r) => {
     r.onchange = async () => {
       if (r.value === 'same_as_source') return change({ output_dir: { kind: 'same_as_source' } });
@@ -776,7 +781,7 @@ function relabel() {
 if (T && T.event) {
   T.event.listen('language-changed', (e) => {
     if (!s || e.payload === s.language) return;
-    s.language = e.payload === 'tr' ? 'tr' : 'en';
+    s.language = langOf(e.payload);
     setLang(s.language);
     relabel();
   });

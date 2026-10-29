@@ -116,7 +116,7 @@
   }
 
   let curLabel = "";
-  // ---- language: English, or Turkish when Windows is Turkish (the backend says which)
+  // ---- language: the Windows display language when Tessera has it, else English (the backend says which)
   const DICT = {
     en: {
       install_title: "Install Tessera", update_title: "Update Tessera", lead: "Right-click any file, pick a format, done.",
@@ -199,6 +199,8 @@
       ],
     },
   };
+  // the other languages come from src/lang/*.js
+  if (typeof SETUP !== "undefined") Object.assign(DICT, SETUP);
   let lang = "en";
   const t = (k) => DICT[lang][k] ?? DICT.en[k] ?? k;
   function applyLang(l) {
@@ -352,7 +354,7 @@
   if (q.get("state") === "run") { setState("run"); tp = dp = parseFloat(q.get("p") || "0.5"); curLabel = "Registering the menu"; labelEl.textContent = t(curLabel); curStep = 2; stepLine.textContent = fmtStep(); }
   if (q.get("state") === "done") { setState("done"); tp = dp = 1; Object.assign(popAt, new Array(N).fill(1)); }
   if (!T && q.get("mode") === "uninstall") { api.setMode("uninstall"); setGo("uninstall"); }
-  if (!T) { applyLang(q.get("lang") || ((navigator.language || "").startsWith("tr") ? "tr" : "en")); ready(); }
+  if (!T) { applyLang(q.get("lang") || "en"); ready(); }
   if (q.get("auto")) setTimeout(demo, 800);
 
   requestAnimationFrame(frame);

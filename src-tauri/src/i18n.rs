@@ -1,5 +1,6 @@
-//! Backend strings in English and Turkish. Add a message: one row in `MSGS` with the same
-//! `{placeholders}` in both texts (a test checks). The UI has its own dictionary in src/i18n.js.
+//! Backend strings. English and Turkish live in `MSGS`; the other languages each have a table
+//! in `i18n/<code>.rs` with the same keys and `{placeholders}` (tests check both). Add a
+//! message: a row in `MSGS` and one in every table. The UI has its own files in src/lang/.
 
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -10,16 +11,63 @@ pub enum Lang {
     #[default]
     En,
     Tr,
+    Es,
+    Zh,
+    Pt,
+    Ru,
+    De,
+    Fr,
+    Ja,
+    Ko,
+    It,
+    Id,
 }
 
-/// Windows display language: Turkish for a Turkish UI, English for every other language.
+mod de;
+mod es;
+mod fr;
+mod id;
+mod it;
+mod ja;
+mod ko;
+mod pt_br;
+mod ru;
+mod zh_cn;
+
+/// Every language, in the order the settings list them.
+pub const ALL: [Lang; 12] = [
+    Lang::En,
+    Lang::Tr,
+    Lang::Es,
+    Lang::Zh,
+    Lang::Pt,
+    Lang::Ru,
+    Lang::De,
+    Lang::Fr,
+    Lang::Ja,
+    Lang::Ko,
+    Lang::It,
+    Lang::Id,
+];
+
+/// Windows display language when Tessera speaks it, English otherwise. Every Chinese UI gets
+/// Simplified Chinese and every Portuguese one Brazilian Portuguese.
 pub fn system_lang() -> Lang {
     // SAFETY: a plain query with no arguments.
     let id = unsafe { windows::Win32::Globalization::GetUserDefaultUILanguage() };
-    if id & 0x3ff == 0x1f {
-        Lang::Tr
-    } else {
-        Lang::En
+    match id & 0x3ff {
+        0x1f => Lang::Tr,
+        0x0a => Lang::Es,
+        0x04 => Lang::Zh,
+        0x16 => Lang::Pt,
+        0x19 => Lang::Ru,
+        0x07 => Lang::De,
+        0x0c => Lang::Fr,
+        0x11 => Lang::Ja,
+        0x12 => Lang::Ko,
+        0x10 => Lang::It,
+        0x21 => Lang::Id,
+        _ => Lang::En,
     }
 }
 
@@ -28,15 +76,38 @@ impl Lang {
         match self {
             Lang::En => "en",
             Lang::Tr => "tr",
+            Lang::Es => "es",
+            Lang::Zh => "zh-CN",
+            Lang::Pt => "pt-BR",
+            Lang::Ru => "ru",
+            Lang::De => "de",
+            Lang::Fr => "fr",
+            Lang::Ja => "ja",
+            Lang::Ko => "ko",
+            Lang::It => "it",
+            Lang::Id => "id",
         }
     }
 
-    /// Anything but "tr" is English.
+    /// An unknown code is English.
     pub fn from_code(s: &str) -> Lang {
-        if s == "tr" {
-            Lang::Tr
-        } else {
-            Lang::En
+        ALL.into_iter().find(|l| l.code() == s).unwrap_or(Lang::En)
+    }
+
+    /// The translations of a language with its own table.
+    fn table(self) -> &'static [(&'static str, &'static str)] {
+        match self {
+            Lang::En | Lang::Tr => &[],
+            Lang::Es => es::MSGS,
+            Lang::Zh => zh_cn::MSGS,
+            Lang::Pt => pt_br::MSGS,
+            Lang::Ru => ru::MSGS,
+            Lang::De => de::MSGS,
+            Lang::Fr => fr::MSGS,
+            Lang::Ja => ja::MSGS,
+            Lang::Ko => ko::MSGS,
+            Lang::It => it::MSGS,
+            Lang::Id => id::MSGS,
         }
     }
 }
@@ -58,19 +129,19 @@ static CURRENT: AtomicU8 = AtomicU8::new(0);
 
 /// Language of the saved settings; set at startup and on every settings change.
 pub fn lang() -> Lang {
-    if CURRENT.load(Ordering::Relaxed) == 1 {
-        Lang::Tr
-    } else {
-        Lang::En
-    }
+    ALL[usize::from(CURRENT.load(Ordering::Relaxed)) % ALL.len()]
 }
 
 pub fn set_lang(l: Lang) {
-    CURRENT.store(u8::from(l == Lang::Tr), Ordering::Relaxed);
+    let i = ALL.iter().position(|x| *x == l).unwrap_or(0);
+    CURRENT.store(i as u8, Ordering::Relaxed);
 }
 
 /// (key, English, Turkish)
 pub const MSGS: &[(&str, &str, &str)] = &[
+    // setup window title
+    ("setup.title", "Tessera Setup", "Tessera Kurulum"),
+    ("setup.uninstall_title", "Uninstall Tessera", "Tessera'yı Kaldır"),
     // context menu
     ("menu.convert_to", "Convert to {fmt}", "{fmt} olarak dönüştür"),
     // PDF tools
@@ -603,12 +674,15 @@ pub const MSGS: &[(&str, &str, &str)] = &[
 
 /// Text for `key`; an unknown key comes back as itself (a test catches those).
 pub fn t(lang: Lang, key: &str) -> &str {
-    MSGS.iter()
-        .find(|m| m.0 == key)
-        .map_or(key, |m| match lang {
-            Lang::En => m.1,
-            Lang::Tr => m.2,
-        })
+    let Some(m) = MSGS.iter().find(|m| m.0 == key) else {
+        return key;
+    };
+    match lang {
+        Lang::En => m.1,
+        Lang::Tr => m.2,
+        // a key missing from a table falls back to English (a test catches those)
+        l => l.table().iter().find(|x| x.0 == key).map_or(m.1, |x| x.1),
+    }
 }
 
 /// Like `t`, with each `{name}` replaced from `vars`.
@@ -653,6 +727,37 @@ mod tests {
     }
 
     #[test]
+    fn every_table_has_exactly_the_keys_and_placeholders() {
+        for l in ALL {
+            let table = l.table();
+            if matches!(l, Lang::En | Lang::Tr) {
+                continue;
+            }
+            let mut seen = std::collections::HashSet::new();
+            for (k, text) in table {
+                assert!(seen.insert(*k), "{l:?}: duplicate {k}");
+                let en = MSGS.iter().find(|m| m.0 == *k);
+                let en = en.unwrap_or_else(|| panic!("{l:?}: unknown key {k}")).1;
+                assert!(!text.trim().is_empty(), "{l:?}: empty {k}");
+                assert_eq!(placeholders(en), placeholders(text), "{l:?}: {k}");
+            }
+            for (k, ..) in MSGS {
+                assert!(seen.contains(k), "{l:?}: missing {k}");
+            }
+        }
+    }
+
+    #[test]
+    fn codes_round_trip() {
+        for l in ALL {
+            assert_eq!(Lang::from_code(l.code()), l);
+            set_lang(l);
+            assert_eq!(lang(), l);
+        }
+        set_lang(Lang::En);
+    }
+
+    #[test]
     fn lookup_and_format() {
         assert_eq!(t(Lang::En, "tray.quit"), "Quit");
         assert_eq!(t(Lang::Tr, "tray.quit"), "Çıkış");
@@ -666,11 +771,12 @@ mod tests {
     fn language_defaults_to_english() {
         assert_eq!(Lang::default(), Lang::En);
         assert_eq!(Lang::from_code("tr"), Lang::Tr);
-        for bad in ["", "de", "TR", "english"] {
+        for bad in ["", "xx", "TR", "english", "zh"] {
             assert_eq!(Lang::from_code(bad), Lang::En, "{bad}");
         }
         assert_eq!(serde_json::from_str::<Lang>("\"tr\"").unwrap(), Lang::Tr);
-        assert_eq!(serde_json::from_str::<Lang>("\"fr\"").unwrap(), Lang::En);
+        assert_eq!(serde_json::from_str::<Lang>("\"fr\"").unwrap(), Lang::Fr);
+        assert_eq!(serde_json::from_str::<Lang>("\"xx\"").unwrap(), Lang::En);
         assert_eq!(serde_json::from_str::<Lang>("7").unwrap(), Lang::En);
         assert_eq!(serde_json::to_string(&Lang::Tr).unwrap(), "\"tr\"");
     }

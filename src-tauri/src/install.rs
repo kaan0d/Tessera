@@ -203,11 +203,7 @@ pub fn defaults(mode: Mode) -> Defaults {
     Defaults {
         ffmpeg,
         win11: is_win11(),
-        lang: if crate::i18n::system_lang() == crate::i18n::Lang::Tr {
-            "tr"
-        } else {
-            "en"
-        },
+        lang: crate::i18n::system_lang().code(),
         mode: if mode == Mode::Uninstall {
             "uninstall"
         } else {
