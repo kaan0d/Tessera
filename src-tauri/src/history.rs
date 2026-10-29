@@ -278,7 +278,7 @@ pub fn undo(store: &Shared, id: u64, lang: Lang) -> Result<(), String> {
         .ok_or_else(|| t(lang, "undo.not_found").to_string())?;
     let out = PathBuf::from(e.output.clone().unwrap_or_default());
     match plan(&e, stat(&out)) {
-        Plan::Refuse(k) => return Err(t(lang, k).to_string()),
+        Plan::Refuse(k) => Err(t(lang, k).to_string()),
         Plan::Go {
             restore_original: r,
         } => {
