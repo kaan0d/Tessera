@@ -21,8 +21,11 @@ Usage:
   {p} convert <files, folders or *.png> --to <ext> [options]
   {p} preset <id> <files...> [--dry-run --json --quiet --out <dir> --conflict <mode> --jobs <n>]
   {p} merge <pdf|audio> <files...> [--out <dir>] [--max-size <size>] [--to mp3|wav|flac]
-                      images, PDFs and documents into one PDF, or audio files into one (audio is FLAC unless --to)
-  {p} pdf <split|extract|delete|rotate|compress> <files...> [--pages 1-3,5] [--angle 90|180|270] [--strong]
+          [--dry-run --json --quiet]
+                      images, PDFs and documents into one PDF, or audio files into one (audio is FLAC
+                      unless --to); the result is merged.pdf or merged.flac and never replaces a file
+  {p} pdf <split|extract|delete|rotate|compress> <files...> [--pages 1-3,5] [--angle 90|180|270]
+          [--strong --out <dir> --conflict <mode> --json --quiet]
                       split into pages, keep or delete pages, turn pages clockwise, shrink pictures
   {p} list-presets
   {p} formats <ext>
@@ -32,7 +35,8 @@ Convert options:
   --to <ext>          target format (png, jpg, webp, pdf, mp3, mp4, ...)
   --max-edge <px>     longest side at most <px> pixels
   --percent <n>       scale to <n> percent (1-400)
-  --strip             remove EXIF/GPS and other metadata
+  --strip             remove metadata: pictures never keep EXIF/GPS anyway; this also drops the
+                      colour profile of a JPEG kept as is and the tags of audio and video files
   --max-size <size>   compress to at most <size>, e.g. 8MB or 500KB (a bare number is bytes)
   --quality <1-100>   image quality
   --out <dir>         output folder (default: next to the source)
