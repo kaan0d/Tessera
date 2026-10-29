@@ -129,7 +129,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.unknown", "kesalahan tidak dikenal"),
     ("ce.ffmpeg_start", "Tidak dapat memulai ffmpeg: {detail}"),
     ("ce.ffmpeg_wait", "Tidak dapat menunggu ffmpeg: {detail}"),
-    ("ce.recycle", "Tidak dapat menghapus file asli: {detail}"),
+    ("ce.recycle", "Tidak dapat memindahkan file asli ke Keranjang Sampah: {detail}"),
     ("ff.read", "Tidak dapat membaca file: {detail}"),
     ("ff.hash", "File yang diunduh tidak dapat diverifikasi (SHA-256 tidak cocok)"),
     ("ff.start", "Tidak dapat memulai unduhan: {detail}"),

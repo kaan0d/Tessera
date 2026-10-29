@@ -129,7 +129,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.unknown", "未知错误"),
     ("ce.ffmpeg_start", "无法启动 ffmpeg：{detail}"),
     ("ce.ffmpeg_wait", "无法等待 ffmpeg：{detail}"),
-    ("ce.recycle", "无法删除原文件：{detail}"),
+    ("ce.recycle", "无法将原文件移到回收站：{detail}"),
     ("ff.read", "无法读取文件：{detail}"),
     ("ff.hash", "无法验证下载的文件（SHA-256 不匹配）"),
     ("ff.start", "无法开始下载：{detail}"),

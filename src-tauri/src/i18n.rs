@@ -604,8 +604,8 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ),
     (
         "ce.recycle",
-        "Could not delete the original file: {detail}",
-        "Orijinal dosya silinemedi: {detail}",
+        "Could not move the original file to the Recycle Bin: {detail}",
+        "Orijinal dosya Geri Dönüşüm Kutusu'na taşınamadı: {detail}",
     ),
     // ffmpeg download errors
     (

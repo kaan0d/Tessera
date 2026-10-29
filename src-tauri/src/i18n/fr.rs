@@ -129,7 +129,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.unknown", "erreur inconnue"),
     ("ce.ffmpeg_start", "Impossible de lancer ffmpeg : {detail}"),
     ("ce.ffmpeg_wait", "Impossible d'attendre ffmpeg : {detail}"),
-    ("ce.recycle", "Impossible de supprimer le fichier d'origine : {detail}"),
+    ("ce.recycle", "Impossible de déplacer le fichier d'origine dans la Corbeille : {detail}"),
     ("ff.read", "Impossible de lire le fichier : {detail}"),
     ("ff.hash", "Le fichier téléchargé n'a pas pu être vérifié (SHA-256 non concordant)"),
     ("ff.start", "Impossible de lancer le téléchargement : {detail}"),

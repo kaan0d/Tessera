@@ -129,7 +129,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.unknown", "알 수 없는 오류"),
     ("ce.ffmpeg_start", "ffmpeg를 시작할 수 없습니다: {detail}"),
     ("ce.ffmpeg_wait", "ffmpeg를 기다릴 수 없습니다: {detail}"),
-    ("ce.recycle", "원본 파일을 삭제할 수 없습니다: {detail}"),
+    ("ce.recycle", "원본 파일을 휴지통으로 이동할 수 없습니다: {detail}"),
     ("ff.read", "파일을 읽을 수 없습니다: {detail}"),
     ("ff.hash", "다운로드한 파일을 확인할 수 없습니다(SHA-256 불일치)"),
     ("ff.start", "다운로드를 시작할 수 없습니다: {detail}"),

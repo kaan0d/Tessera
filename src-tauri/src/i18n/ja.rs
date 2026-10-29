@@ -129,7 +129,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.unknown", "不明なエラー"),
     ("ce.ffmpeg_start", "ffmpeg を起動できませんでした: {detail}"),
     ("ce.ffmpeg_wait", "ffmpeg の完了を待機できませんでした: {detail}"),
-    ("ce.recycle", "元のファイルを削除できませんでした: {detail}"),
+    ("ce.recycle", "元のファイルをごみ箱に移動できませんでした: {detail}"),
     ("ff.read", "ファイルを読み取れませんでした: {detail}"),
     ("ff.hash", "ダウンロードしたファイルを検証できませんでした (SHA-256 の不一致)"),
     ("ff.start", "ダウンロードを開始できませんでした: {detail}"),
