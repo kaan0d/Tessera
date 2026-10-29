@@ -315,7 +315,10 @@ fn probe(ffmpeg: &Path, src: &Path) -> Result<Probe, ConvertError> {
 }
 
 /// Encodes per file when the result is over the size limit.
-const RETRIES: usize = 3;
+const RETRIES: usize = 7;
+/// Longest side a video steps down to, one retry after another, when a size limit is not met
+/// at full size (an encoder starved of bits at 720p or more overshoots its target).
+const SHRINK_EDGES: [u32; 3] = [1280, 854, 640];
 /// Share of the byte budget left for the payload: container overhead and rate-control error.
 const HEADROOM: f64 = 0.90;
 /// A source with fewer bits than this still gets this much video bitrate (bit/s).
@@ -505,9 +508,10 @@ pub fn convert_with_ffmpeg(
                 x.video_bps = Some(cur.min(cap));
             }
         }
+        let (mut q, mut shrunk) = (opts.quality.clone(), 0);
         output::write_via_temp(&dest, |tmp| {
             for attempt in 0..RETRIES {
-                let args = build_args(&src, tmp, target, &opts.quality, &x);
+                let args = build_args(&src, tmp, target, &q, &x);
                 run_child(
                     ffmpeg,
                     args,
@@ -522,9 +526,29 @@ pub fn convert_with_ffmpeg(
                 if size <= max {
                     return Ok(());
                 }
-                // rate control overshot: try again with a proportionally lower bitrate
-                if attempt + 1 == RETRIES || (x.video_bps.is_none() && x.audio_bps.is_none()) {
+                if attempt + 1 == RETRIES {
                     break;
+                }
+                // a GIF has no bitrate: fewer frames and a smaller picture instead
+                if target == Format::Gif {
+                    if q.gif_fps <= 5 && q.gif_width <= 120 {
+                        break;
+                    }
+                    q.gif_fps = (f32::from(q.gif_fps) * 0.75).max(5.0) as u8;
+                    q.gif_width = (f32::from(q.gif_width) * 0.8).max(120.0) as u16;
+                    continue;
+                }
+                if x.video_bps.is_none() && x.audio_bps.is_none() {
+                    break;
+                }
+                // rate control overshot: a video first gets smaller at the same bitrate (unless
+                // the user chose its size), then the bitrate goes down
+                if target.is_video() && opts.resize.is_none() {
+                    if let Some(&edge) = SHRINK_EDGES.get(shrunk) {
+                        x.resize = Some(Resize::MaxEdge(edge));
+                        shrunk += 1;
+                        continue;
+                    }
                 }
                 shrink_bitrates(&mut x, max as f64 / size as f64 * 0.9)?;
             }
