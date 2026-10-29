@@ -8,11 +8,11 @@ use std::fs;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use super::{allows, output, security, uses_office, Conflict, ConvertError, Format, Options};
+use super::{Conflict, ConvertError, Format, Options, allows, output, security, uses_office};
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 /// A document that takes longer than this is treated as stuck.
@@ -48,7 +48,7 @@ fn take_slot<'a>(
             match slot.try_lock() {
                 Ok(g) => return Ok((g, slot_profile(base, i))),
                 Err(std::sync::TryLockError::Poisoned(e)) => {
-                    return Ok((e.into_inner(), slot_profile(base, i)))
+                    return Ok((e.into_inner(), slot_profile(base, i)));
                 }
                 Err(std::sync::TryLockError::WouldBlock) => {}
             }
@@ -107,7 +107,7 @@ fn import_filter(from: Format, sep: u8) -> Option<String> {
 /// (Windows-1254 on a Turkish PC), which is what Notepad and Excel wrote for years.
 fn as_utf8(bytes: Vec<u8>) -> Vec<u8> {
     use windows::Win32::Globalization::{
-        MultiByteToWideChar, CP_ACP, MULTI_BYTE_TO_WIDE_CHAR_FLAGS,
+        CP_ACP, MULTI_BYTE_TO_WIDE_CHAR_FLAGS, MultiByteToWideChar,
     };
     if std::str::from_utf8(&bytes).is_ok() {
         return bytes;

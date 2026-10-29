@@ -141,14 +141,22 @@ pub fn set_lang(l: Lang) {
 pub const MSGS: &[(&str, &str, &str)] = &[
     // setup window title
     ("setup.title", "Tessera Setup", "Tessera Kurulum"),
-    ("setup.uninstall_title", "Uninstall Tessera", "Tessera'yı Kaldır"),
+    (
+        "setup.uninstall_title",
+        "Uninstall Tessera",
+        "Tessera'yı Kaldır",
+    ),
     (
         "ff.busy",
         "ffmpeg is downloading; remove it once the download ends",
         "ffmpeg indiriliyor; indirme bitince kaldırın",
     ),
     // context menu
-    ("menu.convert_to", "Convert to {fmt}", "{fmt} olarak dönüştür"),
+    (
+        "menu.convert_to",
+        "Convert to {fmt}",
+        "{fmt} olarak dönüştür",
+    ),
     // PDF tools
     ("pdf.split", "Split into pages", "Sayfalara ayır"),
     ("pdf.extract", "Extract pages", "Sayfaları çıkar"),
@@ -157,7 +165,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("pdf.rotate_left", "Rotate left", "Sola döndür"),
     ("pdf.rotate_180", "Turn upside down", "Ters çevir"),
     ("pdf.compress", "Compress PDF", "PDF'i sıkıştır"),
-    ("menu.pdf_more", "More PDF tools...", "Diğer PDF araçları..."),
+    (
+        "menu.pdf_more",
+        "More PDF tools...",
+        "Diğer PDF araçları...",
+    ),
     // merge verbs
     ("menu.merge_pdf", "Merge into PDF", "PDF olarak birleştir"),
     (
@@ -169,7 +181,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("preset.web", "Shrink for web", "Web için küçült"),
     ("preset.whatsapp", "For WhatsApp", "WhatsApp için"),
     ("preset.email", "Email: under 10 MB", "E-posta: 10 MB altı"),
-    ("preset.discord", "Discord: under 10 MB", "Discord: 10 MB altı"),
+    (
+        "preset.discord",
+        "Discord: under 10 MB",
+        "Discord: 10 MB altı",
+    ),
     (
         "preset.strip",
         "Remove location & camera info",
@@ -178,8 +194,16 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("preset.pdf", "Make a PDF", "PDF yap"),
     ("preset.webp", "Make a WebP", "WebP yap"),
     ("preset.ico", "Make an icon (ICO)", "Simge yap (ICO)"),
-    ("preset.instagram", "For Instagram (1080 px)", "Instagram için (1080 px)"),
-    ("preset.podcast", "Podcast: mono MP3, 96 kbps", "Podcast: mono MP3, 96 kbps"),
+    (
+        "preset.instagram",
+        "For Instagram (1080 px)",
+        "Instagram için (1080 px)",
+    ),
+    (
+        "preset.podcast",
+        "Podcast: mono MP3, 96 kbps",
+        "Podcast: mono MP3, 96 kbps",
+    ),
     // preset errors
     (
         "preset.bad_name",
@@ -221,8 +245,16 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "You can have at most {max} custom presets",
         "En fazla {max} özel hazır ayar olabilir",
     ),
-    ("preset.not_found", "Preset not found", "Hazır ayar bulunamadı"),
-    ("notify.preset_skip_one", "1 file skipped: not supported by {name}", "1 dosya atlandı: {name} bu dosyayı desteklemiyor"),
+    (
+        "preset.not_found",
+        "Preset not found",
+        "Hazır ayar bulunamadı",
+    ),
+    (
+        "notify.preset_skip_one",
+        "1 file skipped: not supported by {name}",
+        "1 dosya atlandı: {name} bu dosyayı desteklemiyor",
+    ),
     (
         "notify.preset_skip",
         "{n} files skipped: not supported by {name}",
@@ -373,7 +405,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("tray.open", "Settings", "Ayarlar"),
     ("tray.quit", "Quit", "Çıkış"),
     // notifications
-    ("notify.dl_title", "Downloading ffmpeg", "ffmpeg indiriliyor"),
+    (
+        "notify.dl_title",
+        "Downloading ffmpeg",
+        "ffmpeg indiriliyor",
+    ),
     (
         "notify.dl_body",
         "Video and MP3/OGG conversion needs ffmpeg, a free open-source tool. It will be downloaded once (about 170 MB).",
@@ -386,7 +422,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Video ve ses dönüştürme kullanıma hazır.",
     ),
     ("notify.done_title", "Converted", "Dönüştürüldü"),
-    ("notify.failed_title", "Conversion failed", "Dönüştürme başarısız"),
+    (
+        "notify.failed_title",
+        "Conversion failed",
+        "Dönüştürme başarısız",
+    ),
     (
         "notify.target_off",
         "{fmt} is turned off in settings",
@@ -556,14 +596,42 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Check the page numbers: this PDF has {n} pages. Write them like 1-3, 5.",
         "Sayfa numaralarını kontrol et: bu PDF {n} sayfa. 1-3, 5 gibi yaz.",
     ),
-    ("ce.bad_pages_one", "Check the page numbers: this PDF has only one page.", "Sayfa numaralarını kontrol et: bu PDF'te yalnızca bir sayfa var."),
-    ("ce.no_pages_left", "That would remove every page. Keep at least one.", "Bu tüm sayfaları siler. En az bir sayfa bırakın."),
+    (
+        "ce.bad_pages_one",
+        "Check the page numbers: this PDF has only one page.",
+        "Sayfa numaralarını kontrol et: bu PDF'te yalnızca bir sayfa var.",
+    ),
+    (
+        "ce.no_pages_left",
+        "That would remove every page. Keep at least one.",
+        "Bu tüm sayfaları siler. En az bir sayfa bırakın.",
+    ),
     ("ce.empty_file", "The file is empty", "Dosya boş"),
-    ("ce.office_timeout", "LibreOffice did not finish in 5 minutes. The document is probably too large.", "LibreOffice 5 dakikada bitiremedi. Belge büyük ihtimalle çok büyük."),
-    ("ce.no_recycle", "The original was kept: this drive has no Recycle Bin", "Orijinal korundu: bu sürücüde Geri Dönüşüm Kutusu yok"),
-    ("ce.exists", "A file with that name already exists", "Bu adda bir dosya zaten var"),
-    ("preset.kind_target", "The chosen format does not fit every file type of this preset.", "Seçilen biçim bu hazır ayarın tüm dosya türlerine uymuyor."),
-    ("preset.dup_name", "You already have a preset with this name.", "Bu adda bir hazır ayarınız zaten var."),
+    (
+        "ce.office_timeout",
+        "LibreOffice did not finish in 5 minutes. The document is probably too large.",
+        "LibreOffice 5 dakikada bitiremedi. Belge büyük ihtimalle çok büyük.",
+    ),
+    (
+        "ce.no_recycle",
+        "The original was kept: this drive has no Recycle Bin",
+        "Orijinal korundu: bu sürücüde Geri Dönüşüm Kutusu yok",
+    ),
+    (
+        "ce.exists",
+        "A file with that name already exists",
+        "Bu adda bir dosya zaten var",
+    ),
+    (
+        "preset.kind_target",
+        "The chosen format does not fit every file type of this preset.",
+        "Seçilen biçim bu hazır ayarın tüm dosya türlerine uymuyor.",
+    ),
+    (
+        "preset.dup_name",
+        "You already have a preset with this name.",
+        "Bu adda bir hazır ayarınız zaten var.",
+    ),
     (
         "ce.needs_office",
         "Office documents need document support. Download it under Settings > Advanced.",
@@ -584,7 +652,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "ağ veya aygıt yolu",
     ),
     ("ce.bad_name", "invalid file name", "dosya adı geçersiz"),
-    ("ce.no_free_name", "no free file name", "uygun ad bulunamadı"),
+    (
+        "ce.no_free_name",
+        "no free file name",
+        "uygun ad bulunamadı",
+    ),
     (
         "ce.no_stream",
         "The file has no audio or video track this conversion needs (for example no sound for MP3)",

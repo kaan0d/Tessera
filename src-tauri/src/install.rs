@@ -10,8 +10,8 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
 use winreg::RegKey;
+use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
 
 use crate::app_info::APP_NAME;
 use crate::cli::Cli;
@@ -143,7 +143,7 @@ pub fn ffmpeg_present(dir: &Path) -> bool {
 }
 
 fn is_win11() -> bool {
-    use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
+    use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
     RegKey::predef(HKEY_LOCAL_MACHINE)
         .open_subkey(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")
         .and_then(|k| k.get_value::<String, _>("CurrentBuildNumber"))
@@ -200,16 +200,16 @@ pub fn normalize_dir(raw: &str) -> Result<PathBuf, String> {
 
 /// Process ids whose image is one of `targets` (never this process).
 fn running_copies(targets: &[PathBuf]) -> Vec<u32> {
-    use windows::core::PWSTR;
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::ToolHelp::{
-        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
         TH32CS_SNAPPROCESS,
     };
     use windows::Win32::System::Threading::{
-        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT,
-        PROCESS_QUERY_LIMITED_INFORMATION,
+        OpenProcess, PROCESS_NAME_FORMAT, PROCESS_QUERY_LIMITED_INFORMATION,
+        QueryFullProcessImageNameW,
     };
+    use windows::core::PWSTR;
     let me = std::process::id();
     let mut pids = Vec::new();
     // SAFETY: plain Win32 calls on handles opened and closed right here; the buffers are local.
@@ -223,27 +223,26 @@ fn running_copies(targets: &[PathBuf]) -> Vec<u32> {
         };
         let mut more = Process32FirstW(snap, &mut e).is_ok();
         while more {
-            if e.th32ProcessID != me {
-                if let Ok(h) =
+            if e.th32ProcessID != me
+                && let Ok(h) =
                     OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, e.th32ProcessID)
+            {
+                let mut buf = [0u16; 520];
+                let mut len = buf.len() as u32;
+                if QueryFullProcessImageNameW(
+                    h,
+                    PROCESS_NAME_FORMAT(0),
+                    PWSTR(buf.as_mut_ptr()),
+                    &mut len,
+                )
+                .is_ok()
                 {
-                    let mut buf = [0u16; 520];
-                    let mut len = buf.len() as u32;
-                    if QueryFullProcessImageNameW(
-                        h,
-                        PROCESS_NAME_FORMAT(0),
-                        PWSTR(buf.as_mut_ptr()),
-                        &mut len,
-                    )
-                    .is_ok()
-                    {
-                        let path = PathBuf::from(String::from_utf16_lossy(&buf[..len as usize]));
-                        if targets.iter().any(|t| same_path(t, &path)) {
-                            pids.push(e.th32ProcessID);
-                        }
+                    let path = PathBuf::from(String::from_utf16_lossy(&buf[..len as usize]));
+                    if targets.iter().any(|t| same_path(t, &path)) {
+                        pids.push(e.th32ProcessID);
                     }
-                    let _ = CloseHandle(h);
                 }
+                let _ = CloseHandle(h);
             }
             more = Process32NextW(snap, &mut e).is_ok();
         }
@@ -257,7 +256,7 @@ fn running_copies(targets: &[PathBuf]) -> Vec<u32> {
 /// build, are left alone; so is this process.
 fn stop_running(dir: &Path) {
     use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
     let office = dir.join(r"data\libreoffice\program");
     let targets = [
         dir.join(EXE_NAME),
@@ -450,11 +449,11 @@ fn write_user_path(key: &RegKey, value: &str, vtype: winreg::enums::RegType) -> 
 
 /// Tells running programs (Explorer, new terminals) that the environment changed.
 fn broadcast_environment_change() {
-    use windows::core::w;
     use windows::Win32::Foundation::{LPARAM, WPARAM};
     use windows::Win32::UI::WindowsAndMessaging::{
-        SendMessageTimeoutW, HWND_BROADCAST, SMTO_ABORTIFHUNG, WM_SETTINGCHANGE,
+        HWND_BROADCAST, SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_SETTINGCHANGE,
     };
+    use windows::core::w;
     // SAFETY: the string literal outlives the call; the result is not used.
     unsafe {
         let _ = SendMessageTimeoutW(
@@ -564,10 +563,10 @@ pub fn run_install(req: &Request, mut emit: impl FnMut(Progress)) -> Result<Inst
         &mut |_| {
             crate::shell::set_sendto_at(&start_menu_dir(), &dst, true)
                 .map_err(fail("Cannot add the Start menu shortcut"))?;
-            if req.path {
-                if let Err(e) = add_to_path(&dir) {
-                    crate::log::write("warn", &format!("PATH not updated: {e}"));
-                }
+            if req.path
+                && let Err(e) = add_to_path(&dir)
+            {
+                crate::log::write("warn", &format!("PATH not updated: {e}"));
             }
             write_uninstall_entry(&dir, &dst).map_err(fail("Cannot register the uninstaller"))
         },

@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use super::output::OutDir;
 use super::{
-    audio, image, output, pdf, pdf_edit, security, Conflict, ConvertError, Format, Options,
+    Conflict, ConvertError, Format, Options, audio, image, output, pdf, pdf_edit, security,
 };
 
 pub const MAX_FILES: usize = 500;

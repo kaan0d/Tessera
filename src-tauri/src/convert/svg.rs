@@ -8,8 +8,8 @@ use std::sync::Arc;
 use image::{DynamicImage, RgbaImage};
 use resvg::usvg::{self, ImageHrefResolver};
 
-use super::transform::{self, Resize};
 use super::ConvertError;
+use super::transform::{self, Resize};
 
 const MAX_FILE: u64 = 64 * 1024 * 1024;
 

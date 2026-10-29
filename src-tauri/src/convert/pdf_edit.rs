@@ -2,10 +2,10 @@
 //! PDFs are untrusted: the file size and every decompressed stream are capped, and a panic
 //! inside the parser becomes `Corrupt`. A PDF that needs a password is `Protected`.
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 
-use lopdf::{dictionary, Document, LoadOptions, Object, ObjectId};
+use lopdf::{Document, LoadOptions, Object, ObjectId, dictionary};
 
 use super::ConvertError;
 

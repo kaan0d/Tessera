@@ -4,13 +4,13 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
 use winreg::RegKey;
+use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
 
 use crate::app_info::APP_NAME;
 use crate::convert::combine::MergeKind;
 use crate::convert::pdf_tools::PdfTool;
-use crate::convert::{needs_ffmpeg, supported_targets, uses_ffmpeg, uses_office, Format};
+use crate::convert::{Format, needs_ffmpeg, supported_targets, uses_ffmpeg, uses_office};
 use crate::folder::Action;
 use crate::i18n::{self, Lang};
 use crate::preset;
@@ -454,12 +454,12 @@ fn com(e: windows::core::Error) -> io::Error {
 /// Creates (or replaces) the `<APP_NAME>.lnk` Send To shortcut in `dir`, or deletes it.
 /// Files sent to it arrive as plain path arguments, which the exe treats as a drop.
 pub fn set_sendto_at(dir: &Path, exe: &Path, on: bool) -> io::Result<()> {
-    use windows::core::{Interface, HSTRING};
     use windows::Win32::System::Com::{
-        CoCreateInstance, CoInitializeEx, IPersistFile, CLSCTX_INPROC_SERVER,
-        COINIT_APARTMENTTHREADED,
+        CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
+        IPersistFile,
     };
     use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+    use windows::core::{HSTRING, Interface};
 
     let link = sendto_link(dir);
     if !on {
@@ -571,20 +571,22 @@ mod tests {
 
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         assert_eq!(png.get_value::<String, _>("MUIVerb").unwrap(), APP_NAME);
-        assert!(png
-            .get_value::<String, _>("SubCommands")
-            .unwrap()
-            .is_empty());
+        assert!(
+            png.get_value::<String, _>("SubCommands")
+                .unwrap()
+                .is_empty()
+        );
         assert_eq!(
             png.get_value::<String, _>("Icon").unwrap(),
             r#""C:\Program Files\X\x.exe",0"#
         );
         // png's first target is jpg
         let verb = png.open_subkey(r"shell\00_jpg").unwrap();
-        assert!(verb
-            .get_value::<String, _>("Icon")
-            .unwrap()
-            .ends_with(r"menu-icons\image-5.ico"));
+        assert!(
+            verb.get_value::<String, _>("Icon")
+                .unwrap()
+                .ends_with(r"menu-icons\image-5.ico")
+        );
         assert_eq!(
             verb.open_subkey("command")
                 .unwrap()
@@ -642,9 +644,10 @@ mod tests {
 
         remove_at(&root).unwrap();
         remove_at(&root).unwrap();
-        assert!(hkcu
-            .open_subkey(format!(r"{root}\SystemFileAssociations"))
-            .is_err());
+        assert!(
+            hkcu.open_subkey(format!(r"{root}\SystemFileAssociations"))
+                .is_err()
+        );
         cleanup(&root);
     }
 
@@ -680,11 +683,12 @@ mod tests {
         install_at(&root, Path::new(r"C:\x.exe"), &s).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         assert!(png.get_value::<String, _>("Icon").is_err());
-        assert!(png
-            .open_subkey(r"shell _avif")
-            .unwrap()
-            .get_value::<String, _>("Icon")
-            .is_err());
+        assert!(
+            png.open_subkey(r"shell _avif")
+                .unwrap()
+                .get_value::<String, _>("Icon")
+                .is_err()
+        );
         assert!(hkcu.open_subkey(menu_key(&root, "jpg")).is_err());
         remove_at(&root).unwrap();
         cleanup(&root);
@@ -793,10 +797,10 @@ mod tests {
 
     #[test]
     fn sendto_shortcut_round_trips() {
-        use windows::core::Interface;
         use windows::Win32::Storage::FileSystem::WIN32_FIND_DATAW;
         use windows::Win32::System::Com::{IPersistFile, STGM_READ};
         use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+        use windows::core::Interface;
 
         let d = tempfile::tempdir().unwrap();
         let dir = d.path().join("SendTo");
@@ -846,9 +850,11 @@ mod tests {
         assert!(names.contains(&"08_preset_web".to_string()));
         assert!(names.iter().any(|n| n.ends_with("_wav")));
         // no ffmpeg: no mp3/ogg
-        assert!(!names
-            .iter()
-            .any(|n| n.ends_with("_mp3") || n.ends_with("_ogg")));
+        assert!(
+            !names
+                .iter()
+                .any(|n| n.ends_with("_mp3") || n.ends_with("_ogg"))
+        );
         let cmd = |n: &str| {
             menu.open_subkey(format!(r"shell\{n}\command"))
                 .unwrap()

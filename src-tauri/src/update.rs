@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::i18n::{fmt, t, Lang};
+use crate::i18n::{Lang, fmt, t};
 
 /// The only place that names the repository.
 pub const REPO: &str = "kaan0d/Tessera";
@@ -203,9 +203,9 @@ pub fn allowed_url(url: &str, slug: &str) -> bool {
 
 /// Opens `url` in the default browser.
 pub fn open_url(url: &str, lang: Lang) -> Result<(), String> {
-    use windows::core::{w, HSTRING};
     use windows::Win32::UI::Shell::ShellExecuteW;
     use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    use windows::core::{HSTRING, w};
     if !allowed_url(url, REPO) {
         return Err(t(lang, "update.bad_url").into());
     }

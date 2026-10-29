@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::convert::combine::{MergeKind, MAX_FILES as MERGE_MAX};
+use crate::convert::combine::{MAX_FILES as MERGE_MAX, MergeKind};
 use crate::convert::pdf_tools::PdfTool;
-use crate::convert::{needs_ffmpeg, supported_targets, uses_ffmpeg, Format};
+use crate::convert::{Format, needs_ffmpeg, supported_targets, uses_ffmpeg};
 use crate::folder;
 use crate::preset::PresetOptions;
 use crate::settings::Settings;
@@ -219,7 +219,9 @@ mod tests {
         // a file already in the target format is skipped in that run, so both stay on offer
         assert_eq!(
             exts(&c),
-            ["png", "jpg", "webp", "bmp", "gif", "tiff", "ico", "avif", "pdf"]
+            [
+                "png", "jpg", "webp", "bmp", "gif", "tiff", "ico", "avif", "pdf"
+            ]
         );
         assert!(c.targets.iter().all(|t| t.allowed && !t.needs_ffmpeg));
         assert!(c.preset_ids.contains(&"web".to_string()));
@@ -272,9 +274,11 @@ mod tests {
             hidden_presets: vec!["web".into()],
             ..ready()
         };
-        assert!(!choices(&p(&["a.png"]), &s)
-            .preset_ids
-            .contains(&"web".to_string()));
+        assert!(
+            !choices(&p(&["a.png"]), &s)
+                .preset_ids
+                .contains(&"web".to_string())
+        );
     }
 
     #[test]

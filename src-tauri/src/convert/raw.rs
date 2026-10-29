@@ -12,8 +12,8 @@ use std::path::Path;
 
 use image::{DynamicImage, ImageFormat, ImageReader};
 
-use super::transform::{self, MAX_ALLOC, MAX_DIM};
 use super::ConvertError;
+use super::transform::{self, MAX_ALLOC, MAX_DIM};
 
 const CHUNK: usize = 1 << 20;
 /// JPEG start markers examined per file (sensor data can hold stray FF D8 FF bytes).

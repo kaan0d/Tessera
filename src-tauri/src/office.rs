@@ -10,11 +10,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
-use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 use winreg::RegKey;
+use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 
 use crate::convert::{ConvertError, Format, Options};
-use crate::ffmpeg::{download_capped, verify_sha256, Download, FfError};
+use crate::ffmpeg::{Download, FfError, download_capped, verify_sha256};
 use crate::settings::data_dir;
 
 /// LibreOffice 26.2.6 (build 26.2.6.3), x86-64 MSI, MPL-2.0. The mirror link goes away when the

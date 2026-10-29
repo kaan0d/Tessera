@@ -7,13 +7,13 @@ use std::io::{BufRead, BufReader};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{channel, RecvTimeoutError};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{RecvTimeoutError, channel};
 use std::time::Duration;
 
-use super::{allows, output, security, uses_ffmpeg};
 use super::{Conflict, ConvertError, Fit, Format, Options, Quality, Resize};
+use super::{allows, output, security, uses_ffmpeg};
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
@@ -486,33 +486,32 @@ pub fn convert_with_ffmpeg(
         }
         if x.trim_start > 0.0 {
             // a start past the end would leave an empty file that looks like a success
-            if let Some(d) = probe(ffmpeg, &src)?.duration_us {
-                if (x.trim_start * 1e6) as u64 >= d {
-                    return Err(ConvertError::TrimOutside);
-                }
+            if let Some(d) = probe(ffmpeg, &src)?.duration_us
+                && (x.trim_start * 1e6) as u64 >= d
+            {
+                return Err(ConvertError::TrimOutside);
             }
         }
-        if let Some(max) = opts.max_bytes {
-            if target.is_video() || matches!(target, Format::Mp3 | Format::Ogg | Format::Aac) {
-                let p = probe(ffmpeg, &src)?;
-                let mut d = p.duration_us.ok_or(ConvertError::TargetSize)?;
-                // only the kept part counts against the size limit
-                d = kept_us(d, x.trim_start, x.trim_len);
-                let b =
-                    plan_bitrates(max, d, target, p.has_audio && !opts.no_audio, &opts.quality)?;
-                (x.video_bps, x.audio_bps) = (b.video_bps, b.audio_bps);
-                x.mono |= b.mono;
-            }
+        if let Some(max) = opts.max_bytes
+            && (target.is_video() || matches!(target, Format::Mp3 | Format::Ogg | Format::Aac))
+        {
+            let p = probe(ffmpeg, &src)?;
+            let mut d = p.duration_us.ok_or(ConvertError::TargetSize)?;
+            // only the kept part counts against the size limit
+            d = kept_us(d, x.trim_start, x.trim_len);
+            let b = plan_bitrates(max, d, target, p.has_audio && !opts.no_audio, &opts.quality)?;
+            (x.video_bps, x.audio_bps) = (b.video_bps, b.audio_bps);
+            x.mono |= b.mono;
         }
         // a re-encode never needs more bits than the source had: small clips stay small
-        if target.is_video() {
-            if let Some(src_bps) = probe(ffmpeg, &src)?.bitrate_bps {
-                let cap = src_bps.max(MIN_COPY_BPS);
-                let cur = x
-                    .video_bps
-                    .unwrap_or(u64::from(opts.quality.video_mbps) * 1_000_000);
-                x.video_bps = Some(cur.min(cap));
-            }
+        if target.is_video()
+            && let Some(src_bps) = probe(ffmpeg, &src)?.bitrate_bps
+        {
+            let cap = src_bps.max(MIN_COPY_BPS);
+            let cur = x
+                .video_bps
+                .unwrap_or(u64::from(opts.quality.video_mbps) * 1_000_000);
+            x.video_bps = Some(cur.min(cap));
         }
         let (mut q, mut shrunk) = (opts.quality, 0);
         output::write_via_temp(&dest, |tmp| {
@@ -549,12 +548,13 @@ pub fn convert_with_ffmpeg(
                 }
                 // rate control overshot: a video first gets smaller at the same bitrate (unless
                 // the user chose its size), then the bitrate goes down
-                if target.is_video() && opts.resize.is_none() {
-                    if let Some(&edge) = SHRINK_EDGES.get(shrunk) {
-                        x.resize = Some(Resize::MaxEdge(edge));
-                        shrunk += 1;
-                        continue;
-                    }
+                if target.is_video()
+                    && opts.resize.is_none()
+                    && let Some(&edge) = SHRINK_EDGES.get(shrunk)
+                {
+                    x.resize = Some(Resize::MaxEdge(edge));
+                    shrunk += 1;
+                    continue;
                 }
                 shrink_bitrates(&mut x, max as f64 / size as f64 * 0.9)?;
             }

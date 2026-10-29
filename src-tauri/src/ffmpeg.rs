@@ -8,14 +8,14 @@ use std::io::{self, Read};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use crate::i18n::{fmt as tf, Lang};
+use crate::i18n::{Lang, fmt as tf};
 use crate::settings::settings_path;
 
 /// BtbN/FFmpeg-Builds, release `autobuild-2026-10-20-13-08`, ffmpeg n8.1.3, LGPL (no x264/x265/fdk).
@@ -466,11 +466,12 @@ mod tests {
         let s = dl.status(false, Lang::En);
         assert!(!s.downloading && s.error.unwrap().contains("SHA-256"));
         // the stored error is rendered in the language asked for
-        assert!(dl
-            .status(false, Lang::Tr)
-            .error
-            .unwrap()
-            .contains("doğrulanamadı"));
+        assert!(
+            dl.status(false, Lang::Tr)
+                .error
+                .unwrap()
+                .contains("doğrulanamadı")
+        );
         assert!(dl.begin() && dl.status(false, Lang::En).error.is_none());
     }
 }

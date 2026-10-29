@@ -7,7 +7,7 @@ use flacenc::component::BitRepr;
 use flacenc::error::Verify;
 use hound::{SampleFormat, WavSpec, WavWriter};
 use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
+use symphonia::core::codecs::{CODEC_TYPE_NULL, DecoderOptions};
 use symphonia::core::errors::Error as SymError;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::MediaSourceStream;

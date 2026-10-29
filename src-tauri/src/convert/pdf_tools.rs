@@ -10,7 +10,7 @@ use image::{DynamicImage, ImageBuffer, ImageFormat};
 use lopdf::{Document, Object, ObjectId, Stream};
 use serde::{Deserialize, Serialize};
 
-use super::{output, pdf_edit, security, Conflict, ConvertError, Format, Options};
+use super::{Conflict, ConvertError, Format, Options, output, pdf_edit, security};
 
 /// Most entries a page list may expand to (a typo like 1-99999999 must not allocate).
 const MAX_PICKS: usize = 10_000;
@@ -303,19 +303,18 @@ fn shrink_images(
         .collect();
     for (i, id) in ids.iter().enumerate() {
         opts.check_cancel()?;
-        if let Some(Object::Stream(s)) = doc.objects.get_mut(id) {
-            if let Some((jpeg, w, h, gray)) =
+        if let Some(Object::Stream(s)) = doc.objects.get_mut(id)
+            && let Some((jpeg, w, h, gray)) =
                 pdf_edit::guarded(|| Ok(shrink(s, max_edge, quality)))?
-            {
-                s.set_content(jpeg);
-                s.dict.remove(b"DecodeParms");
-                s.dict.set("Filter", "DCTDecode");
-                s.dict.set("Width", i64::from(w));
-                s.dict.set("Height", i64::from(h));
-                s.dict.set("BitsPerComponent", 8);
-                s.dict
-                    .set("ColorSpace", if gray { "DeviceGray" } else { "DeviceRGB" });
-            }
+        {
+            s.set_content(jpeg);
+            s.dict.remove(b"DecodeParms");
+            s.dict.set("Filter", "DCTDecode");
+            s.dict.set("Width", i64::from(w));
+            s.dict.set("Height", i64::from(h));
+            s.dict.set("BitsPerComponent", 8);
+            s.dict
+                .set("ColorSpace", if gray { "DeviceGray" } else { "DeviceRGB" });
         }
         progress(0.1 + 0.8 * (i + 1) as f32 / ids.len() as f32);
     }

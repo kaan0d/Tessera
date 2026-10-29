@@ -32,8 +32,8 @@ mod svg;
 mod transform;
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -634,11 +634,11 @@ pub fn convert(
         }
     })?;
     // the pure-Rust audio writers (WAV, FLAC) cannot trade quality for size
-    if let (Some(max), false) = (opts.max_bytes, from.is_image() || from == Format::Pdf) {
-        if std::fs::metadata(&dest)?.len() > max {
-            let _ = std::fs::remove_file(&dest);
-            return Err(ConvertError::TargetSize);
-        }
+    if let (Some(max), false) = (opts.max_bytes, from.is_image() || from == Format::Pdf)
+        && std::fs::metadata(&dest)?.len() > max
+    {
+        let _ = std::fs::remove_file(&dest);
+        return Err(ConvertError::TargetSize);
     }
     if opts.output.conflict == Conflict::ReplaceOriginal {
         output::recycle(&src)?;

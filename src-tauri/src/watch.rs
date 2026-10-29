@@ -8,7 +8,7 @@ use std::fs::{self, File};
 use std::os::windows::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, RecvTimeoutError};
+use std::sync::mpsc::{RecvTimeoutError, channel};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, UNIX_EPOCH};
@@ -18,8 +18,8 @@ use notify::{Event, EventKind, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 
 use crate::convert::security;
-use crate::convert::{allows, Conflict, Format, Options, OutDir};
-use crate::i18n::{fmt, t, Lang};
+use crate::convert::{Conflict, Format, Options, OutDir, allows};
+use crate::i18n::{Lang, fmt, t};
 use crate::settings::Settings;
 use crate::{preset, settings};
 
@@ -689,12 +689,14 @@ mod tests {
         // same size, new mtime also counts as change
         s.add(p("b.png"), 0);
         assert!(s.tick(0, |_| Probe::Stat { len: 5, mtime: 1 }).is_empty());
-        assert!(s
-            .tick(1000, |_| Probe::Stat { len: 5, mtime: 2 })
-            .is_empty());
-        assert!(s
-            .tick(2400, |_| Probe::Stat { len: 5, mtime: 2 })
-            .is_empty());
+        assert!(
+            s.tick(1000, |_| Probe::Stat { len: 5, mtime: 2 })
+                .is_empty()
+        );
+        assert!(
+            s.tick(2400, |_| Probe::Stat { len: 5, mtime: 2 })
+                .is_empty()
+        );
         assert_eq!(s.len(), 1);
     }
 

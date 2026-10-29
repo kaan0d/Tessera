@@ -5,9 +5,9 @@ use tauri::{AppHandle, WebviewWindow};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, ShowWindow, GWL_EXSTYLE, HWND_TOPMOST,
-    MA_NOACTIVATE, SWP_NOACTIVATE, SWP_NOOWNERZORDER, SWP_SHOWWINDOW, SW_HIDE, WM_MOUSEACTIVATE,
-    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    GWL_EXSTYLE, GetWindowLongPtrW, HWND_TOPMOST, MA_NOACTIVATE, SW_HIDE, SWP_NOACTIVATE,
+    SWP_NOOWNERZORDER, SWP_SHOWWINDOW, SetWindowLongPtrW, SetWindowPos, ShowWindow,
+    WM_MOUSEACTIVATE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -68,10 +68,12 @@ unsafe extern "system" fn no_activate(
     _id: usize,
     _data: usize,
 ) -> LRESULT {
-    if msg == WM_MOUSEACTIVATE {
-        return LRESULT(MA_NOACTIVATE as isize);
+    unsafe {
+        if msg == WM_MOUSEACTIVATE {
+            return LRESULT(MA_NOACTIVATE as isize);
+        }
+        DefSubclassProc(h, msg, wp, lp)
     }
-    DefSubclassProc(h, msg, wp, lp)
 }
 
 /// One-time setup: no taskbar or Alt-Tab entry, topmost, never takes focus.

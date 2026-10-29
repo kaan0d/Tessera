@@ -3,8 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::convert::{allows, uses_ffmpeg, uses_office, Format, Options, Resize};
-use crate::i18n::{fmt, t, Lang};
+use crate::convert::{Format, Options, Resize, allows, uses_ffmpeg, uses_office};
+use crate::i18n::{Lang, fmt, t};
 use crate::settings::Settings;
 
 pub const MAX_CUSTOM: usize = 30;

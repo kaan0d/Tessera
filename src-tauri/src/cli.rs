@@ -364,7 +364,7 @@ fn parse_pdf(args: &[String]) -> Command {
             f if f.starts_with("--") => {
                 return usage(&format!(
                     "unknown option {f} (allowed: --pages, --angle, --strong, --out, --conflict, --json, --quiet)"
-                ))
+                ));
             }
             _ => files.push(PathBuf::from(a)),
         }
@@ -382,7 +382,7 @@ fn parse_pdf(args: &[String]) -> Command {
     }
     let spec = match name.as_str() {
         "extract" | "delete" if pages.is_empty() => {
-            return usage(&format!("pdf {name} needs --pages, like --pages 1-3,5"))
+            return usage(&format!("pdf {name} needs --pages, like --pages 1-3,5"));
         }
         "extract" | "delete" => format!("{name}:{pages}"),
         "rotate" => format!("rotate:{}:{pages}", angle.unwrap_or(90)),
@@ -434,7 +434,7 @@ fn parse_run(args: &[String], merge: bool) -> Command {
                 return usage(&format!(
                     "unknown option {f} (allowed: --dry-run, --json, --quiet, --out, --max-size, --conflict{})",
                     if merge { ", --to" } else { "" }
-                ))
+                ));
             }
             _ if id.is_none() => id = Some(a.clone()),
             _ => files.push(PathBuf::from(a)),

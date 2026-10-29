@@ -4,18 +4,18 @@
 //! before rendering and any panic inside the renderer becomes `Corrupt`.
 
 use std::io::Write;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 
 use hayro::hayro_interpret::InterpreterSettings;
 use hayro::hayro_syntax::{LoadPdfError, Pdf as PdfDoc};
 use hayro::vello_cpu::color::palette::css::WHITE;
-use hayro::{render, PixmapSettings, RenderCache, RenderSettings};
+use hayro::{PixmapSettings, RenderCache, RenderSettings, render};
 use image::{DynamicImage, RgbaImage};
 use pdf_writer::{Content, Filter, Finish, Name, Pdf, Rect, Ref};
 
-use super::transform::{self, Resize};
 use super::ConvertError;
+use super::transform::{self, Resize};
 
 const MAX_FILE: u64 = 256 * 1024 * 1024;
 /// Rendering density for a PDF page at 100 percent (points are 1/72 inch).

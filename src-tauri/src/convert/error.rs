@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io;
 
-use crate::i18n::{fmt as tf, t, Lang};
+use crate::i18n::{Lang, fmt as tf, t};
 
 /// Why a path was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

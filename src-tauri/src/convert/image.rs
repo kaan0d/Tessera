@@ -13,7 +13,7 @@ use image::{
 };
 
 use super::transform::{self, MAX_ALLOC, MAX_DIM};
-use super::{pdf, raw, size, svg, ConvertError, Format, Options};
+use super::{ConvertError, Format, Options, pdf, raw, size, svg};
 
 const AVIF_SPEED: u8 = 8;
 const PASSTHROUGH_MAX: u64 = 100 * 1024 * 1024;
@@ -246,7 +246,7 @@ pub fn encode(
 /// of that size and centred on transparency.
 fn write_ico(img: &DynamicImage, w: impl Write) -> Result<(), ConvertError> {
     use image::codecs::ico::{IcoEncoder, IcoFrame};
-    use image::imageops::{overlay, FilterType};
+    use image::imageops::{FilterType, overlay};
     use image::{ExtendedColorType, RgbaImage};
     let frames = [16u32, 32, 48, 256]
         .iter()
@@ -326,10 +326,10 @@ fn pdf_page_as(
     opts: &Options,
     lossy: bool,
 ) -> Result<Page, ConvertError> {
-    if from == Format::Jpg {
-        if let Some((data, w, h, gray)) = jpeg_passthrough(src, opts) {
-            return Ok(Page::Jpeg { data, w, h, gray });
-        }
+    if from == Format::Jpg
+        && let Some((data, w, h, gray)) = jpeg_passthrough(src, opts)
+    {
+        return Ok(Page::Jpeg { data, w, h, gray });
     }
     let mut img = load(src, from, opts)?;
     if lossy && img.color().has_alpha() {
@@ -417,7 +417,8 @@ mod ico_tests {
         use image::codecs::webp::{WebPDecoder, WebPEncoder};
         let img = DynamicImage::ImageRgba8(image::RgbaImage::new(5, 3));
         let mut plain = Vec::new();
-        img.write_with_encoder(WebPEncoder::new_lossless(&mut plain)).unwrap();
+        img.write_with_encoder(WebPEncoder::new_lossless(&mut plain))
+            .unwrap();
         let icc = b"odd-length profile".to_vec();
         let out = webp_with_icc(plain, &img, Some(&icc));
         let mut d = WebPDecoder::new(Cursor::new(&out)).unwrap();

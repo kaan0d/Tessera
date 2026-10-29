@@ -3,7 +3,7 @@
 
 use image::DynamicImage;
 
-use super::{transform, ConvertError};
+use super::{ConvertError, transform};
 
 /// Smallest long edge the downscale loop will go to.
 const MIN_EDGE: u32 = 128;
@@ -103,7 +103,7 @@ pub fn fit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use image::{codecs::jpeg::JpegEncoder, Rgb, RgbImage};
+    use image::{Rgb, RgbImage, codecs::jpeg::JpegEncoder};
 
     fn noisy(w: u32, h: u32) -> DynamicImage {
         DynamicImage::ImageRgb8(RgbImage::from_fn(w, h, |x, y| {

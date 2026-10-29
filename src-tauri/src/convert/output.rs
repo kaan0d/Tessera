@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
-use super::{security, ConvertError, PathIssue};
-use crate::i18n::{fmt, t, Lang};
+use super::{ConvertError, PathIssue, security};
+use crate::i18n::{Lang, fmt, t};
 
 #[derive(Debug, Clone, Default)]
 pub enum OutDir {
@@ -241,8 +241,8 @@ pub fn write_via_temp(
 
 /// True when `path` is on a fixed local disk (the only kind with a Recycle Bin we can trust).
 fn on_fixed_drive(path: &Path) -> bool {
-    use windows::core::PCWSTR;
     use windows::Win32::Storage::FileSystem::GetDriveTypeW;
+    use windows::core::PCWSTR;
     const DRIVE_FIXED: u32 = 3;
     let s = path.to_string_lossy();
     let Some(drive) = s.get(..2).filter(|d| d.ends_with(':')) else {

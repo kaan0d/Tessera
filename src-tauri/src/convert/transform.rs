@@ -4,9 +4,9 @@ use std::fs::File;
 use std::io::{BufReader, Cursor};
 use std::path::Path;
 
+use image::DynamicImage;
 use image::imageops::FilterType;
 use image::metadata::Orientation;
-use image::DynamicImage;
 use serde::{Deserialize, Serialize};
 
 use super::ConvertError;

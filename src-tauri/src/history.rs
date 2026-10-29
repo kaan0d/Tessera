@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use crate::i18n::{fmt, t, Lang};
+use crate::i18n::{Lang, fmt, t};
 
 pub const MAX_ENTRIES: usize = 200;
 
@@ -130,11 +130,11 @@ impl Store {
         e.id = self.next_id;
         self.next_id += 1;
         e.time = now_ms();
-        if let (true, Some(out)) = (e.ok, &e.output) {
-            if let Some((len, mtime)) = stat(Path::new(out)) {
-                e.output_len = Some(len);
-                e.output_mtime = mtime;
-            }
+        if let (true, Some(out)) = (e.ok, &e.output)
+            && let Some((len, mtime)) = stat(Path::new(out))
+        {
+            e.output_len = Some(len);
+            e.output_mtime = mtime;
         }
         let id = e.id;
         self.entries.push(e);

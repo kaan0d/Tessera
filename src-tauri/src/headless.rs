@@ -7,9 +7,9 @@ use std::sync::atomic::AtomicBool;
 
 use crate::cli::{Command, ConvertArgs};
 use crate::convert::{
-    convert, needs_ffmpeg, supported_targets, uses_ffmpeg, uses_office, Format, Options, OutDir,
+    Format, Options, OutDir, convert, needs_ffmpeg, supported_targets, uses_ffmpeg, uses_office,
 };
-use crate::i18n::{t, Lang};
+use crate::i18n::{Lang, t};
 use crate::{app_info, ffmpeg, preset, settings};
 
 pub const EXIT_OK: i32 = 0;
@@ -93,8 +93,8 @@ fn attach_console() {
     use std::os::windows::io::IntoRawHandle;
     use windows::Win32::Foundation::HANDLE;
     use windows::Win32::System::Console::{
-        AttachConsole, GetStdHandle, SetStdHandle, ATTACH_PARENT_PROCESS, STD_ERROR_HANDLE,
-        STD_OUTPUT_HANDLE,
+        ATTACH_PARENT_PROCESS, AttachConsole, GetStdHandle, STD_ERROR_HANDLE, STD_OUTPUT_HANDLE,
+        SetStdHandle,
     };
     // SAFETY: plain console API calls; the handle given to SetStdHandle is leaked on purpose
     // and stays valid for the life of the process.
@@ -102,10 +102,8 @@ fn attach_console() {
         let _ = AttachConsole(ATTACH_PARENT_PROCESS);
         for std in [STD_OUTPUT_HANDLE, STD_ERROR_HANDLE] {
             let unset = GetStdHandle(std).map_or(true, |h| h.is_invalid() || h.0.is_null());
-            if unset {
-                if let Ok(f) = std::fs::OpenOptions::new().write(true).open("CONOUT$") {
-                    let _ = SetStdHandle(std, HANDLE(f.into_raw_handle()));
-                }
+            if unset && let Ok(f) = std::fs::OpenOptions::new().write(true).open("CONOUT$") {
+                let _ = SetStdHandle(std, HANDLE(f.into_raw_handle()));
             }
         }
     }
@@ -643,11 +641,7 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan + Syn
         err(&format!("{skipped} skipped"));
     }
     // a skipped file (already in the target format, preset does not apply) is a warning only
-    if failed > 0 {
-        EXIT_FAILED
-    } else {
-        EXIT_OK
-    }
+    if failed > 0 { EXIT_FAILED } else { EXIT_OK }
 }
 
 fn one_file(
@@ -850,7 +844,7 @@ fn convert_one(
 #[cfg(test)]
 mod more_cli_tests {
     use super::*;
-    use crate::cli::{parse, Cli, Command};
+    use crate::cli::{Cli, Command, parse};
 
     #[test]
     fn wildcards_match_like_a_shell_would() {

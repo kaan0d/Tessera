@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
@@ -11,7 +11,7 @@ use tauri_plugin_notification::NotificationExt;
 use crate::convert::combine::{self, MergeKind};
 use crate::convert::pdf_tools::{self, PdfTool};
 use crate::convert::{
-    self, convert, uses_ffmpeg, uses_office, Conflict, ConvertError, Format, Options,
+    self, Conflict, ConvertError, Format, Options, convert, uses_ffmpeg, uses_office,
 };
 use crate::history::{self, Entry, Kind};
 use crate::i18n::{self, fmt, t};
@@ -86,12 +86,12 @@ fn sync_window(app: &AppHandle, n: usize, p: Panel) {
     let Some(w) = app.get_webview_window("progress") else {
         return;
     };
-    let gen = SYNC_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    let r#gen = SYNC_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     if n == 0 {
         // keep the card up long enough to see the last result
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_secs(p.seconds.into()));
-            if SYNC_GEN.load(Ordering::SeqCst) == gen {
+            if SYNC_GEN.load(Ordering::SeqCst) == r#gen {
                 panel::hide(&w);
             }
         });

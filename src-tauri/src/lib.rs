@@ -30,12 +30,12 @@ use tauri_plugin_notification::NotificationExt;
 
 use batch::Collector;
 use cli::Cli;
+use convert::Format;
 use convert::combine::MergeKind;
 use convert::pdf_tools::PdfTool;
-use convert::Format;
 use ffmpeg::{Download, FfmpegStatus};
 use history::Kind;
-use i18n::{fmt, t, Lang};
+use i18n::{Lang, fmt, t};
 use queue::{Queue, Spec};
 use settings::Settings;
 
@@ -656,11 +656,11 @@ fn check_update_on_start(app: &AppHandle) {
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_secs(10));
         let lang = i18n::lang();
-        if let Ok(info) = update::check(lang) {
-            if info.available {
-                notify(&app, t(lang, "update.title"), &info.message);
-                let _ = app.emit("update-available", &info);
-            }
+        if let Ok(info) = update::check(lang)
+            && info.available
+        {
+            notify(&app, t(lang, "update.title"), &info.message);
+            let _ = app.emit("update-available", &info);
         }
     });
 }
@@ -1016,15 +1016,17 @@ fn start_custom(app: &AppHandle, files: Vec<PathBuf>, custom: bool) {
         return;
     }
     let app = app.clone();
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        let ready = {
-            let mut c = customs.lock().unwrap();
-            (mono_ms().saturating_sub(c.1) >= batch::QUIET_MS).then(|| std::mem::take(&mut c.0))
-        };
-        if let Some(files) = ready {
-            handle_drop(&app, files, custom);
-            break;
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            let ready = {
+                let mut c = customs.lock().unwrap();
+                (mono_ms().saturating_sub(c.1) >= batch::QUIET_MS).then(|| std::mem::take(&mut c.0))
+            };
+            if let Some(files) = ready {
+                handle_drop(&app, files, custom);
+                break;
+            }
         }
     });
 }
@@ -1276,17 +1278,19 @@ fn start_merge(app: &AppHandle, kind: MergeKind, files: Vec<PathBuf>) {
         return;
     }
     let app = app.clone();
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        let (ready, empty) = {
-            let mut c = merges.lock().unwrap();
-            (c.take_ready(mono_ms()), c.is_empty())
-        };
-        for (kind, files) in ready {
-            run_merge(&app, kind, files);
-        }
-        if empty {
-            break;
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            let (ready, empty) = {
+                let mut c = merges.lock().unwrap();
+                (c.take_ready(mono_ms()), c.is_empty())
+            };
+            for (kind, files) in ready {
+                run_merge(&app, kind, files);
+            }
+            if empty {
+                break;
+            }
         }
     });
 }
@@ -1730,10 +1734,10 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("failed to start the application")
         .run(|app, event| {
-            if let tauri::RunEvent::Exit = event {
-                if let Some(w) = app.state::<AppState>().watcher.lock().unwrap().take() {
-                    w.stop();
-                }
+            if let tauri::RunEvent::Exit = event
+                && let Some(w) = app.state::<AppState>().watcher.lock().unwrap().take()
+            {
+                w.stop();
             }
         });
 }
