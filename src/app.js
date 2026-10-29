@@ -202,9 +202,12 @@ function buildKinds(box, items, sources) {
       c.append(it.ext.toUpperCase());
       if (sources ? srcNeedsFf(it) : it.needs_ffmpeg) {
         c.dataset.ff = '';
-        c.append(ffTag());
+        c.append(toolMark(1));
       }
-      if (!sources && it.needs_office) c.dataset.lo = '';
+      if (!sources && it.needs_office) {
+        c.dataset.lo = '';
+        c.append(toolMark(2));
+      }
       if (sources) c.title = srcNeedsFf(it) ? t('chip.src_ff') : RAW.includes(it.ext) ? t('chip.raw') : '';
       c.onclick = () => (sources ? toggleSource(it.ext) : toggleTarget(it, c));
       chips.append(c);
@@ -283,6 +286,15 @@ function paintChips() {
   paintHints();
 }
 
+/** Small superscript 1 (ffmpeg) or 2 (LibreOffice) after a format; the hint under the chips explains it. */
+function toolMark(n) {
+  const m = document.createElement('sup');
+  m.className = 'tool-mark';
+  m.setAttribute('aria-hidden', 'true');
+  m.textContent = n;
+  return m;
+}
+
 function hint(el, kind, parts) {
   el.className = 'foot hint' + (kind ? ' ' + kind : '');
   el.replaceChildren(...parts);
@@ -291,6 +303,7 @@ function hint(el, kind, parts) {
 function paintHints(flash) {
   const th = $('t-hint');
   const anyFf = catalog.targets.some((t) => t.needs_ffmpeg);
+  const lo = catalog.targets.some((t) => t.needs_office) ? t('hint.lo') : '';
   if (flash) {
     hint(th, 'warn', [icon('i-alert'), flash]);
     clearTimeout(hintTimer);
@@ -299,7 +312,7 @@ function paintHints(flash) {
   } else if (!s.enabled_targets.length) {
     hint(th, 'warn', [icon('i-alert'), t('hint.none_targets')]);
   } else if (anyFf && !ffReady) {
-    const wait = [t('hint.ff_wait'), gotoLink(t('hint.see_status'), 't-ileri')];
+    const wait = [t('hint.ff_wait'), lo && lo + ' ', gotoLink(t('hint.see_status'), 't-ileri')];
     if (ffPct !== null) {
       const bar = document.createElement('span');
       bar.className = 'hint-bar';
@@ -316,8 +329,8 @@ function paintHints(flash) {
     }
     hint(th, '', wait);
   } else if (anyFf) {
-    hint(th, '', [t('hint.ff_ready')]);
-  } else hint(th, '', []);
+    hint(th, '', [t('hint.ff_ready'), lo && ' ' + lo]);
+  } else hint(th, '', lo ? [lo] : []);
   th.hidden = !th.childNodes.length;
   const n = s.menu_sources.length;
   $('s-count').textContent = t('fmt.src_count', { n });
