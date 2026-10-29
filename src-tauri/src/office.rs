@@ -254,9 +254,23 @@ fn install_in(work: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), FfError>
     }
     fs::write(kept.join(VERSION_FILE), VERSION).map_err(|e| FfError::with("ff.write", e))?;
     let dir = own_dir();
+    // the old copy steps aside first and comes back if the new one cannot move in
+    let old = data_dir().join("libreoffice.old");
     crate::convert::office::exclusive(|| {
-        let _ = fs::remove_dir_all(&dir);
-        fs::rename(&kept, &dir)
+        let _ = fs::remove_dir_all(&old);
+        let had_old = fs::rename(&dir, &old).is_ok();
+        match fs::rename(&kept, &dir) {
+            Ok(()) => {
+                let _ = fs::remove_dir_all(&old);
+                Ok(())
+            }
+            Err(e) => {
+                if had_old {
+                    let _ = fs::rename(&old, &dir);
+                }
+                Err(e)
+            }
+        }
     })
     .map_err(|e| FfError::with("ff.write", e))?;
     progress(100.0);
@@ -265,13 +279,16 @@ fn install_in(work: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), FfError>
 
 /// Deletes our copy and its profile; an installed LibreOffice is never touched.
 pub fn remove() -> std::io::Result<()> {
-    for p in crate::convert::office::slot_profiles(&profile_dir()) {
-        let _ = fs::remove_dir_all(p);
-    }
-    match fs::remove_dir_all(own_dir()) {
-        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
-        _ => Ok(()),
-    }
+    // waits for running conversions, so no soffice.exe holds the folder
+    crate::convert::office::exclusive(|| {
+        for p in crate::convert::office::slot_profiles(&profile_dir()) {
+            let _ = fs::remove_dir_all(p);
+        }
+        match fs::remove_dir_all(own_dir()) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+            _ => Ok(()),
+        }
+    })
 }
 
 /// Runs `install`, retrying twice with a growing pause; updates `dl` as it goes.

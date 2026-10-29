@@ -204,7 +204,8 @@ fn office_download(app: AppHandle) {
 }
 
 /// Deletes Tessera's own copy of document support; an installed LibreOffice stays.
-#[tauri::command]
+// async: removal waits for running conversions and must not block the window
+#[tauri::command(async)]
 fn office_remove(app: AppHandle) -> Result<(), String> {
     let r = office::remove().map_err(|e| e.to_string());
     refresh_menu(&app);
@@ -213,7 +214,7 @@ fn office_remove(app: AppHandle) -> Result<(), String> {
 
 /// Deletes the downloaded ffmpeg (Remove in Settings) and records "later", so nothing is fetched
 /// again until the user asks. Refused while a download runs.
-#[tauri::command]
+#[tauri::command(async)]
 fn ffmpeg_remove(app: AppHandle) -> Result<(), String> {
     let state = app.state::<AppState>();
     if state.download.status(false, i18n::lang()).downloading {
@@ -437,6 +438,14 @@ fn save_preset(preset: preset::Preset, state: State<AppState>) -> Result<Vec<Pre
         p.id = format!("c{}", history::now_ms());
     }
     p.validate(lang)?;
+    let same_name = |x: &preset::Preset| {
+        x.id != p.id
+            && x.custom_name.as_deref().map(str::to_lowercase)
+                == p.custom_name.as_deref().map(str::to_lowercase)
+    };
+    if s.presets.iter().any(same_name) {
+        return Err(t(lang, "preset.dup_name").into());
+    }
     let mut new = s.clone();
     if let Some(i) = new.presets.iter().position(|x| x.id == p.id) {
         new.presets[i] = p;
@@ -644,6 +653,8 @@ struct CatalogTarget {
     needs_office: bool,
     /// Works without ffmpeg, but is lossy (better and smaller) once it is installed: WebP.
     better_with_ffmpeg: bool,
+    /// Source kinds that can become this format (the preset editor offers only those).
+    from_kinds: Vec<&'static str>,
 }
 
 #[derive(Serialize)]
@@ -673,6 +684,10 @@ fn get_catalog() -> Catalog {
                 needs_ffmpeg: convert::needs_ffmpeg(*f),
                 needs_office: f.is_office(),
                 better_with_ffmpeg: *f == convert::Format::Webp,
+                from_kinds: ["image", "audio", "video", "document"]
+                    .into_iter()
+                    .filter(|k| preset::kind_reaches(k, *f))
+                    .collect(),
             })
             .collect(),
     }
