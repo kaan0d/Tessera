@@ -309,7 +309,10 @@ async function choose(b) {
   if (choice.kind === 'custom_open') return showCustom(true);
   if (choice.kind === 'pdf_pages') {
     const pages = $('dr-pages').value.trim();
-    if (!pages) return $('dr-pages').focus(), status(t('dr.pdf_pages_needed'), true);
+    // the same shape the backend accepts: 1-3, 5, 8- (the page count is checked when it runs)
+    const ok = pages.split(/[,;]/).map((x) => x.trim()).filter(Boolean)
+      .every((x) => /^\d+$/.test(x) || (/^\d*\s*-\s*\d*$/.test(x) && /\d/.test(x)));
+    if (!pages || !ok) return $('dr-pages').focus(), status(t('dr.pdf_pages_needed'), true);
     choice = { kind: 'pdf', pdf: { tool: choice.op, pages } };
   }
   go(choice, b);

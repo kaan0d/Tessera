@@ -71,8 +71,11 @@ impl PdfTool {
 
     pub fn valid(&self) -> bool {
         match self {
-            PdfTool::Rotate { angle, .. } => matches!(angle, 90 | 180 | 270),
-            PdfTool::Extract { pages } | PdfTool::Delete { pages } => !pages.trim().is_empty(),
+            PdfTool::Rotate { angle, pages } => {
+                matches!(angle, 90 | 180 | 270)
+                    && (pages.trim().is_empty() || pages_look_right(pages))
+            }
+            PdfTool::Extract { pages } | PdfTool::Delete { pages } => pages_look_right(pages),
             _ => true,
         }
     }
@@ -89,6 +92,21 @@ impl PdfTool {
             PdfTool::Compress { .. } => "pdf.compress",
         }
     }
+}
+
+/// A page list is written right (`1-3, 5, 8-`), whatever the page count turns out to be.
+pub fn pages_look_right(spec: &str) -> bool {
+    let digits = |s: &str| s.trim().bytes().all(|b| b.is_ascii_digit());
+    let parts: Vec<&str> = spec
+        .split([',', ';'])
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .collect();
+    !parts.is_empty()
+        && parts.iter().all(|p| match p.split_once('-') {
+            None => digits(p),
+            Some((a, b)) => digits(a) && digits(b) && !(a.trim().is_empty() && b.trim().is_empty()),
+        })
 }
 
 /// `1-3, 5, 8-` against a PDF of `count` pages: 1-based numbers in the order written,
@@ -419,6 +437,9 @@ mod tests {
             "",
             "rotate:45",
             "extract:",
+            "extract:abc",
+            "delete:1--2",
+            "rotate:90:x",
             "delete",
             "split:1",
             "compress:x",
