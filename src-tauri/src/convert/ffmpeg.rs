@@ -684,7 +684,7 @@ fn run_child(
                 let total = duration.load(Ordering::Relaxed);
                 let d = cut.map_or(total, |(start, len)| kept_us(total, start, len));
                 if d > 0 {
-                    progress((us as f32 / d as f32).min(0.99));
+                    progress((us as f32 / d as f32).min(0.95));
                 }
             }
             Err(RecvTimeoutError::Timeout) => {}

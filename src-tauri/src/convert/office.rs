@@ -17,6 +17,13 @@ use super::{Conflict, ConvertError, Format, Options, allows, output, security, u
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 /// A document that takes longer than this is treated as stuck.
 const TIMEOUT: Duration = Duration::from_secs(300);
+/// soffice reports no progress, so the bar follows elapsed time: ~60% at this, never past 95%.
+const TYPICAL: Duration = Duration::from_secs(10);
+
+/// Time-based guess at how far a soffice run is, 0.0..=0.95.
+fn estimate(elapsed: Duration) -> f32 {
+    0.95 * (1.0 - (-elapsed.as_secs_f32() / TYPICAL.as_secs_f32()).exp())
+}
 
 /// Most LibreOffice processes at once; each takes a few hundred MB of memory.
 const MAX_SLOTS: usize = 3;
@@ -235,6 +242,7 @@ fn run_soffice(
     sep: u8,
     dir: &Path,
     cancel: Option<&AtomicBool>,
+    progress: &mut impl FnMut(f32),
 ) -> Result<PathBuf, ConvertError> {
     let mut cmd = Command::new(soffice);
     cmd.current_dir(dir)
@@ -276,6 +284,7 @@ fn run_soffice(
             let _ = child.wait();
             return Err(ConvertError::OfficeTimeout);
         }
+        progress(estimate(started.elapsed()));
         std::thread::sleep(Duration::from_millis(100));
     }
     // soffice exits 0 even when it could not load the file: only the output tells
@@ -347,6 +356,7 @@ pub fn convert_with_office(
         sep,
         &scratch.0,
         opts.cancel.as_deref(),
+        &mut progress,
     )?;
     output::write_atomic(&dest, |w| {
         let mut file = fs::File::open(&out)?;
@@ -372,6 +382,13 @@ pub fn convert_with_office(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn estimate_rises_and_stops_at_95() {
+        assert_eq!(estimate(Duration::ZERO), 0.0);
+        assert!(estimate(TYPICAL) > 0.5 && estimate(TYPICAL) < 0.7);
+        assert!(estimate(TIMEOUT) <= 0.95);
+    }
 
     #[test]
     fn csv_separator_follows_the_first_line() {
