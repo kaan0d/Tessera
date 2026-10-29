@@ -27,6 +27,8 @@ const showQuality = () => outKind() === 'image' && (cs.target === 'same' || FMT_
 function group(title, ...kids) {
   const g = el('div', 'cu-group');
   g.append(el('span', 'cu-label', title), ...kids);
+  // a slider has no label element of its own: the group title names it
+  for (const r of g.querySelectorAll('input[type=range]')) r.setAttribute('aria-label', title);
   return g;
 }
 function pill(text, on, onclick) {

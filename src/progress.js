@@ -207,6 +207,7 @@ function paintSummary() {
   document.getElementById('p-pct').textContent = Math.round(pct);
   document.getElementById('card').style.setProperty('--pp', (pct / 100).toFixed(3));
   document.getElementById('p-bar').style.setProperty('--p', pct / 100);
+  document.getElementById('p-bar').setAttribute('aria-valuenow', Math.round(pct));
   return { run, any: all.length > 0 };
 }
 

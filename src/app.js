@@ -668,7 +668,12 @@ function bind() {
     if (g) select(tabs.indexOf($(g.dataset.goto)), true);
   });
   $('autostart').onchange = (e) => change({ autostart: e.target.checked });
-  $('lang').onchange = (e) => { setLang(e.target.value); change({ language: LANG }); relabel(); };
+  // arrow keys on a closed list fire change at every step: switch once the choice settles
+  let langTimer;
+  $('lang').onchange = (e) => {
+    clearTimeout(langTimer);
+    langTimer = setTimeout(() => { setLang(e.target.value); change({ language: LANG }); relabel(); }, 600);
+  };
   $$('input[name=dir]').forEach((r) => {
     r.onchange = async () => {
       if (r.value === 'same_as_source') return change({ output_dir: { kind: 'same_as_source' } });

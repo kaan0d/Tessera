@@ -251,7 +251,8 @@ function render() {
   return first;
 }
 
-const choices = () => [...document.querySelectorAll('.dr-choice')];
+// only what is on screen: a hidden card must not take the focus or the single tab stop
+const choices = () => [...document.querySelectorAll('.dr-choice')].filter((b) => b.offsetParent !== null);
 
 function status(text, isErr) {
   const s = $('dr-status');

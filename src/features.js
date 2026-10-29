@@ -84,7 +84,7 @@ function openDlg(id, first) {
     }
     if (e.key === 'Escape') return e.preventDefault(), closeDlg();
     if (e.key !== 'Tab') return;
-    const f = $$('button,input,select', m).filter((x) => !x.disabled && x.offsetParent);
+    const f = $$('button,input,select,[tabindex]:not([tabindex="-1"])', m).filter((x) => !x.disabled && x.offsetParent);
     const i = f.indexOf(document.activeElement);
     if (e.shiftKey && i <= 0) e.preventDefault(), f[f.length - 1].focus();
     else if (!e.shiftKey && i === f.length - 1) e.preventDefault(), f[0].focus();
@@ -413,6 +413,8 @@ function histRow(e) {
     acts.append(u);
   }
   const open = iconBtn('i-folder', t('p.open'));
+  // every row has one: the file name tells a screen reader which
+  open.setAttribute('aria-label', `${t('p.open')}: ${fileName(e.input)}`);
   open.onclick = () => invoke('open_folder', { path: e.ok && !e.undone && e.output ? e.output : dirOf(e.input) })
     .catch((err) => (undoMsg.set(e.id, [false, t('p.open_err', { err })]), renderHistory()));
   acts.append(open);
