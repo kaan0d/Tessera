@@ -138,8 +138,7 @@ fn folder_verbs(s: &Settings) -> Vec<Vec<(String, Action)>> {
             .copied()
             .filter(|f| {
                 if audio {
-                    // AAC is only offered for video sources
-                    f.kind() == "audio" && *f != Format::Aac
+                    f.kind() == "audio"
                 } else {
                     f.is_image()
                 }
@@ -604,7 +603,7 @@ mod tests {
         let mp3 = hkcu.open_subkey(menu_key(&root, "mp3")).unwrap();
         assert_eq!(
             verb_names(&mp3),
-            ["00_wav", "01_flac", "02_ogg", "03_merge_audio", "04_custom"]
+            ["00_wav", "01_flac", "02_ogg", "03_aac", "04_merge_audio", "05_custom"]
         );
         let mp4 = hkcu.open_subkey(menu_key(&root, "mp4")).unwrap();
         let names = verb_names(&mp4);
@@ -866,7 +865,7 @@ mod tests {
         let menu = hkcu.open_subkey(folder_key(&root)).unwrap();
         let names = verb_names(&menu);
         assert!(names.iter().any(|n| n.ends_with("_mp3")));
-        assert!(!names.iter().any(|n| n.ends_with("_aac")));
+        assert!(names.iter().any(|n| n.ends_with("_aac")));
 
         // switched off: the key is gone, the file menus stay
         let mut off = ready(true);

@@ -566,7 +566,7 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
         .iter()
         .chain(extra)
         .copied()
-        .filter(|&t| t != src && (src.is_video() || t != Format::Aac))
+        .filter(|&t| t != src)
         .collect()
 }
 
@@ -707,7 +707,7 @@ mod tests {
         assert!(t.contains(&Format::Avif) && t.contains(&Format::Pdf));
         assert!(supported_targets("tif").contains(&Format::Webp));
         let a = supported_targets("mp3");
-        assert_eq!(a, vec![Format::Wav, Format::Flac, Format::Ogg]);
+        assert_eq!(a, vec![Format::Wav, Format::Flac, Format::Ogg, Format::Aac]);
         assert!(supported_targets("m4a").contains(&Format::Mp3));
         assert!(!supported_targets("png").contains(&Format::Wav));
         assert!(supported_targets("exe").is_empty());
