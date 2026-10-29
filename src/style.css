@@ -681,7 +681,7 @@ body.prog .p-card.leaving{animation:toast-out 340ms var(--ease) forwards}
 .p-pct small{font-size:var(--t-sm);color:var(--muted);font-weight:600}
 .p-pct .pre{margin-right:1px}
 .p-pct .post{margin-left:1px}
-html[lang=en] .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
+html:not([lang=tr]) .p-pct .pre,html[lang=tr] .p-pct .post{display:none}
 .p-head .bar{position:absolute;left:0;right:0;bottom:0;margin:0;height:2px;border-radius:0;background:var(--line)}
 .p-head .bar>span{border-radius:0}
 .p-head.done .p-pct{display:none}
