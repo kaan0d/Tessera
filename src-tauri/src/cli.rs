@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::convert::combine::MergeKind;
+use crate::convert::pdf_tools::PdfTool;
 use crate::convert::{Conflict, Format, Resize};
 use crate::folder::Action;
 
@@ -43,6 +44,11 @@ pub enum Cli {
     },
     Merge {
         kind: MergeKind,
+        files: Vec<PathBuf>,
+    },
+    /// PDF tool verb: `--pdf split "%1"` (spelling in `PdfTool::arg`).
+    Pdf {
+        tool: PdfTool,
         files: Vec<PathBuf>,
     },
     /// "Custom settings" verb: the chooser opens straight on its custom page.
@@ -105,6 +111,12 @@ pub enum Command {
     /// Several images into one PDF, or several audio files into one.
     MergeFiles {
         kind: MergeKind,
+        files: Vec<PathBuf>,
+        flags: RunFlags,
+    },
+    /// `pdf <tool> <files...>`: split, extract, delete, rotate or compress PDFs.
+    PdfFiles {
+        tool: PdfTool,
         files: Vec<PathBuf>,
         flags: RunFlags,
     },
@@ -206,6 +218,15 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
                 None => Cli::Normal,
             }
         }
+        Some("--pdf") => {
+            let Some(tool) = args.get(1).and_then(|t| PdfTool::parse(t)) else {
+                return Cli::Normal;
+            };
+            match files(&args[2..], cwd) {
+                Some(files) => Cli::Pdf { tool, files },
+                None => Cli::Normal,
+            }
+        }
         Some("--custom") => match files(&args[1..], cwd) {
             Some(files) => Cli::Custom { files },
             None => Cli::Normal,
@@ -228,6 +249,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         Some("convert") => Cli::Cmd(parse_convert(&args[1..])),
         Some("preset") => Cli::Cmd(parse_preset(&args[1..])),
         Some("merge") => Cli::Cmd(parse_merge(&args[1..])),
+        Some("pdf") => Cli::Cmd(parse_pdf(&args[1..])),
         Some("list-presets") => Cli::Cmd(Command::ListPresets),
         Some("formats") => Cli::Cmd(match args.get(1) {
             Some(e) if args.len() == 2 => Command::Formats(e.clone()),
@@ -271,6 +293,62 @@ fn parse_merge(args: &[String]) -> Command {
         },
         Command::Usage(_) => usage("merge needs pdf or audio and at least one file"),
         other => other,
+    }
+}
+
+const PDF_USAGE: &str = "pdf needs a tool and files: pdf split|extract|delete|rotate|compress <files...> [--pages 1-3,5] [--angle 90|180|270] [--strong]";
+
+fn parse_pdf(args: &[String]) -> Command {
+    let Some(name) = args.first() else {
+        return usage(PDF_USAGE);
+    };
+    let (mut files, mut flags) = (vec![], RunFlags::default());
+    let (mut pages, mut angle, mut strong) = (String::new(), None, false);
+    let mut it = args[1..].iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--pages" => match it.next() {
+                Some(p) => pages = p.clone(),
+                None => return usage("--pages needs a list like 1-3,5"),
+            },
+            "--angle" => match it.next().and_then(|v| v.parse::<u16>().ok()) {
+                Some(v) => angle = Some(v),
+                None => return usage("--angle must be 90, 180 or 270"),
+            },
+            "--strong" => strong = true,
+            "--json" => flags.json = true,
+            "--quiet" => flags.quiet = true,
+            "--out" => match it.next() {
+                Some(d) => flags.out = Some(PathBuf::from(d)),
+                None => return usage("--out needs a folder"),
+            },
+            "--conflict" => match it.next().map(String::as_str) {
+                Some("rename") => flags.overwrite = false,
+                Some("overwrite") => flags.overwrite = true,
+                _ => return usage("--conflict must be rename or overwrite"),
+            },
+            f if f.starts_with("--") => {
+                return usage(&format!(
+                    "unknown option {f} (allowed: --pages, --angle, --strong, --out, --conflict, --json, --quiet)"
+                ))
+            }
+            _ => files.push(PathBuf::from(a)),
+        }
+    }
+    let spec = match name.as_str() {
+        "extract" | "delete" if pages.is_empty() => {
+            return usage(&format!("pdf {name} needs --pages, like --pages 1-3,5"))
+        }
+        "extract" | "delete" => format!("{name}:{pages}"),
+        "rotate" => format!("rotate:{}:{pages}", angle.unwrap_or(90)),
+        "compress" if strong => "compress:strong".into(),
+        n => n.to_string(),
+    };
+    match PdfTool::parse(&spec) {
+        Some(tool) if !files.is_empty() => Command::PdfFiles { tool, files, flags },
+        Some(_) => usage(PDF_USAGE),
+        None if name == "rotate" => usage("--angle must be 90, 180 or 270"),
+        None => usage(PDF_USAGE),
     }
 }
 
@@ -630,6 +708,46 @@ mod tests {
             Command::Convert(c) => c,
             other => panic!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn pdf_tools_parse() {
+        match cmd(&["pdf", "extract", "a.pdf", "--pages", "1-3,5"]) {
+            Command::PdfFiles { tool, files, .. } => {
+                assert_eq!(
+                    tool,
+                    PdfTool::Extract {
+                        pages: "1-3,5".into()
+                    }
+                );
+                assert_eq!(files.len(), 1);
+            }
+            other => panic!("{other:?}"),
+        }
+        match cmd(&["pdf", "rotate", "a.pdf", "b.pdf", "--angle", "270"]) {
+            Command::PdfFiles { tool, files, .. } => {
+                assert_eq!(
+                    tool,
+                    PdfTool::Rotate {
+                        angle: 270,
+                        pages: String::new()
+                    }
+                );
+                assert_eq!(files.len(), 2);
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(usage_err(&["pdf", "delete", "a.pdf"]).contains("--pages"));
+        assert!(usage_err(&["pdf", "rotate", "a.pdf", "--angle", "45"]).contains("--angle"));
+        assert!(usage_err(&["pdf", "zap", "a.pdf"]).contains("split"));
+        usage_err(&["pdf", "split"]);
+        assert_eq!(
+            parse(&a(&["--pdf", "compress:strong", "x.pdf"]), None),
+            Cli::Pdf {
+                tool: PdfTool::Compress { strong: true },
+                files: vec![PathBuf::from("x.pdf")]
+            }
+        );
     }
 
     fn usage_err(v: &[&str]) -> String {

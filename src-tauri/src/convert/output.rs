@@ -112,6 +112,36 @@ pub fn plan(source: &Path, ext: &str, p: &OutputParams) -> Result<PathBuf, Conve
         .ok_or(ConvertError::InvalidPath(PathIssue::NoFreeName))
 }
 
+/// Creates a new, empty folder for a job with several outputs: `<stem><suffix>` next to the
+/// source (or in the fixed folder), with " (n)" when the name is taken. Nothing is overwritten.
+pub fn new_dir(source: &Path, suffix: &str, p: &OutputParams) -> Result<PathBuf, ConvertError> {
+    let dir = match &p.dir {
+        OutDir::Fixed(d) if p.conflict != Conflict::ReplaceOriginal => {
+            security::validate_output_dir(d)?
+        }
+        _ => source
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf(),
+    };
+    let stem = source
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or(ConvertError::InvalidPath(PathIssue::BadName))?;
+    for n in 0u32..10_000 {
+        let name = match n {
+            0 => format!("{stem}{suffix}"),
+            n => format!("{stem}{suffix} ({n})"),
+        };
+        match std::fs::create_dir(dir.join(&name)) {
+            Ok(()) => return Ok(dir.join(name)),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Err(ConvertError::InvalidPath(PathIssue::NoFreeName))
+}
+
 /// Writes to a temp file next to `dest`, checks it is non-empty, then renames it
 /// into place. The temp file is removed on any failure.
 pub fn write_atomic(

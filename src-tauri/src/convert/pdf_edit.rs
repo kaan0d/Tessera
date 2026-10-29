@@ -44,13 +44,25 @@ pub fn load(path: &Path) -> Result<Document, ConvertError> {
     load_mem(&std::fs::read(path)?)
 }
 
+/// Compressed streams and object streams; the header says 1.7 since object streams need 1.5.
 pub fn save(doc: &mut Document) -> Result<Vec<u8>, ConvertError> {
     guarded(|| {
         doc.compress();
+        doc.version = "1.7".into();
         let mut out = Vec::new();
-        doc.save_to(&mut out).map_err(|_| ConvertError::Corrupt)?;
+        doc.save_modern(&mut out)
+            .map_err(|_| ConvertError::Corrupt)?;
         Ok(out)
     })
+}
+
+/// Turns `page` clockwise by `angle` degrees on top of the rotation it has (or inherits).
+pub fn rotate(doc: &mut Document, page: ObjectId, angle: i64) {
+    flatten_inherited(doc, page);
+    if let Ok(d) = doc.get_dictionary_mut(page) {
+        let now = d.get(b"Rotate").and_then(Object::as_i64).unwrap_or(0);
+        d.set("Rotate", (now + angle).rem_euclid(360));
+    }
 }
 
 /// Page ids in reading order.

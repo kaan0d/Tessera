@@ -9,6 +9,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::convert::combine::{self, MergeKind};
+use crate::convert::pdf_tools::{self, PdfTool};
 use crate::convert::{
     self, convert, uses_ffmpeg, uses_office, Conflict, ConvertError, Format, Options,
 };
@@ -45,6 +46,8 @@ pub struct Spec {
     pub opts: Options,
     /// Merge job: all files go into one output (`path` is the first one).
     pub merge: Option<(MergeKind, Vec<PathBuf>)>,
+    /// PDF tool job on `path` (`target` is Pdf).
+    pub pdf: Option<PdfTool>,
 }
 
 struct Job {
@@ -56,6 +59,7 @@ struct Job {
     ffmpeg_ready: bool,
     cancel: Arc<AtomicBool>,
     merge: Option<(MergeKind, Vec<PathBuf>)>,
+    pdf: Option<PdfTool>,
     kind: Kind,
     label: String,
     started: u64,
@@ -152,6 +156,7 @@ impl Queue {
                 target,
                 opts: opts.clone(),
                 merge: None,
+                pdf: None,
             })
             .collect();
         self.enqueue_specs(app, specs, Kind::Convert, &label, ffmpeg_ready)
@@ -205,6 +210,7 @@ impl Queue {
                     ffmpeg_ready,
                     cancel,
                     merge: spec.merge,
+                    pdf: spec.pdf,
                     kind,
                     label: label.to_string(),
                     started: history::now_ms(),
@@ -394,6 +400,8 @@ fn run(app: &AppHandle, job: &Job) -> Done {
     let opts = job.opts.clone().cancel(job.cancel.clone());
     let result = if let Some((kind, files)) = &job.merge {
         combine::run(*kind, files, &opts, on_progress)
+    } else if let Some(tool) = &job.pdf {
+        pdf_tools::run(tool, &job.path, &opts, on_progress)
     } else if from.is_some_and(|f| uses_office(f, job.target)) {
         crate::office::convert(&job.path, job.target, &opts, on_progress)
     } else if from.is_some_and(|f| uses_ffmpeg(f, job.target) || opts.ffmpeg_only(f)) {

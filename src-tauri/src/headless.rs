@@ -21,7 +21,9 @@ Usage:
   {p} convert <files, folders or *.png> --to <ext> [options]
   {p} preset <id> <files...> [--dry-run --json --quiet --out <dir> --conflict <mode>]
   {p} merge <pdf|audio> <files...> [--out <dir>] [--max-size <size>] [--to mp3|wav|flac]
-                      several images into one PDF, or audio files into one (audio is FLAC unless --to)
+                      images, PDFs and documents into one PDF, or audio files into one (audio is FLAC unless --to)
+  {p} pdf <split|extract|delete|rotate|compress> <files...> [--pages 1-3,5] [--angle 90|180|270] [--strong]
+                      split into pages, keep or delete pages, turn pages clockwise, shrink pictures
   {p} list-presets
   {p} formats <ext>
   {p} --version | --help
@@ -127,6 +129,7 @@ pub fn run(cmd: Command) -> i32 {
         Command::Convert(a) => convert_cmd(a),
         Command::Preset { id, files, flags } => preset_cmd(&id, &files, flags),
         Command::MergeFiles { kind, files, flags } => merge_cmd(kind, &files, flags),
+        Command::PdfFiles { tool, files, flags } => pdf_cmd(&tool, &files, flags),
     }
 }
 
@@ -469,6 +472,44 @@ fn merge_cmd(kind: crate::MergeKind, files: &[PathBuf], flags: crate::cli::RunFl
 }
 
 /// One line of JSON per file (`--json`).
+fn pdf_cmd(
+    tool: &crate::convert::pdf_tools::PdfTool,
+    files: &[PathBuf],
+    flags: crate::cli::RunFlags,
+) -> i32 {
+    let files = expand_inputs(files, false);
+    let mut opts = settings::load_from(&settings::settings_path()).to_options();
+    if let Some(d) = flags.out {
+        opts.output.dir = OutDir::Fixed(d);
+    }
+    if flags.overwrite {
+        opts.output.conflict = crate::convert::Conflict::Overwrite;
+    }
+    let mut failed = 0;
+    for (i, path) in files.iter().enumerate() {
+        let tag = format!("[{}/{}] {}", i + 1, files.len(), path.display());
+        match crate::convert::pdf_tools::run(tool, path, &opts, |_| {}) {
+            Ok(dest) if flags.json => json_line(path, true, "output", &dest.display().to_string()),
+            Ok(dest) if !flags.quiet => out(&format!("{tag} -> {}", dest.display())),
+            Ok(_) => {}
+            Err(e) => {
+                failed += 1;
+                let why = e.message(Lang::En);
+                if flags.json {
+                    json_line(path, false, "error", &why);
+                } else {
+                    err(&format!("{tag}: {why}"));
+                }
+            }
+        }
+    }
+    if failed > 0 {
+        err(&format!("{failed} of {} failed", files.len()));
+        return EXIT_FAILED;
+    }
+    EXIT_OK
+}
+
 fn json_line(file: &Path, ok: bool, key: &str, text: &str) {
     let v = serde_json::json!({ "file": file.display().to_string(), "ok": ok, key: text });
     out(&v.to_string());

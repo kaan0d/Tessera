@@ -73,6 +73,14 @@ pub fn set_lang(l: Lang) {
 pub const MSGS: &[(&str, &str, &str)] = &[
     // context menu
     ("menu.convert_to", "Convert to {fmt}", "{fmt} olarak dönüştür"),
+    // PDF tools
+    ("pdf.split", "Split into pages", "Sayfalara ayır"),
+    ("pdf.extract", "Extract pages", "Sayfaları çıkar"),
+    ("pdf.delete", "Delete pages", "Sayfaları sil"),
+    ("pdf.rotate_right", "Rotate right", "Sağa döndür"),
+    ("pdf.rotate_left", "Rotate left", "Sola döndür"),
+    ("pdf.rotate_180", "Turn upside down", "Ters çevir"),
+    ("pdf.compress", "Compress PDF", "PDF'i sıkıştır"),
     // merge verbs
     ("menu.merge_pdf", "Merge into PDF", "PDF olarak birleştir"),
     (
@@ -464,6 +472,11 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "ce.needs_ffmpeg",
         "This conversion needs ffmpeg. Install it under Settings > Advanced.",
         "Bu dönüşüm için ffmpeg gerekiyor. Ayarlar > Gelişmiş bölümünden kurun.",
+    ),
+    (
+        "ce.bad_pages",
+        "Check the page numbers: this PDF has {n} pages. Write them like 1-3, 5.",
+        "Sayfa numaralarını kontrol et: bu PDF {n} sayfa. 1-3, 5 gibi yaz.",
     ),
     (
         "ce.needs_office",

@@ -31,6 +31,7 @@ use tauri_plugin_notification::NotificationExt;
 use batch::Collector;
 use cli::Cli;
 use convert::combine::MergeKind;
+use convert::pdf_tools::PdfTool;
 use convert::Format;
 use ffmpeg::{Download, FfmpegStatus};
 use history::Kind;
@@ -548,6 +549,7 @@ fn enqueue_watch(app: &AppHandle, rule: &watch::WatchRule, path: PathBuf) {
         target,
         opts,
         merge: None,
+        pdf: None,
     };
     state
         .queue
@@ -816,6 +818,26 @@ fn start_convert(app: &AppHandle, target: convert::Format, files: Vec<PathBuf>) 
         .enqueue(app, target, files, &s.to_options(), s.ffmpeg_ready);
 }
 
+/// A PDF tool on each file (Explorer verbs, the chooser's PDF page); one job per file.
+fn start_pdf(app: &AppHandle, tool: PdfTool, files: Vec<PathBuf>) {
+    let state = app.state::<AppState>();
+    let s = state.settings.lock().unwrap().clone();
+    let specs = files
+        .into_iter()
+        .map(|path| Spec {
+            path,
+            target: convert::Format::Pdf,
+            opts: s.to_options(),
+            merge: None,
+            pdf: Some(tool.clone()),
+        })
+        .collect();
+    let label = t(s.language, tool.label_key());
+    state
+        .queue
+        .enqueue_specs(app, specs, Kind::Convert, label, s.ffmpeg_ready);
+}
+
 fn start_preset(app: &AppHandle, id: &str, files: Vec<PathBuf>) {
     let state = app.state::<AppState>();
     let s = state.settings.lock().unwrap().clone();
@@ -846,6 +868,7 @@ fn run_preset(app: &AppHandle, p: preset::Preset, files: Vec<PathBuf>) {
                 target,
                 opts: opts.clone(),
                 merge: None,
+                pdf: None,
             }),
             None => skipped += 1,
         }
@@ -1232,6 +1255,7 @@ fn run_merge(app: &AppHandle, kind: MergeKind, files: Vec<PathBuf>) {
         },
         opts: s.to_options(),
         merge: Some((kind, files)),
+        pdf: None,
     };
     state
         .queue
@@ -1484,6 +1508,7 @@ pub fn run() {
                 Cli::Convert { target, files } => start_convert(app, target, files),
                 Cli::Preset { id, files } => start_preset(app, &id, files),
                 Cli::Merge { kind, files } => start_merge(app, kind, files),
+                Cli::Pdf { tool, files } => start_pdf(app, tool, files),
                 Cli::Folder { action, dir } => start_folder(app, action, dir),
                 Cli::Drop { files } => handle_drop(app, files, false),
                 Cli::Custom { files } => start_custom(app, files),
@@ -1619,6 +1644,7 @@ pub fn run() {
                 }
                 Cli::Preset { id, files } => start_preset(app.handle(), id, files.clone()),
                 Cli::Merge { kind, files } => start_merge(app.handle(), *kind, files.clone()),
+                Cli::Pdf { tool, files } => start_pdf(app.handle(), tool.clone(), files.clone()),
                 Cli::Folder { action, dir } => {
                     start_folder(app.handle(), action.clone(), dir.clone())
                 }

@@ -21,6 +21,7 @@ pub mod office;
 pub mod output;
 pub mod pdf;
 pub mod pdf_edit;
+pub mod pdf_tools;
 mod raw;
 pub mod security;
 mod size;

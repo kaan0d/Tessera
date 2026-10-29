@@ -29,6 +29,8 @@ pub enum ConvertError {
     NeedsFfmpeg,
     /// Office documents need the LibreOffice download first.
     NeedsOffice,
+    /// Page numbers that are malformed or not in the PDF (the page count is the detail).
+    BadPages(u32),
     Cancelled,
     Encode(String),
     Io(String),
@@ -72,6 +74,7 @@ impl ConvertError {
             E::Protected => plain("ce.protected"),
             E::NeedsFfmpeg => plain("ce.needs_ffmpeg"),
             E::NeedsOffice => plain("ce.needs_office"),
+            E::BadPages(n) => tf(lang, "ce.bad_pages", &[("n", &n.to_string())]),
             E::Cancelled => plain("ce.cancelled"),
             E::Encode(d) => with("ce.encode", d),
             E::Io(d) => with("ce.io", d),
@@ -144,6 +147,7 @@ mod tests {
             ConvertError::Protected,
             ConvertError::NeedsFfmpeg,
             ConvertError::NeedsOffice,
+            ConvertError::BadPages(3),
             ConvertError::Cancelled,
             ConvertError::Encode("x".into()),
             ConvertError::Io("x".into()),

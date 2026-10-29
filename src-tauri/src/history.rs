@@ -131,9 +131,9 @@ impl Store {
         self.next_id += 1;
         e.time = now_ms();
         if let (true, Some(out)) = (e.ok, &e.output) {
-            if let Ok(m) = fs::metadata(out) {
-                e.output_len = Some(m.len());
-                e.output_mtime = mtime_ms(&m);
+            if let Some((len, mtime)) = stat(Path::new(out)) {
+                e.output_len = Some(len);
+                e.output_mtime = mtime;
             }
         }
         let id = e.id;
@@ -205,6 +205,26 @@ pub enum Plan {
 }
 
 /// Pure decision: `output_now` is (len, mtime ms) of the file on disk, None when missing.
+/// Size and modified time of an output. A folder of results (split pages, slides) counts the
+/// bytes of the files directly in it; adding or removing one changes its time too.
+fn stat(out: &Path) -> Option<(u64, Option<u64>)> {
+    let m = fs::metadata(out).ok()?;
+    if m.is_file() {
+        return Some((m.len(), mtime_ms(&m)));
+    }
+    if !m.is_dir() {
+        return None;
+    }
+    let bytes = fs::read_dir(out)
+        .ok()?
+        .flatten()
+        .filter_map(|e| e.metadata().ok())
+        .filter(fs::Metadata::is_file)
+        .map(|m| m.len())
+        .sum();
+    Some((bytes, mtime_ms(&m)))
+}
+
 pub fn plan(e: &Entry, output_now: Option<(u64, Option<u64>)>) -> Plan {
     if !e.ok || e.undone || e.output.is_none() {
         return Plan::Refuse("undo.nothing");
@@ -256,11 +276,7 @@ pub fn undo(store: &Shared, id: u64, lang: Lang) -> Result<(), String> {
         .get(id)
         .ok_or_else(|| t(lang, "undo.not_found").to_string())?;
     let out = PathBuf::from(e.output.clone().unwrap_or_default());
-    let now = fs::metadata(&out)
-        .ok()
-        .filter(|m| m.is_file())
-        .map(|m| (m.len(), mtime_ms(&m)));
-    match plan(&e, now) {
+    match plan(&e, stat(&out)) {
         Plan::Refuse(k) => return Err(t(lang, k).to_string()),
         Plan::Go {
             restore_original: r,
@@ -382,6 +398,20 @@ mod tests {
             pick_bin_item(&items, Path::new(r"C:\pics\zzz.png"), 0),
             None
         );
+    }
+
+    #[test]
+    fn a_result_folder_is_fingerprinted_by_its_files() {
+        let d = tempfile::tempdir().unwrap();
+        let dir = d.path().join("doc-pages");
+        fs::create_dir(&dir).unwrap();
+        fs::write(dir.join("a.pdf"), b"abc").unwrap();
+        fs::write(dir.join("b.pdf"), b"de").unwrap();
+        let before = stat(&dir).unwrap();
+        assert_eq!(before.0, 5);
+        fs::write(dir.join("c.pdf"), b"f").unwrap();
+        assert_eq!(stat(&dir).unwrap().0, 6);
+        assert!(stat(&d.path().join("gone")).is_none());
     }
 
     #[test]
