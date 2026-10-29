@@ -267,8 +267,9 @@ fn restore_original(input: &Path, started_ms: u64, lang: Lang) -> Result<(), Str
     trash::os_limited::restore_all([items[idx].clone()]).map_err(|e| fail(&e.to_string()))
 }
 
-/// Undoes history entry `id`. Order: check, restore the original (so a failure leaves the
-/// output alone), then recycle the output, then mark the entry undone.
+/// Undoes history entry `id`. Order: check, recycle the output (a locked output stops here
+/// with nothing changed), restore the original, mark the entry undone. A failed restore still
+/// marks it: the output is gone, so a retry could only fail.
 pub fn undo(store: &Shared, id: u64, lang: Lang) -> Result<(), String> {
     let e = store
         .lock()
@@ -281,15 +282,22 @@ pub fn undo(store: &Shared, id: u64, lang: Lang) -> Result<(), String> {
         Plan::Go {
             restore_original: r,
         } => {
-            if r {
-                restore_original(Path::new(&e.input), e.started, lang)?;
+            let input = Path::new(&e.input);
+            if r && input.exists() {
+                let path = input.display().to_string();
+                return Err(fmt(lang, "undo.occupied", &[("path", &path)]));
             }
+            trash::delete(&out)
+                .map_err(|x| fmt(lang, "undo.delete_failed", &[("detail", &x.to_string())]))?;
+            let restored = if r {
+                restore_original(input, e.started, lang)
+            } else {
+                Ok(())
+            };
+            store.lock().unwrap().mark_undone(id);
+            restored
         }
     }
-    trash::delete(&out)
-        .map_err(|x| fmt(lang, "undo.delete_failed", &[("detail", &x.to_string())]))?;
-    store.lock().unwrap().mark_undone(id);
-    Ok(())
 }
 
 #[cfg(test)]

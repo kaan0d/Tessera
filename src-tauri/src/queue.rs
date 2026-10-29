@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -322,6 +322,7 @@ fn worker(
             crate::watch::note_output(std::path::Path::new(out));
         }
         let lang = i18n::lang();
+        let (ok, message) = (done.ok, done.message.clone());
         let (title, body) = if done.ok {
             (t(lang, "notify.done_title"), done.name.clone())
         } else {
@@ -336,7 +337,9 @@ fn worker(
             active.fetch_sub(1, Ordering::Relaxed) - 1,
             *panel.lock().unwrap(),
         );
-        if panel.lock().unwrap().windows_toast {
+        // a job the user stopped is no failure worth a Windows notification
+        let cancelled = !ok && message == t(lang, "job.cancelled");
+        if panel.lock().unwrap().windows_toast && !cancelled {
             let _ = app.notification().builder().title(title).body(body).show();
         }
     }
@@ -344,8 +347,15 @@ fn worker(
 
 /// Writes the finished job to history (failures too); the id is only given for successes.
 fn record(history: &history::Shared, job: &Job, done: &Done) -> Option<u64> {
-    let replaced =
-        done.ok && job.merge.is_none() && job.opts.output.conflict == Conflict::ReplaceOriginal;
+    // only a one-file conversion recycles its source (PDF tools and page folders keep it)
+    let replaced = done.ok
+        && job.merge.is_none()
+        && job.pdf.is_none()
+        && job.opts.output.conflict == Conflict::ReplaceOriginal
+        && done
+            .output
+            .as_deref()
+            .is_some_and(|o| Path::new(o).is_file());
     let id = history.lock().unwrap().record(Entry {
         started: job.started,
         input: job.path.display().to_string(),
