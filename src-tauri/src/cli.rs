@@ -369,6 +369,17 @@ fn parse_pdf(args: &[String]) -> Command {
             _ => files.push(PathBuf::from(a)),
         }
     }
+    let pages = pages.trim().to_string();
+    // a flag the tool does not use is a mistake worth saying
+    let stray = match name.as_str() {
+        "split" | "compress" if !pages.is_empty() => Some("--pages"),
+        n if n != "rotate" && angle.is_some() => Some("--angle"),
+        n if n != "compress" && strong => Some("--strong"),
+        _ => None,
+    };
+    if let Some(flag) = stray {
+        return usage(&format!("pdf {name} does not use {flag}"));
+    }
     let spec = match name.as_str() {
         "extract" | "delete" if pages.is_empty() => {
             return usage(&format!("pdf {name} needs --pages, like --pages 1-3,5"))
@@ -661,7 +672,10 @@ mod tests {
                 files: vec![PathBuf::from(r"C:\w\x.png")]
             }
         );
-        assert!(matches!(parse(&a(&["--wat", "x.png"]), None), Cli::Cmd(Command::Usage(_))));
+        assert!(matches!(
+            parse(&a(&["--wat", "x.png"]), None),
+            Cli::Cmd(Command::Usage(_))
+        ));
         assert_eq!(parse(&a(&["--install-sendto"]), None), Cli::InstallSendTo);
         assert_eq!(parse(&a(&["--remove-sendto"]), None), Cli::RemoveSendTo);
         // subcommands and flags still win
@@ -808,6 +822,9 @@ mod tests {
         assert!(usage_err(&["pdf", "delete", "a.pdf"]).contains("--pages"));
         assert!(usage_err(&["pdf", "rotate", "a.pdf", "--angle", "45"]).contains("--angle"));
         assert!(usage_err(&["pdf", "zap", "a.pdf"]).contains("split"));
+        assert!(usage_err(&["pdf", "split", "a.pdf", "--pages", "2"]).contains("--pages"));
+        assert!(usage_err(&["pdf", "compress", "a.pdf", "--angle", "90"]).contains("--angle"));
+        assert!(usage_err(&["pdf", "delete", "a.pdf", "--pages", " "]).contains("needs --pages"));
         usage_err(&["pdf", "split"]);
         assert_eq!(
             parse(&a(&["--pdf", "compress:strong", "x.pdf"]), None),

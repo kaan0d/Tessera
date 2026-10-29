@@ -514,7 +514,11 @@ fn pdf_cmd(
         let tag = format!("[{}/{}] {}", i + 1, files.len(), path.display());
         match crate::convert::pdf_tools::run(tool, path, &opts, |_| {}) {
             Ok(dest) if flags.json => json_line(path, true, "output", &dest.display().to_string()),
-            Ok(dest) if !flags.quiet => out(&format!("{tag} -> {}", dest.display())),
+            Ok(dest) if !flags.quiet => out(&format!(
+                "{tag} -> {}{}",
+                dest.display(),
+                size_note(&dest, path)
+            )),
             Ok(_) => {}
             Err(e) => {
                 failed += 1;
@@ -532,6 +536,20 @@ fn pdf_cmd(
         return EXIT_FAILED;
     }
     EXIT_OK
+}
+
+/// " (1.2 MB, was 3.4 MB)" for a file result, " (12 files)" for a folder of pages.
+fn size_note(dest: &Path, src: &Path) -> String {
+    if dest.is_dir() {
+        let n = std::fs::read_dir(dest).map_or(0, |d| d.flatten().count());
+        return format!(" ({n} files)");
+    }
+    let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).ok();
+    match (size(dest), size(src)) {
+        (Some(n), Some(o)) => format!(" ({}, was {})", human(n), human(o)),
+        (Some(n), None) => format!(" ({})", human(n)),
+        _ => String::new(),
+    }
 }
 
 fn json_line(file: &Path, ok: bool, key: &str, text: &str) {
@@ -649,13 +667,11 @@ fn one_file(
             if style.json {
                 json_line(path, true, "output", &dest.display().to_string());
             } else if !style.quiet {
-                let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).ok();
-                let note = match (size(&dest), size(path)) {
-                    (Some(n), Some(o)) => format!(" ({}, was {})", human(n), human(o)),
-                    (Some(n), None) => format!(" ({})", human(n)),
-                    _ => String::new(),
-                };
-                out(&format!("{tag} -> {}{note}", dest.display()));
+                out(&format!(
+                    "{tag} -> {}{}",
+                    dest.display(),
+                    size_note(&dest, path)
+                ));
             }
             let big = std::fs::metadata(&dest).is_ok_and(|m| m.len() > 20_000_000);
             if big && target == Format::Gif {
