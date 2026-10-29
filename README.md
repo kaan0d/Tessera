@@ -80,7 +80,7 @@ tessera-cli list-presets
 tessera-cli formats png
 ```
 
-`tessera-cli.exe` sits next to `tessera.exe` and is the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`. Exit codes: 0 ok, 1 a file failed (or every file was skipped), 2 usage error. `merge audio ... --to mp3` joins audio, `--max-size` keeps a merged PDF of images small, `--jobs` converts several files at once. `tessera-cli --help` lists everything.
+`tessera-cli.exe` sits next to `tessera.exe` and is the same tool flagged as a console program, so PowerShell and cmd wait for it and see the exit code. It takes folders and `*.png` patterns, `--recursive`, `--dry-run`, `--json` and `--quiet`. Exit codes: 0 ok (skipped files are warnings), 1 a file failed, 2 usage error or no files matched. `merge audio ... --to mp3` joins audio, `--max-size` keeps a merged PDF of images small, `--jobs` converts several files at once. `tessera-cli --help` lists everything.
 
 ## Privacy
 

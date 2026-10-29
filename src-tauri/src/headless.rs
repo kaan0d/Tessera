@@ -53,7 +53,7 @@ Convert options:
 
 Presets come from `list-presets` and use your saved settings.
 Video, MP3 and OGG need the ffmpeg the app installed; it is never downloaded here.
-Exit codes: 0 ok, 1 a file failed, 2 usage error.
+Exit codes: 0 ok (skipped files are only warnings), 1 a file failed, 2 usage error or no files matched.
 Scripts: use tessera-cli.exe (next to tessera.exe); it waits for the job and returns the exit code.
 ";
 
@@ -412,6 +412,10 @@ fn preset_cmd(id: &str, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
         jobs: flags.jobs.max(1).into(),
     };
     let files = expand_inputs(files, false);
+    if files.is_empty() {
+        err("error: no files matched");
+        return EXIT_USAGE;
+    }
     run_files(&files, style, |path| {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         p.resolve(ext, &opts)
@@ -486,6 +490,10 @@ fn pdf_cmd(
     flags: crate::cli::RunFlags,
 ) -> i32 {
     let files = expand_inputs(files, false);
+    if files.is_empty() {
+        err("error: no files matched");
+        return EXIT_USAGE;
+    }
     let mut opts = settings::load_from(&settings::settings_path()).to_options();
     if let Some(d) = flags.out {
         opts.output.dir = OutDir::Fixed(d);
@@ -557,14 +565,15 @@ fn run_files(files: &[PathBuf], style: Style, plan: impl Fn(&Path) -> Plan + Syn
             }
         });
     }
-    let [done, failed, skipped] = *tally.lock().unwrap();
+    let [_, failed, skipped] = *tally.lock().unwrap();
     if failed > 0 {
         err(&format!("{failed} of {n} failed"));
     }
     if skipped > 0 && !style.json {
         err(&format!("{skipped} skipped"));
     }
-    if failed > 0 || (done == 0 && skipped > 0) {
+    // a skipped file (already in the target format, preset does not apply) is a warning only
+    if failed > 0 {
         EXIT_FAILED
     } else {
         EXIT_OK
