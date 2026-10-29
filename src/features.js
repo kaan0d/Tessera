@@ -311,6 +311,14 @@ function pdPaint(showErrors) {
   $('pd-rs-exact').hidden = mode !== 'exact';
   $$('#pd-kinds .chip').forEach((c) => c.setAttribute('aria-pressed', pdKinds.has(c.dataset.kind)));
   $('pd-vt-wrap').hidden = !pdKinds.has('video');
+  // only targets every chosen kind can reach (video files follow their own target when set)
+  const vtSet = pdKinds.has('video') && $('pd-vtarget').value;
+  const need = [...pdKinds].filter((k) => !(k === 'video' && vtSet));
+  const fits = (ext) => {
+    const x = catalog && catalog.targets.find((c) => c.ext === ext);
+    return !x || !x.from_kinds || need.every((k) => x.from_kinds.includes(k));
+  };
+  for (const o of $('pd-target').querySelectorAll('option')) o.disabled = o.value !== 'same' && !fits(o.value);
   $('pd-max-wrap').hidden = !$('pd-max-on').checked;
   $('pd-q').hidden = !$('pd-q-on').checked;
   $('pd-v').hidden = !$('pd-v-on').checked;

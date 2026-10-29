@@ -100,6 +100,7 @@ pub fn builtins() -> Vec<Preset> {
                 ..o()
             },
         ),
+        // files sent to others lose their location and camera data, even when they already fit
         builtin(
             "email",
             &["image", "video"],
@@ -107,6 +108,7 @@ pub fn builtins() -> Vec<Preset> {
             None,
             PresetOptions {
                 max_bytes: Some(10_000_000),
+                strip_metadata: true,
                 ..o()
             },
         ),
@@ -117,6 +119,7 @@ pub fn builtins() -> Vec<Preset> {
             Some("mp4"),
             PresetOptions {
                 max_bytes: Some(10_000_000),
+                strip_metadata: true,
                 ..o()
             },
         ),
@@ -168,6 +171,15 @@ pub fn builtins() -> Vec<Preset> {
             },
         ),
     ]
+}
+
+/// Some file of `kind` can be converted to `target` (an image preset can make an MP4 from a
+/// GIF, but no image becomes a DOCX).
+pub fn kind_reaches(kind: &str, target: Format) -> bool {
+    Format::ALL.iter().any(|f| {
+        f.kind() == kind
+            && (*f == target || crate::convert::supported_targets(f.ext()).contains(&target))
+    })
 }
 
 pub fn is_builtin(id: &str) -> bool {
@@ -222,9 +234,11 @@ impl Preset {
         if let Some(q) = p.jpeg_quality {
             o.quality.jpeg = q;
             o.quality.webp = q;
+            o.recode = true;
         }
         if let Some(m) = p.video_mbps {
             o.quality.video_mbps = m;
+            o.recode = true;
         }
         o.clamped()
     }
@@ -317,10 +331,24 @@ impl Preset {
             || o.audio_kbps.is_some()
             || o.mono
             || o.trim_start.is_some_and(|t| t > 0.0)
-            || o.trim_end.is_some();
+            || o.trim_end.is_some()
+            || o.jpeg_quality.is_some()
+            || o.video_mbps.is_some();
         let keeps = self.target == "same" || self.video_target.as_deref() == Some("same");
         if keeps && !transforms {
             return bad("preset.same_needs_option");
+        }
+        // every kind the preset takes must be able to become its target (video: its own one)
+        for k in &self.kinds {
+            let spec = match (k.as_str(), &self.video_target) {
+                ("video", Some(v)) => v.as_str(),
+                _ => self.target.as_str(),
+            };
+            let reachable = spec == "same"
+                || parse_target(spec, Format::Png).is_some_and(|t| kind_reaches(k, t));
+            if !reachable {
+                return bad("preset.kind_target");
+            }
         }
         Ok(())
     }

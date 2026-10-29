@@ -368,6 +368,9 @@ pub struct Options {
     /// A working ffmpeg.exe, when there is one. Only enhances the pure-Rust paths: lossy
     /// WebP goes through its libwebp. `None` (or `quality.webp_lossless`) keeps WebP lossless.
     pub ffmpeg: Option<PathBuf>,
+    /// The job asked for its own image quality or video bitrate: a same-format file is encoded
+    /// again instead of being skipped or copied.
+    pub recode: bool,
 }
 
 impl Default for Options {
@@ -387,6 +390,7 @@ impl Default for Options {
             page: 1,
             cancel: None,
             ffmpeg: None,
+            recode: false,
         }
     }
 }
@@ -467,6 +471,7 @@ impl Options {
             || self.strip_metadata
             || self.max_bytes.is_some()
             || self.no_audio
+            || self.recode
             || self.cuts_media()
     }
 
@@ -476,6 +481,7 @@ impl Options {
         from == target
             && self.resize.is_none()
             && !self.strip_metadata
+            && !self.recode
             && !self.no_audio
             && !self.cuts_media()
             && self

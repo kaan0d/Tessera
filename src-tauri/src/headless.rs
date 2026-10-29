@@ -215,6 +215,7 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
     }
     if let Some(m) = a.video_mbps {
         opts.quality.video_mbps = m;
+        opts.recode = true;
     }
     if let Some(q) = a.quality {
         opts.quality.jpeg = q;

@@ -175,7 +175,7 @@ function customOptions() {
   if (mb > 0) o.max_bytes = Math.max(1, Math.round(mb * 1048576));
   return o;
 }
-const hasChange = (o) => !!(o.resize || o.strip_metadata || o.no_audio || o.max_bytes || o.audio_kbps || o.mono || o.trim_start || o.trim_end);
+const hasChange = (o) => !!(o.resize || o.strip_metadata || o.no_audio || o.max_bytes || o.audio_kbps || o.mono || o.trim_start || o.trim_end || o.jpeg_quality || o.video_mbps);
 // text that is no time, or a cut that ends before it starts
 function cutError() {
   const a = parseTime(cs.tStart), b = parseTime(cs.tEnd);
