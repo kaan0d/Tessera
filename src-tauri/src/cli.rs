@@ -17,6 +17,10 @@ pub enum Cli {
     InstallOffice,
     /// Delete the downloaded document support.
     RemoveOffice,
+    /// Download the OCR engine and these languages (Tesseract codes or tags), printing `P <percent>`.
+    InstallOcr(Vec<String>),
+    /// Delete the downloaded OCR engine and its languages.
+    RemoveOcr,
     /// Record that ffmpeg is downloaded later (the installer's "skip").
     DeferFfmpeg,
     /// Silent install (`--install <dir>`), no window. v0.1.x updaters may add `--portable`: ignored.
@@ -197,6 +201,14 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         Some("--install-ffmpeg") => Cli::InstallFfmpeg,
         Some("--install-office") => Cli::InstallOffice,
         Some("--remove-office") => Cli::RemoveOffice,
+        Some("--install-ocr") => Cli::InstallOcr(
+            args[1..]
+                .iter()
+                .take_while(|a| !a.starts_with("--"))
+                .cloned()
+                .collect(),
+        ),
+        Some("--remove-ocr") => Cli::RemoveOcr,
         Some("--defer-ffmpeg") => Cli::DeferFfmpeg,
         Some("--install") => match args.get(1) {
             Some(dir) if !dir.starts_with("--") => Cli::Install {
@@ -631,6 +643,12 @@ mod tests {
         assert_eq!(parse(&a(&["--install-ffmpeg"]), None), Cli::InstallFfmpeg);
         assert_eq!(parse(&a(&["--install-office"]), None), Cli::InstallOffice);
         assert_eq!(parse(&a(&["--remove-office"]), None), Cli::RemoveOffice);
+        assert_eq!(parse(&a(&["--install-ocr"]), None), Cli::InstallOcr(vec![]));
+        assert_eq!(
+            parse(&a(&["--install-ocr", "tur", "en"]), None),
+            Cli::InstallOcr(vec!["tur".into(), "en".into()])
+        );
+        assert_eq!(parse(&a(&["--remove-ocr"]), None), Cli::RemoveOcr);
         assert_eq!(parse(&a(&["--defer-ffmpeg"]), None), Cli::DeferFfmpeg);
         assert_eq!(
             parse(&a(&["--install", r"D:\Apps", "--portable"]), None),
