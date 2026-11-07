@@ -710,7 +710,7 @@ async function refreshOffice() {
 let ocrTimer;
 
 // OCR engine (Tesseract) and its languages: downloaded only when the user presses a button.
-const OCR_NAMES = { eng: 'English', tur: 'Türkçe', deu: 'Deutsch', fra: 'Français', spa: 'Español', ita: 'Italiano', por: 'Português', rus: 'Русский', ind: 'Indonesia', jpn: '日本語', kor: '한국어', chi_sim: '简体中文' };
+const OCR_APP = { eng: 'en', tur: 'tr', deu: 'de', fra: 'fr', spa: 'es', ita: 'it', por: 'pt-BR', rus: 'ru', ind: 'id', jpn: 'ja', kor: 'ko', chi_sim: 'zh-CN' };
 
 async function refreshOcr() {
   clearTimeout(ocrTimer);
@@ -744,7 +744,7 @@ async function refreshOcr() {
     const name = document.createElement('div');
     name.className = 'grow';
     name.innerHTML = '<span class="label"></span><p class="desc"></p>';
-    name.firstChild.textContent = OCR_NAMES[l.code] || l.code;
+    name.firstChild.textContent = LANGS[OCR_APP[l.code]] || l.code;
     name.lastChild.textContent = (l.size / 1e6).toFixed(1) + ' MB';
     const btn = document.createElement('button');
     btn.type = 'button';
