@@ -526,7 +526,24 @@ I18N['es'] = {
   "dr.skipped.other": "{n} archivos no se pueden convertir y se omitirán.",
   "dr.none": "Ninguno de estos archivos se puede convertir.",
   "dr.starting": "Iniciando…",
-  "dr.err_options": "No se pudieron leer los archivos: {err}"
+  "dr.err_options": "No se pudieron leer los archivos: {err}",
+  "cap.hint": "Arrastra para elegir un área. Clic derecho para toda la pantalla. Esc para cancelar.",
+  "cap.confirm": "Pulsa Intro para empezar a grabar o arrastra de nuevo. Esc cancela.",
+  "cap.rec": "Grabando",
+  "cap.stop": "Detener",
+  "cap.cancel": "Descartar",
+  "cap.title": "Grabación de pantalla",
+  "cap.desc": "Graba un área de la pantalla desde el icono de la bandeja. Sin sonido. Las grabaciones se guardan en MP4; el GIF y el WEBM se crean a partir de ellas.",
+  "cap.dir": "Guardar grabaciones en",
+  "cap.dir_def": "Vídeos\\Tessera (predeterminada)",
+  "cap.fps": "Fotogramas por segundo",
+  "cap.cursor": "Mostrar el puntero del ratón",
+  "cap.max": "Duración máxima",
+  "cap.min": "{n} min",
+  "cap.format": "Guardar como",
+  "cap.hotkey": "Atajo Ctrl+Alt+R",
+  "cap.hotkey_desc": "Abre el selector de área y detiene una grabación en curso. Desactivado por defecto; otro programa puede estar usando ya estas teclas.",
+  "cap.foot": "Una grabación se detiene a los 2 GB o al llegar al límite de tiempo. Mientras se graba, se muestran un marco rojo y una barra que no se pueden desactivar."
 };
 SETUP['es'] = {
   "install_title": "Instalar Tessera",

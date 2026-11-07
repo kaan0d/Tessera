@@ -526,7 +526,24 @@ I18N['it'] = {
   "dr.skipped.other": "{n} file non possono essere convertiti e verranno ignorati.",
   "dr.none": "Nessuno di questi file può essere convertito.",
   "dr.starting": "Avvio…",
-  "dr.err_options": "Impossibile leggere i file: {err}"
+  "dr.err_options": "Impossibile leggere i file: {err}",
+  "cap.hint": "Trascina per scegliere un'area. Clic destro per tutto lo schermo. Esc per annullare.",
+  "cap.confirm": "Premi Invio per iniziare a registrare, oppure trascina di nuovo. Esc annulla.",
+  "cap.rec": "Registrazione",
+  "cap.stop": "Interrompi",
+  "cap.cancel": "Scarta",
+  "cap.title": "Registrazione dello schermo",
+  "cap.desc": "Registra un'area dello schermo dall'icona nell'area di notifica. Senza audio. Le registrazioni sono salvate in MP4; GIF e WEBM si ricavano da queste.",
+  "cap.dir": "Salva le registrazioni in",
+  "cap.dir_def": "Video\\Tessera (predefinita)",
+  "cap.fps": "Fotogrammi al secondo",
+  "cap.cursor": "Mostra il puntatore del mouse",
+  "cap.max": "Durata massima",
+  "cap.min": "{n} min",
+  "cap.format": "Salva come",
+  "cap.hotkey": "Scorciatoia Ctrl+Alt+R",
+  "cap.hotkey_desc": "Apre il selettore dell'area e interrompe una registrazione in corso. Disattivata per impostazione predefinita; un altro programma potrebbe già usare questi tasti.",
+  "cap.foot": "Una registrazione si ferma a 2 GB o al limite di tempo. Durante la registrazione restano visibili una cornice rossa e una barra; non si possono disattivare."
 };
 SETUP['it'] = {
   "install_title": "Installa Tessera",

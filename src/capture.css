@@ -1,0 +1,29 @@
+/* Screen recording windows: area picker, control bar, red frame. Self-contained. */
+:root{color-scheme:dark;--red:#e5322d;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+html,body{margin:0;height:100%;overflow:hidden;background:transparent;user-select:none}
+html:lang(ja),html:lang(zh-CN),html:lang(ko){font-family:"Segoe UI","Yu Gothic UI","Microsoft YaHei UI","Malgun Gothic",sans-serif}
+
+/* picker: dim screen, the chosen box is cut out of the dim by a huge shadow */
+body.sel{cursor:crosshair;background:rgba(10,10,12,.38)}
+#box{position:fixed;border:1px solid #fff;outline:1px solid rgba(0,0,0,.55);background:transparent;box-shadow:0 0 0 100vmax rgba(10,10,12,.38)}
+body.sel.has-box{background:transparent}
+.hint{position:fixed;left:50%;top:24px;transform:translateX(-50%);margin:0;padding:8px 14px;border-radius:10px;
+  background:rgba(20,20,24,.92);color:#f2f2f0;font-size:14px;max-width:80vw;text-align:center;pointer-events:none}
+
+/* control bar */
+body.barpage{display:flex;padding:0}
+.bar{flex:1;display:flex;align-items:center;gap:10px;box-sizing:border-box;margin:0;padding:0 10px 0 14px;border-radius:12px;
+  background:rgba(24,24,28,.97);border:1px solid rgba(255,255,255,.16);color:#f2f2f0;font-size:14px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1.2s ease-in-out infinite}
+.rec{font-weight:600}
+.time{font-variant-numeric:tabular-nums;color:#c9c9cf;flex:1}
+.b{font:inherit;color:inherit;background:rgba(255,255,255,.1);border:0;border-radius:8px;padding:6px 12px;cursor:pointer}
+.b:hover{background:rgba(255,255,255,.18)}
+.b:focus-visible{outline:2px solid #fff;outline-offset:1px}
+.b.stop{background:var(--red);color:#fff}
+.b.stop:hover{background:#c92a26}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+
+/* frame: solid red; the window's shape (a ring) is set by the app */
+body.framepage{background:var(--red)}

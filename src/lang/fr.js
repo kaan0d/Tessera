@@ -526,7 +526,24 @@ I18N['fr'] = {
   "dr.skipped.other": "{n} fichiers ne peuvent pas être convertis et seront ignorés.",
   "dr.none": "Aucun de ces fichiers ne peut être converti.",
   "dr.starting": "Démarrage…",
-  "dr.err_options": "Impossible de lire les fichiers : {err}"
+  "dr.err_options": "Impossible de lire les fichiers : {err}",
+  "cap.hint": "Faites glisser pour choisir une zone. Clic droit pour tout l'écran. Échap pour annuler.",
+  "cap.confirm": "Appuyez sur Entrée pour lancer l'enregistrement, ou faites glisser à nouveau. Échap annule.",
+  "cap.rec": "Enregistrement",
+  "cap.stop": "Arrêter",
+  "cap.cancel": "Abandonner",
+  "cap.title": "Enregistrement d'écran",
+  "cap.desc": "Enregistrez une zone de l'écran depuis l'icône de la zone de notification. Sans son. Les enregistrements sont sauvegardés en MP4 ; le GIF et le WEBM en sont tirés.",
+  "cap.dir": "Enregistrer dans",
+  "cap.dir_def": "Vidéos\\Tessera (par défaut)",
+  "cap.fps": "Images par seconde",
+  "cap.cursor": "Afficher le pointeur de la souris",
+  "cap.max": "Durée maximale",
+  "cap.min": "{n} min",
+  "cap.format": "Enregistrer en",
+  "cap.hotkey": "Raccourci Ctrl+Alt+R",
+  "cap.hotkey_desc": "Ouvre le sélecteur de zone et arrête un enregistrement en cours. Désactivé par défaut ; un autre programme utilise peut-être déjà ces touches.",
+  "cap.foot": "Un enregistrement s'arrête à 2 Go ou à la limite de durée. Un cadre rouge et une barre restent affichés pendant l'enregistrement ; on ne peut pas les désactiver."
 };
 SETUP['fr'] = {
   "install_title": "Installer Tessera",

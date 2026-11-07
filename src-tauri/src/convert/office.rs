@@ -201,7 +201,7 @@ fn ensure_profile(profile: &Path) -> Result<(), ConvertError> {
 }
 
 /// Ends soffice.exe and the soffice.bin it started.
-fn kill_tree(pid: u32) {
+pub(crate) fn kill_tree(pid: u32) {
     let _ = Command::new("taskkill")
         .args(["/PID", &pid.to_string(), "/T", "/F"])
         .stdout(Stdio::null())

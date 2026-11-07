@@ -515,7 +515,24 @@ I18N['id'] = {
   "dr.skipped.other": "{n} file tidak dapat dikonversi dan akan dilewati.",
   "dr.none": "Tidak ada file ini yang dapat dikonversi.",
   "dr.starting": "Memulai…",
-  "dr.err_options": "Tidak dapat membaca file: {err}"
+  "dr.err_options": "Tidak dapat membaca file: {err}",
+  "cap.hint": "Seret untuk memilih area. Klik kanan untuk seluruh layar. Esc untuk batal.",
+  "cap.confirm": "Tekan Enter untuk mulai merekam, atau seret lagi. Esc membatalkan.",
+  "cap.rec": "Merekam",
+  "cap.stop": "Berhenti",
+  "cap.cancel": "Buang",
+  "cap.title": "Perekaman layar",
+  "cap.desc": "Rekam satu area layar dari ikon baki sistem. Tanpa suara. Rekaman disimpan sebagai MP4; GIF dan WEBM dibuat darinya.",
+  "cap.dir": "Simpan rekaman di",
+  "cap.dir_def": "Video\\Tessera (bawaan)",
+  "cap.fps": "Bingkai per detik",
+  "cap.cursor": "Tampilkan penunjuk mouse",
+  "cap.max": "Rekaman terpanjang",
+  "cap.min": "{n} mnt",
+  "cap.format": "Simpan sebagai",
+  "cap.hotkey": "Pintasan Ctrl+Alt+R",
+  "cap.hotkey_desc": "Membuka pemilih area dan menghentikan rekaman yang sedang berjalan. Nonaktif secara bawaan; program lain mungkin sudah memakai tombol ini.",
+  "cap.foot": "Rekaman berhenti pada 2 GB atau batas waktu. Bingkai merah dan bilah tetap tampil selama merekam dan tidak dapat dimatikan."
 };
 SETUP['id'] = {
   "install_title": "Instal Tessera",

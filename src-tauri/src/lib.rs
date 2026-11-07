@@ -1,5 +1,7 @@
 pub mod app_info;
 pub mod batch;
+pub mod capture;
+pub mod capture_ui;
 pub mod chain;
 pub mod cli;
 pub mod convert;
@@ -93,6 +95,8 @@ struct AppState {
     drop_custom: std::sync::atomic::AtomicBool,
     /// Files of the "Custom settings" verb (one process per file) and when the last arrived.
     customs: Arc<Mutex<(Vec<PathBuf>, u64)>>,
+    /// Screen recording picker and recording state.
+    capture: capture_ui::CaptureState,
 }
 
 /// Milliseconds on a monotonic clock, for the merge collector.
@@ -311,8 +315,12 @@ fn apply_settings(
     state.queue.history.lock().unwrap().enabled = new.history_enabled;
     let changed = cur.language != lang;
     let watch_changed = cur.watch != new.watch;
+    let hotkey = (cur.capture.hotkey != new.capture.hotkey).then_some(new.capture.hotkey);
     *cur = new.clone();
     drop(cur);
+    if let Some(on) = hotkey {
+        capture_ui::apply_hotkey(app, on);
+    }
     if watch_changed && !changed {
         restart_watch(app);
     }
@@ -845,7 +853,14 @@ fn open_log() -> Result<(), String> {
 fn tray_menu(app: &AppHandle, lang: Lang) -> tauri::Result<Menu<tauri::Wry>> {
     let open = MenuItem::with_id(app, "open", t(lang, "tray.open"), true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", t(lang, "tray.quit"), true, None::<&str>)?;
-    Menu::with_items(app, &[&open, &quit])
+    let rec = app.state::<AppState>().capture.is_recording();
+    let (id, key) = if rec {
+        ("capture_stop", "tray.capture_stop")
+    } else {
+        ("capture", "tray.capture")
+    };
+    let cap = MenuItem::with_id(app, id, t(lang, key), true, None::<&str>)?;
+    Menu::with_items(app, &[&cap, &open, &quit])
 }
 
 /// Swaps the tray menu for one in `lang`.
@@ -1603,11 +1618,21 @@ pub fn run() {
                 Cli::Drop { files } => handle_drop(app, files, false),
                 Cli::Custom { files } => start_custom(app, files, true),
                 Cli::Choose { files } => start_custom(app, files, false),
+                Cli::Capture => capture_ui::begin(app),
                 Cli::Normal => show_window(app),
                 _ => {}
             }
         }))
         .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        capture_ui::toggle(app);
+                    }
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             get_settings,
@@ -1646,12 +1671,24 @@ pub fn run() {
             get_licenses,
             app_info,
             open_log,
-            open_settings_folder
+            open_settings_folder,
+            capture_ui::capture_pick,
+            capture_ui::capture_abort_select,
+            capture_ui::capture_stop,
+            capture_ui::capture_cancel,
+            capture_ui::capture_status,
+            capture_ui::capture_open_dir
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {
                 api.prevent_close();
-                let _ = w.hide();
+                let label = w.label();
+                // the recording indicators cannot be closed; a closed picker cancels the pick
+                if label.starts_with("capture-sel-") {
+                    capture_ui::abort_select(w.app_handle());
+                } else if !label.starts_with("capture-") {
+                    let _ = w.hide();
+                }
             }
         })
         .setup(move |app| {
@@ -1674,6 +1711,7 @@ pub fn run() {
                 dropped: Mutex::new(vec![]),
                 drop_custom: std::sync::atomic::AtomicBool::new(false),
                 customs: Arc::default(),
+                capture: capture_ui::CaptureState::default(),
             });
             // windows are built only now so their pages never invoke a command before the state exists
             for cfg in app
@@ -1697,6 +1735,9 @@ pub fn run() {
             }
             ensure_ffmpeg(app.handle());
             restart_watch(app.handle());
+            if app.state::<AppState>().settings.lock().unwrap().capture.hotkey {
+                capture_ui::apply_hotkey(app.handle(), true);
+            }
             if app
                 .state::<AppState>()
                 .settings
@@ -1713,6 +1754,8 @@ pub fn run() {
                 .menu(&tray_menu(app.handle(), i18n::lang())?)
                 .on_menu_event(|app, e| match e.id.as_ref() {
                     "open" => show_window(app),
+                    "capture" => capture_ui::begin(app),
+                    "capture_stop" => capture_ui::stop(app),
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -1744,6 +1787,7 @@ pub fn run() {
                 Cli::Drop { files } => handle_drop(app.handle(), files.clone(), false),
                 Cli::Custom { files } => start_custom(app.handle(), files.clone(), true),
                 Cli::Choose { files } => start_custom(app.handle(), files.clone(), false),
+                Cli::Capture => capture_ui::begin(app.handle()),
                 Cli::Normal => show_window(app.handle()),
                 _ => {}
             }
@@ -1752,10 +1796,11 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("failed to start the application")
         .run(|app, event| {
-            if let tauri::RunEvent::Exit = event
-                && let Some(w) = app.state::<AppState>().watcher.lock().unwrap().take()
-            {
-                w.stop();
+            if let tauri::RunEvent::Exit = event {
+                capture_ui::shutdown(app);
+                if let Some(w) = app.state::<AppState>().watcher.lock().unwrap().take() {
+                    w.stop();
+                }
             }
         });
 }

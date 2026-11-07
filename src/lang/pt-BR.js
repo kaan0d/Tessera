@@ -527,6 +527,23 @@ I18N['pt-BR'] = {
   "dr.none": "Nenhum desses arquivos pode ser convertido.",
   "dr.starting": "Iniciando…",
   "dr.err_options": "Não foi possível ler os arquivos: {err}",
+  "cap.hint": "Arraste para escolher uma área. Clique com o botão direito para a tela inteira. Esc para cancelar.",
+  "cap.confirm": "Pressione Enter para começar a gravar ou arraste de novo. Esc cancela.",
+  "cap.rec": "Gravando",
+  "cap.stop": "Parar",
+  "cap.cancel": "Descartar",
+  "cap.title": "Gravação de tela",
+  "cap.desc": "Grave uma área da tela pelo ícone da bandeja. Sem som. As gravações são salvas em MP4; GIF e WEBM são criados a partir delas.",
+  "cap.dir": "Salvar gravações em",
+  "cap.dir_def": "Vídeos\\Tessera (padrão)",
+  "cap.fps": "Quadros por segundo",
+  "cap.cursor": "Mostrar o ponteiro do mouse",
+  "cap.max": "Duração máxima",
+  "cap.min": "{n} min",
+  "cap.format": "Salvar como",
+  "cap.hotkey": "Atalho Ctrl+Alt+R",
+  "cap.hotkey_desc": "Abre o seletor de área e para uma gravação em andamento. Desativado por padrão; outro programa pode já usar essas teclas.",
+  "cap.foot": "Uma gravação para em 2 GB ou no limite de tempo. Uma moldura vermelha e uma barra ficam na tela durante a gravação e não podem ser desativadas."
 };
 SETUP['pt-BR'] = {
   "install_title": "Instalar o Tessera",

@@ -69,6 +69,8 @@ pub enum Cli {
         files: Vec<PathBuf>,
     },
     Background,
+    /// Open the area picker of a screen recording (the app, not the console command).
+    Capture,
     /// A headless subcommand (`convert`, `preset`, ...); never starts the app.
     Cmd(Command),
     Normal,
@@ -128,6 +130,8 @@ pub enum Command {
         files: Vec<PathBuf>,
         flags: RunFlags,
     },
+    /// `capture`: record the screen without a window.
+    Capture(CaptureArgs),
     /// Bad command line (exit code 2); the text says what is wrong.
     Usage(String),
 }
@@ -175,7 +179,8 @@ pub fn parse_size(s: &str) -> Option<u64> {
 /// `args` excludes the executable name. Unknown or malformed input falls back to `Normal`.
 /// Relative file paths are resolved against `cwd` (a forwarded launch has another cwd).
 pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
-    const SUBCOMMANDS: [&str; 6] = [
+    const SUBCOMMANDS: [&str; 7] = [
+        "capture",
         "convert",
         "preset",
         "merge",
@@ -211,6 +216,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
             keep_data: args.iter().any(|a| a == "--keep-data"),
         },
         Some("--background") => Cli::Background,
+        Some("--capture") => Cli::Capture,
         Some("--convert") => {
             let Some(target) = args.get(1).and_then(|t| Format::from_ext(t)) else {
                 return Cli::Normal;
@@ -273,6 +279,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
                 _ => Cli::Normal,
             }
         }
+        Some("capture") => Cli::Cmd(parse_capture(&args[1..])),
         Some("convert") => Cli::Cmd(parse_convert(&args[1..])),
         Some("preset") => Cli::Cmd(parse_preset(&args[1..])),
         Some("merge") => Cli::Cmd(parse_merge(&args[1..])),
@@ -292,7 +299,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         },
         // a typo must not open the window and exit 0
         Some(a) => Cli::Cmd(usage(&format!(
-            "unknown option {a}: the commands are convert, preset, merge, pdf, list-presets and formats"
+            "unknown option {a}: the commands are convert, preset, merge, pdf, capture, list-presets and formats"
         ))),
         _ => Cli::Normal,
     }
@@ -300,6 +307,48 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
 
 fn usage(msg: &str) -> Command {
     Command::Usage(msg.into())
+}
+
+/// Arguments of `tessera capture`.
+#[derive(Debug, PartialEq)]
+pub struct CaptureArgs {
+    /// Desktop pixels; the primary screen when not given.
+    pub region: Option<crate::capture::Rect>,
+    /// Recording length; without it the recording runs until Enter is pressed.
+    pub secs: Option<u64>,
+    /// mp4, gif or webm; the setting when not given.
+    pub to: Option<Format>,
+}
+
+const CAPTURE_USAGE: &str = "capture [--region x,y,w,h] [--secs N] [--to gif|mp4|webm]";
+
+fn parse_capture(args: &[String]) -> Command {
+    let mut c = CaptureArgs {
+        region: None,
+        secs: None,
+        to: None,
+    };
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--region" => match it.next().and_then(|v| crate::capture::parse_region(v)) {
+                Some(r) => c.region = Some(r),
+                None => return usage("--region must be x,y,w,h in pixels, like 0,0,1280,720"),
+            },
+            "--secs" => match it.next().and_then(|v| v.parse::<u64>().ok()) {
+                Some(n) if n > 0 => c.secs = Some(n),
+                _ => return usage("--secs must be a number of seconds, 1 or more"),
+            },
+            "--to" => match it.next().map(String::as_str) {
+                Some("mp4") => c.to = Some(Format::Mp4),
+                Some("gif") => c.to = Some(Format::Gif),
+                Some("webm") => c.to = Some(Format::Webm),
+                _ => return usage("--to must be mp4, gif or webm"),
+            },
+            other => return usage(&format!("unknown option {other}: {CAPTURE_USAGE}")),
+        }
+    }
+    Command::Capture(c)
 }
 
 /// How a `preset` run reports itself and where it writes (flags may come before or after the files).
@@ -1076,5 +1125,52 @@ mod cut_flag_tests {
         assert!(bad(&["--start", "soon"]));
         assert!(bad(&["--audio-bitrate", "4"]));
         assert!(bad(&["--gif-fps", "60"]));
+    }
+
+    #[test]
+    fn capture_flags() {
+        use crate::capture::Rect;
+        assert_eq!(parse(&a(&["--capture"]), None), Cli::Capture);
+        let cap = |v: &[&str]| match parse(&a(v), None) {
+            Cli::Cmd(Command::Capture(c)) => c,
+            other => panic!("{other:?}"),
+        };
+        let c = cap(&["capture"]);
+        assert_eq!((c.region, c.secs, c.to), (None, None, None));
+        let c = cap(&[
+            "capture",
+            "--region",
+            "-1920,0,640,360",
+            "--secs",
+            "5",
+            "--to",
+            "gif",
+        ]);
+        let r = Rect {
+            x: -1920,
+            y: 0,
+            w: 640,
+            h: 360,
+        };
+        assert_eq!(
+            (c.region, c.secs, c.to),
+            (Some(r), Some(5), Some(Format::Gif))
+        );
+        for bad in [
+            &["capture", "--region", "1,2,3"][..],
+            &["capture", "--secs", "0"],
+            &["capture", "--secs", "x"],
+            &["capture", "--to", "avi"],
+            &["capture", "--now"],
+        ] {
+            assert!(
+                matches!(parse(&a(bad), None), Cli::Cmd(Command::Usage(_))),
+                "{bad:?}"
+            );
+        }
+        assert_eq!(
+            parse(&a(&["capture", "--help"]), None),
+            Cli::Cmd(Command::Help)
+        );
     }
 }
