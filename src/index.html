@@ -699,7 +699,14 @@
         <div id="pd-kinds" class="chips kind-chips" role="group" aria-labelledby="l-pd-kinds" aria-describedby="pd-kinds-msg"></div>
         <p id="pd-kinds-msg" class="field-msg" role="alert"></p>
       </div>
-      <div class="f two">
+      <div class="f" id="pd-steps-wrap">
+        <span id="l-pd-steps" class="f-label" data-i18n="pd.steps"></span>
+        <p class="desc" data-i18n="pd.steps_desc"></p>
+        <ol id="pd-steps" class="pd-steps" aria-labelledby="l-pd-steps"></ol>
+        <button type="button" id="pd-step-add" class="btn sm" data-i18n="pd.step_add"></button>
+        <p id="pd-steps-msg" class="field-msg" role="alert"></p>
+      </div>
+      <div class="f two" id="pd-target-row">
         <div>
           <label for="pd-target" class="f-label" data-i18n="pd.target"></label>
           <span class="select full"><select id="pd-target"></select><svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></span>
@@ -738,6 +745,7 @@
         </div>
         <p id="pd-rs-msg" class="field-msg" role="alert"></p>
       </div>
+      <p id="pd-opt-first" class="desc" data-i18n="pd.opt_first" hidden></p>
       <div class="opts card">
         <div class="row">
           <div class="grow">

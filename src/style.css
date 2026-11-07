@@ -1031,3 +1031,7 @@ kbd{font-size:12px}
 /* history search sits between the header and the list */
 .hist-search{display:flex;margin:0 0 10px}
 .hist-search .field{width:100%}
+.pd-steps{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.pd-steps:empty{display:none}
+.pd-step{display:flex;gap:6px;align-items:center}
+.pd-step .select{flex:1}
