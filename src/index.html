@@ -610,6 +610,28 @@
       </div>
     </div>
     <div class="group">
+      <h2 class="group-title" data-i18n="ocr.title"></h2>
+      <div class="card">
+        <div id="ocr" class="row top-align" data-state="checking">
+          <span class="tile"><img src="kinds/image.svg" alt=""></span>
+          <div class="grow">
+            <div class="label-line">
+              <span class="label">Tesseract</span>
+              <span id="ocr-pct" class="val" hidden></span>
+            </div>
+            <p id="ocr-status" class="desc" role="status" data-i18n="ff.initial"></p>
+            <div id="ocr-bar" class="bar" role="progressbar" data-i18n-attr="aria-label:ocr.bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span></span></div>
+            <div class="actions">
+              <button type="button" id="ocr-get" class="btn sm" hidden><svg class="ic" aria-hidden="true"><use href="#i-retry"/></svg><span data-i18n="ocr.get"></span></button>
+              <button type="button" id="ocr-del" class="btn ghost sm" hidden><span data-i18n="ocr.remove"></span></button>
+            </div>
+          </div>
+        </div>
+        <div id="ocr-langs"></div>
+        <p class="foot" data-i18n="ocr.foot"></p>
+      </div>
+    </div>
+    <div class="group">
       <h2 class="group-title" data-i18n="cli.title"></h2>
       <div class="card">
         <div class="row top-align">

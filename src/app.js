@@ -675,6 +675,65 @@ async function refreshOffice() {
   if (f.downloading) loTimer = setTimeout(refreshOffice, 1000);
 }
 
+let ocrTimer;
+
+// OCR engine (Tesseract) and its languages: downloaded only when the user presses a button.
+const OCR_NAMES = { eng: 'English', tur: 'Türkçe', deu: 'Deutsch', fra: 'Français', spa: 'Español', ita: 'Italiano', por: 'Português', rus: 'Русский', ind: 'Indonesia', jpn: '日本語', kor: '한국어', chi_sim: '简体中文' };
+
+async function refreshOcr() {
+  clearTimeout(ocrTimer);
+  let f;
+  try {
+    f = await invoke('ocr_status');
+  } catch (e) {
+    $('ocr-status').textContent = t('ocr.status_err', { err: e });
+    return;
+  }
+  const state = f.downloading ? 'downloading' : f.ready ? 'ready' : f.error ? 'error' : 'missing';
+  $('ocr').dataset.state = state;
+  const pct = Math.round(f.percent || 0);
+  // a failed language download leaves the engine ready: show the error either way
+  $('ocr-status').textContent = state === 'downloading' ? t('ocr.downloading')
+    : f.error ? t('ff.failed', { err: f.error })
+    : state === 'ready' ? t('ocr.ready')
+    : t('ocr.missing');
+  $('ocr-bar').hidden = $('ocr-pct').hidden = state !== 'downloading';
+  $('ocr-bar').style.setProperty('--p', pct / 100);
+  $('ocr-bar').setAttribute('aria-valuenow', pct);
+  $('ocr-pct').textContent = t('pct', { n: pct });
+  $('ocr-get').hidden = state === 'downloading' || state === 'ready';
+  $('ocr-get').querySelector('span').textContent = t(state === 'error' ? 'ff.retry' : 'ocr.get');
+  $('ocr-del').hidden = !f.ready || state === 'downloading';
+  const box = $('ocr-langs');
+  box.replaceChildren();
+  for (const l of f.ready ? f.langs : []) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const name = document.createElement('div');
+    name.className = 'grow';
+    name.innerHTML = '<span class="label"></span><p class="desc"></p>';
+    name.firstChild.textContent = OCR_NAMES[l.code] || l.code;
+    name.lastChild.textContent = (l.size / 1e6).toFixed(1) + ' MB';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = l.installed ? 'btn ghost sm' : 'btn sm';
+    btn.textContent = t(l.installed ? 'lo.remove' : 'ocr.lang_get');
+    btn.disabled = state === 'downloading';
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try {
+        await invoke(l.installed ? 'ocr_remove' : 'ocr_download', { code: l.code });
+      } catch (err) {
+        toast(t('err.action', { err }), true);
+      }
+      refreshOcr();
+    };
+    row.append(name, btn);
+    box.append(row);
+  }
+  if (f.downloading) ocrTimer = setTimeout(refreshOcr, 1000);
+}
+
 function bind() {
   tabs.forEach((t, i) => (t.onclick = () => select(i)));
   $('tabs').onkeydown = tabKeys;
@@ -764,6 +823,25 @@ function bind() {
     }
     refreshOffice();
   };
+  $('ocr-get').onclick = async () => {
+    try {
+      await invoke('ocr_download', { code: null });
+    } catch (e) {
+      showError(t('err.dl_start', { err: e }));
+    }
+    refreshOcr();
+  };
+  $('ocr-del').onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      await invoke('ocr_remove', { code: null });
+      toast(t('ocr.removed'));
+    } catch (err) {
+      toast(t('err.action', { err }), true);
+    }
+    e.currentTarget.disabled = false;
+    refreshOcr();
+  };
   $('ff-del').onclick = async (e) => {
     e.currentTarget.disabled = true;
     try {
@@ -803,6 +881,7 @@ function relabel() {
   tplPaint();
   refreshFfmpeg();
   refreshOffice();
+  refreshOcr();
   paintNav();
   if (typeof featuresRelabel === 'function') featuresRelabel();
 }
@@ -866,5 +945,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadCatalog();
   refreshFfmpeg();
   refreshOffice();
+  refreshOcr();
   if (typeof featuresInit === 'function') featuresInit();
 });
