@@ -301,20 +301,29 @@ fn probe_file(p: &Path) -> Probe {
 
 /// Target format and options for a stable file under `rule`, or None when the rule's action
 /// does not apply to it (wrong kind, unknown preset, impossible conversion).
-pub fn plan_job(rule: &WatchRule, path: &Path, s: &Settings) -> Option<(Format, Options)> {
+pub fn plan_job(
+    rule: &WatchRule,
+    path: &Path,
+    s: &Settings,
+) -> Option<(Format, Options, Vec<preset::StepPlan>)> {
     let ext = path.extension()?.to_str()?;
     let from = Format::from_ext(ext)?;
-    let (target, mut opts) = match &rule.action {
+    let (target, mut opts, steps) = match &rule.action {
         Action::Preset { preset_id } => {
             let p = preset::find(s, preset_id)?;
             let opts = p.options_for(s);
-            (p.resolve(ext, &opts)?, opts)
+            if p.steps.is_empty() {
+                (p.resolve(ext, &opts)?, opts, vec![])
+            } else {
+                let steps = p.plan_chain(ext, s)?;
+                (steps.last()?.target, opts, steps)
+            }
         }
         Action::Target { target } => {
             let t = Format::from_ext(target).filter(|f| Format::ALL.contains(f))?;
             let opts = s.to_options();
             allows(ext, from, t, &opts).then_some(())?;
-            (t, opts)
+            (t, opts, vec![])
         }
     };
     // unattended jobs never recycle the original
@@ -326,7 +335,7 @@ pub fn plan_job(rule: &WatchRule, path: &Path, s: &Settings) -> Option<(Format, 
         OutputSpec::Subfolder(n) => OutDir::Fixed(path.parent()?.join(n)),
         OutputSpec::Fixed(d) => OutDir::Fixed(d),
     };
-    Some((target, opts))
+    Some((target, opts, steps))
 }
 
 // ---------------------------------------------------------------- validation
@@ -956,18 +965,18 @@ mod tests {
         r.action = Action::Target {
             target: "jpg".into(),
         };
-        let (t, o) = plan_job(&r, Path::new(r"D:\w\a.png"), &s).unwrap();
+        let (t, o, _) = plan_job(&r, Path::new(r"D:\w\a.png"), &s).unwrap();
         assert_eq!(t, Format::Jpg);
         assert!(matches!(o.output.dir, OutDir::SameAsSource));
         assert!(plan_job(&r, Path::new(r"D:\w\a.mp3"), &s).is_none());
         assert!(plan_job(&r, Path::new(r"D:\w\a.jpg"), &s).is_none());
         r.output = "subfolder:done".into();
-        let (_, o) = plan_job(&r, Path::new(r"D:\w\sub\a.png"), &s).unwrap();
+        let (_, o, _) = plan_job(&r, Path::new(r"D:\w\sub\a.png"), &s).unwrap();
         assert!(matches!(&o.output.dir, OutDir::Fixed(d) if d == Path::new(r"D:\w\sub\done")));
         r.action = Action::Preset {
             preset_id: "web".into(),
         };
-        let (t, o) = plan_job(&r, Path::new(r"D:\w\a.png"), &s).unwrap();
+        let (t, o, _) = plan_job(&r, Path::new(r"D:\w\a.png"), &s).unwrap();
         assert_eq!(t, Format::Jpg);
         assert!(o.strip_metadata);
         // never recycles originals unattended
@@ -975,7 +984,7 @@ mod tests {
             conflict: crate::settings::ConflictMode::ReplaceOriginal,
             ..Settings::default()
         };
-        let (_, o) = plan_job(&r, Path::new(r"D:\w\a.png"), &s).unwrap();
+        let (_, o, _) = plan_job(&r, Path::new(r"D:\w\a.png"), &s).unwrap();
         assert_eq!(o.output.conflict, Conflict::AutoRename);
     }
 

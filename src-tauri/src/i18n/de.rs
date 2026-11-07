@@ -416,4 +416,15 @@ pub const MSGS: &[(&str, &str)] = &[
         "notify.preset_skip_one",
         "1 Datei übersprungen: von {name} nicht unterstützt",
     ),
+    ("ce.in_step", "Schritt {n} von {of}: {detail}"),
+    ("preset.scan_share", "Scan zum Teilen"),
+    (
+        "preset.too_many_steps",
+        "Eine Kette kann höchstens {max} Schritte haben",
+    ),
+    ("preset.bad_step", "Ein Schritt der Kette ist ungültig"),
+    (
+        "preset.chain_kind",
+        "Diese Schritte funktionieren in dieser Reihenfolge nicht für alle Dateitypen der Vorlage",
+    ),
 ];

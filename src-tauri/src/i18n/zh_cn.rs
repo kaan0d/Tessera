@@ -221,4 +221,12 @@ pub const MSGS: &[(&str, &str)] = &[
     ),
     ("preset.dup_name", "已有同名预设。"),
     ("notify.preset_skip_one", "已跳过 1 个文件：{name} 不支持"),
+    ("ce.in_step", "第 {n}/{of} 步：{detail}"),
+    ("preset.scan_share", "扫描并分享"),
+    ("preset.too_many_steps", "一条流程最多可有 {max} 个步骤"),
+    ("preset.bad_step", "流程中有一个步骤无效"),
+    (
+        "preset.chain_kind",
+        "这些步骤按此顺序不适用于该预设的所有文件类型",
+    ),
 ];

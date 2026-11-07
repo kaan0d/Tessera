@@ -149,7 +149,11 @@ fn list_presets() -> i32 {
             p.id,
             p.name(Lang::En),
             p.kinds.join(", "),
-            p.target
+            if p.steps.is_empty() {
+                p.target.clone()
+            } else {
+                format!("{} steps, last {}", p.steps.len(), p.target)
+            }
         ));
     }
     EXIT_OK
@@ -465,12 +469,112 @@ fn preset_cmd(id: &str, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {
         err("error: no files matched");
         return EXIT_USAGE;
     }
+    if !p.steps.is_empty() {
+        return chain_cmd(&p, &s, &files, &opts, flags.max_bytes, style);
+    }
     run_files(&files, style, |path| {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         p.resolve(ext, &opts)
             .map(|t| (t, opts.clone()))
             .ok_or_else(|| "this preset does not apply to this kind of file".to_string())
     })
+}
+
+/// A preset with steps: each file goes through the whole chain, one file after the other.
+/// `--dry-run` lists the steps and the file the last one would write.
+fn chain_cmd(
+    p: &preset::Preset,
+    s: &settings::Settings,
+    files: &[PathBuf],
+    opts: &Options,
+    max_bytes: Option<u64>,
+    style: Style,
+) -> i32 {
+    let (mut failed, mut skipped) = (0, 0);
+    let mut ffmpeg_ok = None;
+    let cancel = std::sync::Arc::new(AtomicBool::new(false));
+    for (i, path) in files.iter().enumerate() {
+        let tag = format!("[{}/{}] {}", i + 1, files.len(), path.display());
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        let mut plan = match p.plan_chain(ext, s) {
+            Some(plan) if !plan.is_empty() => plan,
+            _ => {
+                skipped += 1;
+                let why = "this preset does not apply to this kind of file";
+                if style.json {
+                    json_line(path, false, "skipped", why);
+                } else {
+                    err(&format!("{tag}: skipped: {why}"));
+                }
+                continue;
+            }
+        };
+        if let (Some(last), Some(m)) = (plan.last_mut(), max_bytes) {
+            last.opts.max_bytes = Some(m);
+        }
+        let last_target = plan.last().map_or(Format::Pdf, |st| st.target);
+        if style.dry_run {
+            let steps: Vec<String> = plan
+                .iter()
+                .map(|st| match &st.pdf {
+                    Some(t) => t.arg(),
+                    None => st.target.ext().to_string(),
+                })
+                .collect();
+            let name = dry_name(path, last_target, opts);
+            if style.json {
+                let v = serde_json::json!({
+                    "file": path.display().to_string(), "ok": true,
+                    "steps": steps, "output": name.display().to_string(),
+                });
+                out(&v.to_string());
+            } else if !style.quiet {
+                out(&format!(
+                    "{tag} -> {} (steps: {}; dry run)",
+                    name.display(),
+                    steps.join(" > ")
+                ));
+            }
+            continue;
+        }
+        // a chain should not die halfway for a missing ffmpeg: ask once, before the first step
+        let needs_ff = plan
+            .iter()
+            .any(|st| uses_ffmpeg(st.from, st.target) || st.opts.ffmpeg_only(st.from));
+        let ready =
+            !needs_ff || *ffmpeg_ok.get_or_insert_with(|| ffmpeg::is_working(&ffmpeg::exe_path()));
+        let r = crate::chain::run(path, &plan, &opts.output, ready, &cancel, |_, _| {});
+        match r {
+            Ok(dest) if style.json => json_line(path, true, "output", &dest.display().to_string()),
+            Ok(dest) if !style.quiet => out(&format!(
+                "{tag} -> {}{}",
+                dest.display(),
+                size_note(&dest, path)
+            )),
+            Ok(_) => {}
+            Err(e) => {
+                failed += 1;
+                let why = match e {
+                    crate::convert::ConvertError::NeedsFfmpeg => {
+                        t(Lang::En, "cli.no_ffmpeg").into()
+                    }
+                    e => e.message(Lang::En),
+                };
+                if style.json {
+                    json_line(path, false, "error", &why);
+                } else {
+                    err(&format!("{tag}: {why}"));
+                }
+            }
+        }
+    }
+    if failed > 0 {
+        err(&format!("{failed} of {} failed", files.len()));
+    }
+    if skipped > 0 && !style.json {
+        err(&format!("{skipped} skipped"));
+    }
+    if failed > 0 { EXIT_FAILED } else { EXIT_OK }
 }
 
 fn merge_cmd(kind: crate::MergeKind, files: &[PathBuf], flags: crate::cli::RunFlags) -> i32 {

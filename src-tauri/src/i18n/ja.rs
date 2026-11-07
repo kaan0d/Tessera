@@ -332,4 +332,18 @@ pub const MSGS: &[(&str, &str)] = &[
         "notify.preset_skip_one",
         "1 個のファイルをスキップしました: {name} ではサポートされていません",
     ),
+    ("ce.in_step", "ステップ {n}/{of}：{detail}"),
+    ("preset.scan_share", "スキャンして共有"),
+    (
+        "preset.too_many_steps",
+        "チェーンのステップは最大 {max} 個までです",
+    ),
+    (
+        "preset.bad_step",
+        "チェーンのステップに無効なものがあります",
+    ),
+    (
+        "preset.chain_kind",
+        "この順序のステップは、プリセットのすべてのファイルの種類では使えません",
+    ),
 ];

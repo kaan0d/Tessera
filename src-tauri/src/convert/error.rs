@@ -43,6 +43,8 @@ pub enum ConvertError {
     Exists,
     /// An error about one file of a multi-file job (merge): the file name comes first.
     InFile(String, Box<ConvertError>),
+    /// An error in step `n` of `of` of a preset chain.
+    InStep(usize, usize, Box<ConvertError>),
     Cancelled,
     Encode(String),
     Io(String),
@@ -110,6 +112,15 @@ impl ConvertError {
             E::NoRecycleBin => plain("ce.no_recycle"),
             E::Exists => plain("ce.exists"),
             E::InFile(name, e) => format!("{name}: {}", e.message(lang)),
+            E::InStep(n, of, e) => tf(
+                lang,
+                "ce.in_step",
+                &[
+                    ("n", &n.to_string()),
+                    ("of", &of.to_string()),
+                    ("detail", &e.message(lang)),
+                ],
+            ),
             E::Cancelled => plain("ce.cancelled"),
             E::Encode(d) => with("ce.encode", d),
             E::Io(d) => with("ce.io", d),
@@ -195,6 +206,7 @@ mod tests {
             ConvertError::NoRecycleBin,
             ConvertError::Exists,
             ConvertError::InFile("a.pdf".into(), Box::new(ConvertError::Corrupt)),
+            ConvertError::InStep(2, 3, Box::new(ConvertError::Corrupt)),
             ConvertError::Cancelled,
             ConvertError::Encode("x".into()),
             ConvertError::Io("x".into()),

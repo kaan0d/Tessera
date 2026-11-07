@@ -8,14 +8,14 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
+use crate::chain;
 use crate::convert::combine::{self, MergeKind};
-use crate::convert::pdf_tools::{self, PdfTool};
-use crate::convert::{
-    self, Conflict, ConvertError, Format, Options, convert, uses_ffmpeg, uses_office,
-};
+use crate::convert::pdf_tools::PdfTool;
+use crate::convert::{Conflict, ConvertError, Format, Options};
 use crate::history::{self, Entry, Kind};
 use crate::i18n::{self, fmt, t};
 use crate::panel;
+use crate::preset::StepPlan;
 use crate::settings::Panel;
 
 #[derive(Clone, Serialize)]
@@ -48,6 +48,8 @@ pub struct Spec {
     pub merge: Option<(MergeKind, Vec<PathBuf>)>,
     /// PDF tool job on `path` (`target` is Pdf).
     pub pdf: Option<PdfTool>,
+    /// Preset chain on `path` (`target` is the last step's, `opts.output` the final output rules).
+    pub steps: Vec<StepPlan>,
 }
 
 struct Job {
@@ -60,6 +62,7 @@ struct Job {
     cancel: Arc<AtomicBool>,
     merge: Option<(MergeKind, Vec<PathBuf>)>,
     pdf: Option<PdfTool>,
+    steps: Vec<StepPlan>,
     kind: Kind,
     label: String,
     started: u64,
@@ -125,6 +128,7 @@ impl Queue {
             );
             std::thread::spawn(move || worker(rx, app, cancels, active, panel, history));
         }
+        std::thread::spawn(crate::chain::sweep);
         Queue {
             tx,
             next_id: AtomicU64::new(1),
@@ -157,6 +161,7 @@ impl Queue {
                 opts: opts.clone(),
                 merge: None,
                 pdf: None,
+                steps: vec![],
             })
             .collect();
         self.enqueue_specs(app, specs, Kind::Convert, &label, ffmpeg_ready)
@@ -211,6 +216,7 @@ impl Queue {
                     cancel,
                     merge: spec.merge,
                     pdf: spec.pdf,
+                    steps: spec.steps,
                     kind,
                     label: label.to_string(),
                     started: history::now_ms(),
@@ -387,15 +393,24 @@ fn run(app: &AppHandle, job: &Job) -> Done {
         return fail(t(lang, "job.cancelled").into());
     }
     let mut last = -1.0f32;
+    // the step of a chain being worked on: the panel shows "name (2/3)"
+    let step = std::cell::Cell::new(0usize);
+    let mut last_step = 0usize;
     let on_progress = |p: f32| {
         let percent = (p * 100.0).clamp(0.0, 100.0).floor();
-        if percent > last {
+        if percent > last || step.get() != last_step {
             last = percent;
+            last_step = step.get();
+            let name = if job.steps.is_empty() {
+                job.name.clone()
+            } else {
+                format!("{} ({}/{})", job.name, last_step + 1, job.steps.len())
+            };
             let _ = app.emit(
                 "job-progress",
                 Progress {
                     id: job.id,
-                    name: job.name.clone(),
+                    name,
                     percent,
                 },
             );
@@ -410,18 +425,29 @@ fn run(app: &AppHandle, job: &Job) -> Done {
     let opts = job.opts.clone().cancel(job.cancel.clone());
     let result = if let Some((kind, files)) = &job.merge {
         combine::run(*kind, files, &opts, on_progress)
-    } else if let Some(tool) = &job.pdf {
-        pdf_tools::run(tool, &job.path, &opts, on_progress)
-    } else if from.is_some_and(|f| uses_office(f, job.target)) {
-        crate::office::convert(&job.path, job.target, &opts, on_progress)
-    } else if from.is_some_and(|f| uses_ffmpeg(f, job.target) || opts.ffmpeg_only(f)) {
-        if job.ffmpeg_ready {
-            ffmpeg_convert(job, on_progress)
-        } else {
-            Err(ConvertError::NeedsFfmpeg)
-        }
+    } else if !job.steps.is_empty() {
+        let mut on_progress = on_progress;
+        chain::run(
+            &job.path,
+            &job.steps,
+            &job.opts.output,
+            job.ffmpeg_ready,
+            &job.cancel,
+            |i, p| {
+                step.set(i);
+                on_progress(p);
+            },
+        )
     } else {
-        convert(&job.path, job.target, &opts, on_progress)
+        chain::run_step(
+            &job.path,
+            from,
+            job.target,
+            job.pdf.as_ref(),
+            &opts,
+            job.ffmpeg_ready,
+            on_progress,
+        )
     };
     match result {
         Ok(out) => Done {
@@ -443,15 +469,4 @@ fn run(app: &AppHandle, job: &Job) -> Done {
         Err(ConvertError::Cancelled) => fail(t(lang, "job.cancelled").into()),
         Err(e) => fail(e.message(lang)),
     }
-}
-
-fn ffmpeg_convert(job: &Job, progress: impl FnMut(f32)) -> Result<PathBuf, ConvertError> {
-    convert::ffmpeg::convert_with_ffmpeg(
-        &crate::ffmpeg::exe_path(),
-        &job.path,
-        job.target,
-        &job.opts,
-        &job.cancel,
-        progress,
-    )
 }

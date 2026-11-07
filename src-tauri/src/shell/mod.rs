@@ -772,6 +772,7 @@ mod tests {
             "ico".into(),
             "instagram".into(),
             "podcast".into(),
+            "scan_share".into(),
         ];
         st.menu_sources = vec!["png".into(), "heic".into()];
         install_at(&root, exe, &st).unwrap();

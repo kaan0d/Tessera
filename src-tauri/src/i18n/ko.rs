@@ -305,4 +305,15 @@ pub const MSGS: &[(&str, &str)] = &[
         "notify.preset_skip_one",
         "파일 1개를 건너뛰었습니다: {name}에서 지원하지 않습니다",
     ),
+    ("ce.in_step", "{n}/{of}단계: {detail}"),
+    ("preset.scan_share", "스캔 후 공유"),
+    (
+        "preset.too_many_steps",
+        "체인은 최대 {max}단계까지 가능합니다",
+    ),
+    ("preset.bad_step", "체인에 올바르지 않은 단계가 있습니다"),
+    (
+        "preset.chain_kind",
+        "이 단계 순서는 사전 설정의 모든 파일 형식에 맞지 않습니다",
+    ),
 ];
