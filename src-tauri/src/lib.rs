@@ -19,6 +19,7 @@ pub mod preset;
 pub mod queue;
 pub mod settings;
 pub mod shell;
+pub mod tesseract;
 pub mod update;
 pub mod watch;
 
@@ -85,6 +86,8 @@ struct AppState {
     download: Arc<Download>,
     /// Document support (LibreOffice) download, started only by the user.
     office_download: Arc<Download>,
+    /// OCR engine or language download (one at a time), started only by the user.
+    ocr_download: Arc<Download>,
     merges: Arc<Mutex<Collector>>,
     watcher: Mutex<Option<watch::Running>>,
     /// Files a watch rule saw but could not convert (its action does not fit them), per rule.
@@ -218,6 +221,93 @@ fn office_remove(app: AppHandle) -> Result<(), String> {
     let r = office::remove().map_err(|e| e.to_string());
     refresh_menu(&app);
     r
+}
+
+#[derive(Serialize)]
+struct OcrLangStatus {
+    code: &'static str,
+    size: u64,
+    installed: bool,
+}
+
+#[derive(Serialize)]
+struct OcrStatus {
+    /// The engine is downloaded (languages are separate).
+    ready: bool,
+    downloading: bool,
+    percent: f32,
+    error: Option<String>,
+    langs: Vec<OcrLangStatus>,
+}
+
+#[tauri::command]
+fn ocr_status(state: State<AppState>) -> OcrStatus {
+    let ready = tesseract::engine_present();
+    let f = state.ocr_download.status(ready, i18n::lang());
+    let have = tesseract::installed_langs();
+    OcrStatus {
+        ready,
+        downloading: f.downloading,
+        percent: f.percent,
+        error: f.error,
+        langs: tesseract::LANGS
+            .iter()
+            .map(|l| OcrLangStatus {
+                code: l.code,
+                size: l.size,
+                installed: have.contains(&l.code),
+            })
+            .collect(),
+    }
+}
+
+/// Up to three attempts with a growing pause.
+fn with_retries(mut f: impl FnMut() -> Result<(), ffmpeg::FfError>) -> Result<(), ffmpeg::FfError> {
+    let mut last = ffmpeg::FfError::new("ff.start");
+    for pause in [0u64, 3, 10] {
+        std::thread::sleep(std::time::Duration::from_secs(pause));
+        match f() {
+            Ok(()) => return Ok(()),
+            Err(e) => last = e,
+        }
+    }
+    Err(last)
+}
+
+/// Downloads the OCR engine (`code` is None) or one language of it.
+#[tauri::command]
+fn ocr_download(app: AppHandle, code: Option<String>) {
+    let dl = app.state::<AppState>().ocr_download.clone();
+    if !dl.begin() {
+        return;
+    }
+    std::thread::spawn(move || {
+        let result = with_retries(|| match &code {
+            None => tesseract::install_engine(&mut |p| dl.set_percent(p)),
+            Some(c) => tesseract::install_lang(c, &mut |p| dl.set_percent(p)),
+        });
+        if let Err(e) = &result {
+            log::write(
+                "error",
+                &format!("OCR download failed: {}", e.message(i18n::Lang::En)),
+            );
+        }
+        dl.finish(result.err());
+    });
+}
+
+/// Deletes one language (`code`) or the engine with every language. Refused while downloading.
+#[tauri::command(async)]
+fn ocr_remove(app: AppHandle, code: Option<String>) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    if state.ocr_download.status(false, i18n::lang()).downloading {
+        return Err(t(i18n::lang(), "ff.busy").to_string());
+    }
+    match code {
+        Some(c) => tesseract::remove_lang(&c),
+        None => tesseract::remove(),
+    }
+    .map_err(|e| e.to_string())
 }
 
 /// Deletes the downloaded ffmpeg (Remove in Settings) and records "later", so nothing is fetched
@@ -1395,6 +1485,8 @@ fn run_headless(cmd: &Cli) -> Option<i32> {
         Cli::InstallFfmpeg => Some(install_ffmpeg_headless()),
         Cli::InstallOffice => Some(install_office_headless()),
         Cli::RemoveOffice => Some(i32::from(office::remove().is_err())),
+        Cli::InstallOcr(langs) => Some(install_ocr_headless(langs)),
+        Cli::RemoveOcr => Some(i32::from(tesseract::remove().is_err())),
         Cli::DeferFfmpeg => {
             let path = settings::settings_path();
             let mut s = settings::load_initial(&path);
@@ -1463,6 +1555,59 @@ fn install_office_headless() -> i32 {
         eprintln!("{e}");
     }
     i32::from(r.is_err())
+}
+
+/// `--install-ocr [languages]`: the engine (if missing) and each language (if missing), printing
+/// `P <percent>` lines. Languages are Tesseract codes (`tur`) or tags (`tr`); none means English.
+fn install_ocr_headless(names: &[String]) -> i32 {
+    use std::io::Write;
+    let mut codes = vec![];
+    for n in names {
+        match tesseract::lang_info(n)
+            .map(|l| l.code)
+            .or_else(|| tesseract::code_for_tag(n))
+        {
+            Some(c) => codes.push(c),
+            None => {
+                eprintln!("unknown OCR language: {n}");
+                return 2;
+            }
+        }
+    }
+    if codes.is_empty() {
+        codes.push("eng");
+    }
+    let need_engine = !tesseract::is_working(&tesseract::exe_path());
+    let have = tesseract::installed_langs();
+    codes.retain(|c| !have.contains(c));
+    codes.dedup();
+    let steps = usize::from(need_engine) + codes.len();
+    let mut done = 0usize;
+    let say = |done: usize, p: f32| {
+        let pct = (done as f32 + p / 100.0) / steps.max(1) as f32 * 100.0;
+        let mut out = std::io::stdout();
+        let _ = writeln!(out, "P {pct:.1}");
+        let _ = out.flush();
+    };
+    let mut result = Ok(());
+    if need_engine {
+        result = with_retries(|| tesseract::install_engine(&mut |p| say(done, p)));
+        done += 1;
+    }
+    for c in codes {
+        if result.is_err() {
+            break;
+        }
+        result = with_retries(|| tesseract::install_lang(c, &mut |p| say(done, p)));
+        done += 1;
+    }
+    if let Err(e) = &result {
+        log::write("error", &format!("OCR download failed: {e}"));
+        eprintln!("{e}");
+    } else {
+        say(steps.saturating_sub(1), 100.0);
+    }
+    i32::from(result.is_err())
 }
 
 struct SetupState {
@@ -1648,6 +1793,9 @@ pub fn run() {
             office_status,
             office_download,
             office_remove,
+            ocr_status,
+            ocr_download,
+            ocr_remove,
             ffmpeg_remove,
             open_folder,
             panel_preview,
@@ -1705,6 +1853,7 @@ pub fn run() {
                 settings: Mutex::new(s),
                 download: Arc::default(),
                 office_download: Arc::default(),
+                ocr_download: Arc::default(),
                 merges: Arc::new(Mutex::new(Collector::new(batch::QUIET_MS))),
                 watcher: Mutex::new(None),
                 watch_skips: Mutex::default(),

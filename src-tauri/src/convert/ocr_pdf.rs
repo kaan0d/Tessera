@@ -302,7 +302,7 @@ pub fn add_text_layers(
         } else if let Some(pb) = layer_box(doc, id) {
             let img = pdf::render_page(src, number, None)?;
             opts.check_cancel()?;
-            let page = ocr::recognize(&img, lang)?;
+            let page = ocr::recognize(&img, lang, opts)?;
             if page.lines.iter().all(|l| l.words.is_empty()) {
                 out.skipped += 1;
             } else {

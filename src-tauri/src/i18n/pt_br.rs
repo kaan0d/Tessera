@@ -368,7 +368,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "Nenhum texto reconhecido"),
     (
         "ce.ocr_no_language",
-        "Nenhum idioma de OCR instalado. Adicione um em Configurações do Windows > Hora e idioma, com reconhecimento de texto.",
+        "Nenhum idioma de OCR disponível. Adicione um em Configurações do Windows > Hora e idioma, baixe um no aplicativo em Configurações > OCR ou execute `tessera --install-ocr`.",
     ),
     (
         "ce.ocr_failed",
@@ -422,4 +422,6 @@ pub const MSGS: &[(&str, &str)] = &[
     ("cap.saved_limit", "{name} (parou no limite de tempo ou tamanho)"),
     ("cap.saved_disk", "{name} (parou: o disco está quase cheio)"),
     ("cap.hotkey_failed", "Não foi possível registrar o atalho {key}: {err}"),
+    ("tess.run", "Não foi possível executar o mecanismo de OCR"),
+    ("tess.missing", "O pacote do mecanismo de OCR está incompleto"),
 ];

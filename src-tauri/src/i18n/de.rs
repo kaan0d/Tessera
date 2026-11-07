@@ -389,7 +389,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "Kein Text erkannt"),
     (
         "ce.ocr_no_language",
-        "Keine OCR-Sprache ist installiert. Fügen Sie in den Windows-Einstellungen unter Zeit und Sprache eine Sprache mit Texterkennung hinzu.",
+        "Keine OCR-Sprache ist verfügbar. Fügen Sie in den Windows-Einstellungen unter Zeit und Sprache eine hinzu, laden Sie eine in der App unter Einstellungen > OCR herunter oder führen Sie `tessera --install-ocr` aus.",
     ),
     ("ce.ocr_failed", "Texterkennung fehlgeschlagen: {detail}"),
     (
@@ -443,4 +443,6 @@ pub const MSGS: &[(&str, &str)] = &[
     ("cap.saved_limit", "{name} (am Zeit- oder Größenlimit beendet)"),
     ("cap.saved_disk", "{name} (beendet: Datenträger fast voll)"),
     ("cap.hotkey_failed", "Das Tastenkürzel {key} konnte nicht registriert werden: {err}"),
+    ("tess.run", "Die OCR-Engine konnte nicht ausgeführt werden"),
+    ("tess.missing", "Das Paket der OCR-Engine ist unvollständig"),
 ];

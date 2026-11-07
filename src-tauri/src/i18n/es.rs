@@ -344,7 +344,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "No se reconoció texto"),
     (
         "ce.ocr_no_language",
-        "No hay ningún idioma de OCR instalado. Añada uno en Configuración de Windows > Hora e idioma, con reconocimiento de texto.",
+        "No hay ningún idioma de OCR disponible. Añada uno en Configuración de Windows > Hora e idioma, descárguelo en la aplicación en Configuración > OCR o ejecute `tessera --install-ocr`.",
     ),
     (
         "ce.ocr_failed",
@@ -395,4 +395,6 @@ pub const MSGS: &[(&str, &str)] = &[
     ("cap.saved_limit", "{name} (se detuvo en el límite de tiempo o tamaño)"),
     ("cap.saved_disk", "{name} (detenida: el disco está casi lleno)"),
     ("cap.hotkey_failed", "No se pudo registrar el atajo {key}: {err}"),
+    ("tess.run", "No se pudo ejecutar el motor de OCR"),
+    ("tess.missing", "El paquete del motor de OCR está incompleto"),
 ];

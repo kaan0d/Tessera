@@ -314,7 +314,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "Tidak ada teks yang dikenali"),
     (
         "ce.ocr_no_language",
-        "Tidak ada bahasa OCR yang terpasang. Tambahkan di Pengaturan Windows > Waktu & bahasa, dengan pengenalan teks.",
+        "Tidak ada bahasa OCR yang tersedia. Tambahkan di Pengaturan Windows > Waktu & bahasa, unduh di aplikasi melalui Pengaturan > OCR, atau jalankan `tessera --install-ocr`.",
     ),
     ("ce.ocr_failed", "Pengenalan teks gagal: {detail}"),
     (
@@ -365,4 +365,6 @@ pub const MSGS: &[(&str, &str)] = &[
     ("cap.saved_limit", "{name} (berhenti di batas waktu atau ukuran)"),
     ("cap.saved_disk", "{name} (berhenti: disk hampir penuh)"),
     ("cap.hotkey_failed", "Pintasan {key} tidak dapat didaftarkan: {err}"),
+    ("tess.run", "Mesin OCR tidak dapat dijalankan"),
+    ("tess.missing", "Paket mesin OCR tidak lengkap"),
 ];

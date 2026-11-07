@@ -85,8 +85,21 @@ fn engine(lang: Option<&str>) -> Result<OcrEngine, ConvertError> {
     OcrEngine::TryCreateFromUserProfileLanguages().map_err(|_| ConvertError::OcrNoLanguage)
 }
 
-/// Recognizes the text of `img` in `lang` (BCP-47) or in the user's Windows languages.
-pub fn recognize(img: &DynamicImage, lang: Option<&str>) -> Result<OcrPage, ConvertError> {
+/// Recognizes the text of `img` in `lang` (BCP-47) or in the user's Windows languages. Windows
+/// OCR goes first; when it has no recognizer for the language, the downloaded Tesseract engine
+/// is tried, and only when that has nothing either is the error `OcrNoLanguage`.
+pub fn recognize(
+    img: &DynamicImage,
+    lang: Option<&str>,
+    opts: &Options,
+) -> Result<OcrPage, ConvertError> {
+    match windows_recognize(img, lang) {
+        Err(ConvertError::OcrNoLanguage) => crate::tesseract::recognize(img, lang, opts),
+        r => r,
+    }
+}
+
+fn windows_recognize(img: &DynamicImage, lang: Option<&str>) -> Result<OcrPage, ConvertError> {
     init();
     let engine = engine(lang)?;
     let max = OcrEngine::MaxImageDimension().map_err(os)?;
@@ -174,7 +187,7 @@ pub fn write_text(
         };
         let img = super::image::load(src, from, &load_opts)?;
         opts.check_cancel()?;
-        recognize(&img, lang)?.text()
+        recognize(&img, lang, opts)?.text()
     };
     if text.trim().is_empty() {
         return Err(ConvertError::OcrNoText);
@@ -205,7 +218,7 @@ fn pdf_text(
         } else {
             let img = super::pdf::render_page(src, n, None)?;
             opts.check_cancel()?;
-            recognize(&img, lang)?.text()
+            recognize(&img, lang, opts)?.text()
         };
         pages.push(text);
         progress((i + 1) as f32 / numbers.len() as f32 * 0.99);
@@ -256,7 +269,7 @@ mod tests {
             return; // no recognizer pack on this machine
         }
         let img = DynamicImage::new_rgb8(200, 100);
-        let page = recognize(&img, None).unwrap();
+        let page = recognize(&img, None, &Options::default()).unwrap();
         assert!(page.lines.is_empty());
         assert_eq!(page.scale, 1.0);
     }
@@ -267,7 +280,7 @@ mod tests {
             return;
         }
         let img = DynamicImage::new_rgb8(12_000, 40);
-        let page = recognize(&img, None).unwrap();
+        let page = recognize(&img, None, &Options::default()).unwrap();
         assert!(page.scale < 1.0 && page.scale > 0.0);
     }
 

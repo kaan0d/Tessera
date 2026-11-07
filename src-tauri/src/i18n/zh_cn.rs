@@ -206,7 +206,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "未识别到文本"),
     (
         "ce.ocr_no_language",
-        "未安装任何 OCR 语言。请在 Windows 设置 > 时间和语言中添加带文本识别的语言。",
+        "没有可用的 OCR 语言。请在 Windows 设置 > 时间和语言中添加，或在应用的“设置 > OCR”中下载，或运行 `tessera --install-ocr`。",
     ),
     ("ce.ocr_failed", "文本识别失败：{detail}"),
     (
@@ -245,4 +245,6 @@ pub const MSGS: &[(&str, &str)] = &[
     ("cap.saved_limit", "{name}（已在时间或大小上限处停止）"),
     ("cap.saved_disk", "{name}（已停止：磁盘空间即将用尽）"),
     ("cap.hotkey_failed", "无法注册快捷键 {key}：{err}"),
+    ("tess.run", "无法运行 OCR 引擎"),
+    ("tess.missing", "OCR 引擎包不完整"),
 ];

@@ -284,7 +284,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "인식된 텍스트가 없습니다"),
     (
         "ce.ocr_no_language",
-        "설치된 OCR 언어가 없습니다. Windows 설정 > 시간 및 언어에서 텍스트 인식이 포함된 언어를 추가하세요.",
+        "사용할 수 있는 OCR 언어가 없습니다. Windows 설정 > 시간 및 언어에서 추가하거나, 앱의 설정 > OCR에서 받거나, `tessera --install-ocr`를 실행하세요.",
     ),
     ("ce.ocr_failed", "텍스트 인식에 실패했습니다: {detail}"),
     (
@@ -332,4 +332,6 @@ pub const MSGS: &[(&str, &str)] = &[
     ("cap.saved_limit", "{name}(시간 또는 크기 한도에서 중지됨)"),
     ("cap.saved_disk", "{name}(중지됨: 디스크가 거의 가득 찼습니다)"),
     ("cap.hotkey_failed", "단축키 {key}을(를) 등록할 수 없습니다: {err}"),
+    ("tess.run", "OCR 엔진을 실행할 수 없습니다"),
+    ("tess.missing", "OCR 엔진 패키지가 불완전합니다"),
 ];

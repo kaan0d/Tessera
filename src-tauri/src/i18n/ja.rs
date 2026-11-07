@@ -311,7 +311,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "テキストが認識されませんでした"),
     (
         "ce.ocr_no_language",
-        "OCR の言語がインストールされていません。Windows の設定 > 時刻と言語で、テキスト認識付きの言語を追加してください。",
+        "使用できる OCR の言語がありません。Windows の設定 > 時刻と言語で追加するか、アプリの [設定] > [OCR] でダウンロードするか、`tessera --install-ocr` を実行してください。",
     ),
     ("ce.ocr_failed", "テキスト認識に失敗しました: {detail}"),
     (
@@ -362,4 +362,6 @@ pub const MSGS: &[(&str, &str)] = &[
     ("cap.saved_limit", "{name}（時間またはサイズの上限で停止）"),
     ("cap.saved_disk", "{name}（停止: ディスクの空きがわずかです）"),
     ("cap.hotkey_failed", "ショートカット {key} を登録できませんでした: {err}"),
+    ("tess.run", "OCR エンジンを実行できませんでした"),
+    ("tess.missing", "OCR エンジンのパッケージが不完全です"),
 ];
