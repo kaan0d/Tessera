@@ -1,5 +1,6 @@
 pub mod app_info;
 pub mod batch;
+pub mod capture;
 pub mod cli;
 pub mod convert;
 pub mod dropped;
