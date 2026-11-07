@@ -1,0 +1,3 @@
+[build]
+# no VC++ runtime dependency: the DLL ships next to tesseract.exe on machines that may lack it
+rustflags = ["-C", "target-feature=+crt-static"]
