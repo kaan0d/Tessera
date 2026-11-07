@@ -14,6 +14,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("pdf.rotate_right", "Girar para a direita"),
     ("pdf.rotate_left", "Girar para a esquerda"),
     ("pdf.rotate_180", "Virar de cabeça para baixo"),
+    ("pdf.ocr", "Tornar pesquisável (OCR)"),
     ("pdf.compress", "Compactar PDF"),
     ("menu.pdf_more", "Mais ferramentas de PDF..."),
     ("menu.merge_pdf", "Mesclar em PDF"),

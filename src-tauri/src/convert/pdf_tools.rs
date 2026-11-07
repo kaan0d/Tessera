@@ -31,6 +31,9 @@ pub enum PdfTool {
     Rotate { angle: u16, pages: String },
     /// Re-encode large pictures as JPEG; `strong` makes them smaller still.
     Compress { strong: bool },
+    /// Scanned pages become searchable: OCR text is added as an invisible layer.
+    /// `lang` is a BCP-47 tag; `None` = the user's Windows languages.
+    Ocr { lang: Option<String> },
 }
 
 impl PdfTool {
@@ -45,6 +48,8 @@ impl PdfTool {
             PdfTool::Rotate { angle, pages } => format!("rotate:{angle}:{pages}"),
             PdfTool::Compress { strong: false } => "compress".into(),
             PdfTool::Compress { strong: true } => "compress:strong".into(),
+            PdfTool::Ocr { lang: None } => "ocr".into(),
+            PdfTool::Ocr { lang: Some(l) } => format!("ocr:{l}"),
         }
     }
 
@@ -64,6 +69,9 @@ impl PdfTool {
             }
             "compress" if rest.is_empty() => PdfTool::Compress { strong: false },
             "compress" if rest == "strong" => PdfTool::Compress { strong: true },
+            "ocr" => PdfTool::Ocr {
+                lang: (!rest.trim().is_empty()).then(|| rest.trim().to_string()),
+            },
             _ => return None,
         };
         tool.valid().then_some(tool)
@@ -76,6 +84,7 @@ impl PdfTool {
                     && (pages.trim().is_empty() || pages_look_right(pages))
             }
             PdfTool::Extract { pages } | PdfTool::Delete { pages } => pages_look_right(pages),
+            PdfTool::Ocr { lang: Some(l) } => super::ocr::valid_lang(l),
             _ => true,
         }
     }
@@ -90,6 +99,7 @@ impl PdfTool {
             PdfTool::Rotate { angle: 270, .. } => "pdf.rotate_left",
             PdfTool::Rotate { .. } => "pdf.rotate_180",
             PdfTool::Compress { .. } => "pdf.compress",
+            PdfTool::Ocr { .. } => "pdf.ocr",
         }
     }
 }
@@ -196,6 +206,14 @@ pub fn run(
     let page = |n: &u32| all[*n as usize - 1];
     opts.check_cancel()?;
     let (suffix, bytes) = match tool {
+        PdfTool::Ocr { lang } => {
+            let lang = lang.as_deref().or(opts.ocr_lang.as_deref());
+            let done = super::ocr_pdf::add_text_layers(&mut doc, &src, lang, opts, &mut progress)?;
+            if done.added == 0 && done.had_text == 0 {
+                return Err(ConvertError::OcrNoText);
+            }
+            ("-searchable", pdf_edit::save(&mut doc)?)
+        }
         PdfTool::Split => return split(&doc, &src, opts, progress),
         PdfTool::Extract { pages } => {
             let kids: Vec<_> = parse_pages(pages, count)?.iter().map(page).collect();

@@ -164,6 +164,7 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("pdf.rotate_right", "Rotate right", "Sağa döndür"),
     ("pdf.rotate_left", "Rotate left", "Sola döndür"),
     ("pdf.rotate_180", "Turn upside down", "Ters çevir"),
+    ("pdf.ocr", "Make searchable (OCR)", "Aranabilir yap (OCR)"),
     ("pdf.compress", "Compress PDF", "PDF'i sıkıştır"),
     (
         "menu.pdf_more",

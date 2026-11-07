@@ -11,6 +11,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("pdf.rotate_right", "向右旋转"),
     ("pdf.rotate_left", "向左旋转"),
     ("pdf.rotate_180", "旋转 180°"),
+    ("pdf.ocr", "转为可搜索 (OCR)"),
     ("pdf.compress", "压缩 PDF"),
     ("menu.pdf_more", "更多 PDF 工具..."),
     ("menu.merge_pdf", "合并为 PDF"),

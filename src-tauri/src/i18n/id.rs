@@ -14,6 +14,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("pdf.rotate_right", "Putar ke kanan"),
     ("pdf.rotate_left", "Putar ke kiri"),
     ("pdf.rotate_180", "Balikkan"),
+    ("pdf.ocr", "Buat dapat dicari (OCR)"),
     ("pdf.compress", "Kompres PDF"),
     ("menu.pdf_more", "Alat PDF lainnya..."),
     ("menu.merge_pdf", "Gabungkan menjadi PDF"),

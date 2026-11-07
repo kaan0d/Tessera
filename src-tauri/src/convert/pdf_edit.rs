@@ -84,7 +84,7 @@ pub fn pages(doc: &Document) -> Vec<ObjectId> {
 
 /// Copies what `page` inherits from the page tree onto the page itself, so it can move to a
 /// new tree without losing its fonts or size.
-fn flatten_inherited(doc: &mut Document, page: ObjectId) {
+pub(crate) fn flatten_inherited(doc: &mut Document, page: ObjectId) {
     let Ok(own) = doc.get_dictionary(page) else {
         return;
     };

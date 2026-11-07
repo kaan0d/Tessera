@@ -21,6 +21,7 @@ mod error;
 pub mod ffmpeg;
 mod image;
 pub mod ocr;
+mod ocr_pdf;
 pub mod office;
 pub mod output;
 pub mod pdf;

@@ -14,6 +14,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("pdf.rotate_right", "오른쪽으로 회전"),
     ("pdf.rotate_left", "왼쪽으로 회전"),
     ("pdf.rotate_180", "거꾸로 뒤집기"),
+    ("pdf.ocr", "검색 가능하게 만들기 (OCR)"),
     ("pdf.compress", "PDF 압축"),
     ("menu.pdf_more", "기타 PDF 도구..."),
     ("menu.merge_pdf", "PDF로 병합"),

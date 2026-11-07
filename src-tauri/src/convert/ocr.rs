@@ -151,7 +151,7 @@ pub fn recognize(img: &DynamicImage, lang: Option<&str>) -> Result<OcrPage, Conv
 /// Pages with fewer readable characters than this are read by OCR instead of from the PDF.
 const MIN_EMBEDDED: usize = 10;
 /// A PDF with more pages than this is refused (OCR time and memory).
-const MAX_PAGES: usize = 500;
+pub(super) const MAX_PAGES: usize = 500;
 
 /// Picture or PDF file -> UTF-8 text (CRLF lines, pages separated by a blank line). A PDF page
 /// with a text layer is read from it; a scanned page goes through OCR. No text at all is
@@ -198,12 +198,8 @@ fn pdf_text(
     let mut pages = vec![];
     for (i, &n) in numbers.iter().enumerate() {
         opts.check_cancel()?;
-        let embedded = super::pdf_edit::guarded(|| {
-            Ok(doc
-                .extract_text_with_limit(&[n], 8 * 1024 * 1024)
-                .unwrap_or_default())
-        })?;
-        let readable = embedded.chars().filter(|c| c.is_alphanumeric()).count();
+        let embedded = embedded_text(&doc, n)?;
+        let readable = readable_chars(&embedded);
         let text = if readable >= MIN_EMBEDDED {
             crlf(embedded.trim())
         } else {
@@ -215,6 +211,24 @@ fn pdf_text(
         progress((i + 1) as f32 / numbers.len() as f32 * 0.99);
     }
     Ok(pages.join("\r\n\r\n"))
+}
+
+/// The text layer of page `n`, empty when it has none or cannot be read.
+fn embedded_text(doc: &lopdf::Document, n: u32) -> Result<String, ConvertError> {
+    super::pdf_edit::guarded(|| {
+        Ok(doc
+            .extract_text_with_limit(&[n], 8 * 1024 * 1024)
+            .unwrap_or_default())
+    })
+}
+
+fn readable_chars(s: &str) -> usize {
+    s.chars().filter(|c| c.is_alphanumeric()).count()
+}
+
+/// True when page `n` already has text a reader can use (OCR is not needed there).
+pub(super) fn has_text_layer(doc: &lopdf::Document, n: u32) -> Result<bool, ConvertError> {
+    Ok(readable_chars(&embedded_text(doc, n)?) >= MIN_EMBEDDED)
 }
 
 /// Line breaks as CRLF, whatever the source used.

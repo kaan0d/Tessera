@@ -14,6 +14,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("pdf.rotate_right", "右に回転"),
     ("pdf.rotate_left", "左に回転"),
     ("pdf.rotate_180", "上下反転"),
+    ("pdf.ocr", "検索可能にする (OCR)"),
     ("pdf.compress", "PDF を圧縮"),
     ("menu.pdf_more", "その他の PDF ツール..."),
     ("menu.merge_pdf", "PDF に結合"),
