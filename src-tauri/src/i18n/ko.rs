@@ -281,6 +281,11 @@ pub const MSGS: &[(&str, &str)] = &[
     ),
     ("ce.empty_file", "파일이 비어 있습니다"),
     (
+        "ce.ocr_no_language",
+        "설치된 OCR 언어가 없습니다. Windows 설정 > 시간 및 언어에서 텍스트 인식이 포함된 언어를 추가하세요.",
+    ),
+    ("ce.ocr_failed", "텍스트 인식에 실패했습니다: {detail}"),
+    (
         "ce.office_timeout",
         "LibreOffice가 5분 안에 끝나지 않았습니다. 문서가 너무 클 수 있습니다.",
     ),

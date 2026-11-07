@@ -203,6 +203,11 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.no_pages_left", "这样会删除所有页面。请至少保留一页。"),
     ("ce.empty_file", "文件为空"),
     (
+        "ce.ocr_no_language",
+        "未安装任何 OCR 语言。请在 Windows 设置 > 时间和语言中添加带文本识别的语言。",
+    ),
+    ("ce.ocr_failed", "文本识别失败：{detail}"),
+    (
         "ce.office_timeout",
         "LibreOffice 未能在 5 分钟内完成。文档可能太大。",
     ),

@@ -350,6 +350,11 @@ pub const MSGS: &[(&str, &str)] = &[
     ),
     ("ce.empty_file", "Le fichier est vide"),
     (
+        "ce.ocr_no_language",
+        "Aucune langue OCR n'est installée. Ajoutez-en une dans Paramètres Windows > Heure et langue, avec la reconnaissance de texte.",
+    ),
+    ("ce.ocr_failed", "Échec de la reconnaissance de texte : {detail}"),
+    (
         "ce.office_timeout",
         "LibreOffice n'a pas terminé en 5 minutes. Le document est probablement trop volumineux.",
     ),

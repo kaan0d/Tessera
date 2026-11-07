@@ -311,6 +311,11 @@ pub const MSGS: &[(&str, &str)] = &[
     ),
     ("ce.empty_file", "File kosong"),
     (
+        "ce.ocr_no_language",
+        "Tidak ada bahasa OCR yang terpasang. Tambahkan di Pengaturan Windows > Waktu & bahasa, dengan pengenalan teks.",
+    ),
+    ("ce.ocr_failed", "Pengenalan teks gagal: {detail}"),
+    (
         "ce.office_timeout",
         "LibreOffice tidak selesai dalam 5 menit. Dokumen kemungkinan terlalu besar.",
     ),

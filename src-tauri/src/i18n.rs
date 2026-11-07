@@ -608,6 +608,16 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ),
     ("ce.empty_file", "The file is empty", "Dosya boş"),
     (
+        "ce.ocr_no_language",
+        "No OCR language is installed. Add one with text recognition in Windows Settings > Time & language.",
+        "Yüklü OCR dili yok. Windows Ayarlar > Zaman ve dil bölümünden metin tanımalı bir dil ekleyin.",
+    ),
+    (
+        "ce.ocr_failed",
+        "Text recognition failed: {detail}",
+        "Metin tanıma başarısız: {detail}",
+    ),
+    (
         "ce.office_timeout",
         "LibreOffice did not finish in 5 minutes. The document is probably too large.",
         "LibreOffice 5 dakikada bitiremedi. Belge büyük ihtimalle çok büyük.",

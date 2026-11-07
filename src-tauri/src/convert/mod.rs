@@ -20,6 +20,7 @@ pub static SHRUNK_TO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU6
 mod error;
 pub mod ffmpeg;
 mod image;
+pub mod ocr;
 pub mod office;
 pub mod output;
 pub mod pdf;

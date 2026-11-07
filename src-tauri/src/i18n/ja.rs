@@ -308,6 +308,11 @@ pub const MSGS: &[(&str, &str)] = &[
     ),
     ("ce.empty_file", "ファイルが空です"),
     (
+        "ce.ocr_no_language",
+        "OCR の言語がインストールされていません。Windows の設定 > 時刻と言語で、テキスト認識付きの言語を追加してください。",
+    ),
+    ("ce.ocr_failed", "テキスト認識に失敗しました: {detail}"),
+    (
         "ce.office_timeout",
         "LibreOffice が 5 分以内に完了しませんでした。ドキュメントが大きすぎる可能性があります。",
     ),
