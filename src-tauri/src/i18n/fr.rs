@@ -353,7 +353,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "Aucun texte reconnu"),
     (
         "ce.ocr_no_language",
-        "Aucune langue OCR n'est installée. Ajoutez-en une dans Paramètres Windows > Heure et langue, avec la reconnaissance de texte.",
+        "Aucune langue OCR n'est disponible. Ajoutez-en une dans Paramètres Windows > Heure et langue, téléchargez-en une dans l'application sous Paramètres > OCR, ou exécutez `tessera --install-ocr`.",
     ),
     ("ce.ocr_failed", "Échec de la reconnaissance de texte : {detail}"),
     (
@@ -377,4 +377,6 @@ pub const MSGS: &[(&str, &str)] = &[
         "notify.preset_skip_one",
         "1 fichier ignoré : non pris en charge par {name}",
     ),
+    ("tess.run", "Le moteur OCR n'a pas pu être exécuté"),
+    ("tess.missing", "Le paquet du moteur OCR est incomplet"),
 ];

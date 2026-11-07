@@ -611,8 +611,8 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("ce.ocr_no_text", "No text recognized", "Metin tanınmadı"),
     (
         "ce.ocr_no_language",
-        "No OCR language is installed. Add one with text recognition in Windows Settings > Time & language.",
-        "Yüklü OCR dili yok. Windows Ayarlar > Zaman ve dil bölümünden metin tanımalı bir dil ekleyin.",
+        "No OCR language is available. Add one in Windows Settings > Time & language, download one in the app under Settings > OCR, or run `tessera --install-ocr`.",
+        "Kullanılabilir OCR dili yok. Windows Ayarlar > Zaman ve dil bölümünden bir dil ekleyin, uygulamada Ayarlar > OCR bölümünden indirin ya da `tessera --install-ocr` çalıştırın.",
     ),
     (
         "ce.ocr_failed",
@@ -767,6 +767,16 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "lo.missing",
         "The document support package is incomplete",
         "Belge desteği paketi eksik",
+    ),
+    (
+        "tess.run",
+        "The OCR engine could not be run",
+        "OCR motoru çalıştırılamadı",
+    ),
+    (
+        "tess.missing",
+        "The OCR engine package is incomplete",
+        "OCR motoru paketi eksik",
     ),
 ];
 

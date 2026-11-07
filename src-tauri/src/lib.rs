@@ -16,6 +16,7 @@ pub mod preset;
 pub mod queue;
 pub mod settings;
 pub mod shell;
+pub mod tesseract;
 pub mod update;
 pub mod watch;
 

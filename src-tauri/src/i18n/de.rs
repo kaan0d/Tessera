@@ -389,7 +389,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "Kein Text erkannt"),
     (
         "ce.ocr_no_language",
-        "Keine OCR-Sprache ist installiert. Fügen Sie in den Windows-Einstellungen unter Zeit und Sprache eine Sprache mit Texterkennung hinzu.",
+        "Keine OCR-Sprache ist verfügbar. Fügen Sie in den Windows-Einstellungen unter Zeit und Sprache eine hinzu, laden Sie eine in der App unter Einstellungen > OCR herunter oder führen Sie `tessera --install-ocr` aus.",
     ),
     ("ce.ocr_failed", "Texterkennung fehlgeschlagen: {detail}"),
     (
@@ -416,4 +416,6 @@ pub const MSGS: &[(&str, &str)] = &[
         "notify.preset_skip_one",
         "1 Datei übersprungen: von {name} nicht unterstützt",
     ),
+    ("tess.run", "Die OCR-Engine konnte nicht ausgeführt werden"),
+    ("tess.missing", "Das Paket der OCR-Engine ist unvollständig"),
 ];

@@ -368,7 +368,7 @@ pub const MSGS: &[(&str, &str)] = &[
     ("ce.ocr_no_text", "Nenhum texto reconhecido"),
     (
         "ce.ocr_no_language",
-        "Nenhum idioma de OCR instalado. Adicione um em Configurações do Windows > Hora e idioma, com reconhecimento de texto.",
+        "Nenhum idioma de OCR disponível. Adicione um em Configurações do Windows > Hora e idioma, baixe um no aplicativo em Configurações > OCR ou execute `tessera --install-ocr`.",
     ),
     ("ce.ocr_failed", "Falha no reconhecimento de texto: {detail}"),
     (
@@ -392,4 +392,6 @@ pub const MSGS: &[(&str, &str)] = &[
         "notify.preset_skip_one",
         "1 arquivo ignorado: sem suporte em {name}",
     ),
+    ("tess.run", "Não foi possível executar o mecanismo de OCR"),
+    ("tess.missing", "O pacote do mecanismo de OCR está incompleto"),
 ];
