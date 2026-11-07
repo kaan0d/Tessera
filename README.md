@@ -36,6 +36,7 @@ Prefer a window? Drop files on it and choose there. Prefer scripts? There is a f
 - **Office documents:** DOCX, DOC, ODT, RTF, TXT; XLSX, XLS, ODS, CSV; PPTX, PPT, ODP. Each converts to the others of its kind and to PDF, slides become one PNG or JPG each, and a PDF can come back as DOCX or ODT.
 - **PDF tools:** split into pages, keep or delete pages (`1-3, 5`), rotate, compress the pictures inside. A multi-page PDF turned into images gives one picture per page.
 - **Text from scans (OCR):** a picture or scanned PDF becomes a TXT file, and a scanned PDF becomes searchable with an invisible text layer over the unchanged page. It uses the text recognition built into Windows, offline, for the languages Windows has installed.
+- **Screen recording:** pick an area from the tray icon (or `Ctrl+Alt+R`, off until you turn it on), record it as MP4, or as GIF or WEBM, and find the file in `Videos\Tessera`. A red frame and a small bar with Stop and Discard stay on screen while it records and do not appear in the video. No sound.
 - **Shrink to a size:** "under 10 MB" or "under 2 MB" for images, video, audio and PDF. A file that already fits is copied as is when its format stays the same.
 - **Presets:** web, WhatsApp, email, Discord (all under 10 MB where it matters), strip location data, PDF, WebP, icon, Instagram, podcast. Save your own from any custom settings.
 - **Edit on the way:** resize, strip metadata, fix orientation, cut audio and video, audio bitrate, mono, GIF fps and width.
@@ -78,6 +79,7 @@ tessera-cli pdf extract contract.pdf --pages 1-3,5
 tessera-cli pdf compress scan.pdf --strong
 tessera-cli convert receipt.jpg --to txt --ocr-lang tr
 tessera-cli pdf ocr scan.pdf
+tessera-cli capture --region 0,0,1280,720 --secs 10 --to gif
 tessera-cli convert *.jpg --to webp --jobs 4
 tessera-cli list-presets
 tessera-cli formats png
@@ -103,6 +105,7 @@ Everything is per user. Files: the install folder only, data included. Registry,
 - PDF tools that keep or delete pages drop bookmarks and form fields; Compress only touches RGB and gray pictures.
 - A one-page PDF or one-slide deck turned into pictures gives one file; more pages go into a folder named after the file.
 - OCR needs a text recognition language in Windows (Settings > Time & language). Searchable PDF keeps Latin and Turkish letters exact, turned pages are skipped, and handwriting is not read.
+- Screen recording uses ffmpeg (gdigrab), has no sound, and stops at 2 GB or the time limit (1 to 30 minutes, 10 by default). An area stays on one screen. Antivirus tools sometimes flag any screen capture, more so for an unsigned app.
 - Lossy WebP (made by ffmpeg) leaves out the colour profile; JPEG and PNG keep it.
 
 ## Built with
@@ -145,6 +148,8 @@ src-tauri/src/
   queue.rs  batch.rs     job queue, progress events, history records
   shell/                 Explorer menu: registry verbs, icons, presets
   watch.rs  folder.rs    watch folders and folder verbs
+  capture.rs             screen recording: ffmpeg arguments, DPI and layout maths (tested)
+  capture_ui.rs          area picker, control bar and red frame windows, tray and shortcut
   cli.rs  headless.rs    command-line parsing and the `tessera-cli` commands
   install.rs             the self-installer and uninstaller
   office.rs              document support: LibreOffice download and lookup (runner in convert/office.rs)
