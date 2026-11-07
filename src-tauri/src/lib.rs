@@ -1658,7 +1658,8 @@ pub fn run() {
             capture_ui::capture_abort_select,
             capture_ui::capture_stop,
             capture_ui::capture_cancel,
-            capture_ui::capture_status
+            capture_ui::capture_status,
+            capture_ui::capture_open_dir
         ])
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {

@@ -1138,7 +1138,13 @@ mod cut_flag_tests {
         let c = cap(&["capture"]);
         assert_eq!((c.region, c.secs, c.to), (None, None, None));
         let c = cap(&[
-            "capture", "--region", "-1920,0,640,360", "--secs", "5", "--to", "gif",
+            "capture",
+            "--region",
+            "-1920,0,640,360",
+            "--secs",
+            "5",
+            "--to",
+            "gif",
         ]);
         let r = Rect {
             x: -1920,

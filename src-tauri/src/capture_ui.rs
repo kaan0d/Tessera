@@ -20,7 +20,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WDA_EXCLUDEFROMCAPTURE,
 };
 
-use crate::capture::{self, Rect, Recording};
+use crate::capture::{self, Recording, Rect};
 use crate::convert::{Conflict, Format, OutDir};
 use crate::i18n::{self, fmt, t};
 use crate::{AppState, log, notify, panel, settings};
@@ -153,7 +153,11 @@ pub fn begin(app: &AppHandle) {
         }
         if !ready {
             drop(g);
-            notify(app, t(lang, "notify.failed_title"), t(lang, "cap.no_ffmpeg"));
+            notify(
+                app,
+                t(lang, "notify.failed_title"),
+                t(lang, "cap.no_ffmpeg"),
+            );
             return;
         }
         g.selecting = true;
@@ -250,8 +254,8 @@ pub fn capture_pick(
         );
     }
     let rect = capture::to_physical((bounds.x, bounds.y), scale, (x, y, w, h));
-    let rect = capture::fit_rect(rect, bounds)
-        .ok_or_else(|| t(lang, "cap.bad_region").to_string())?;
+    let rect =
+        capture::fit_rect(rect, bounds).ok_or_else(|| t(lang, "cap.bad_region").to_string())?;
     close_pickers(&app);
     std::thread::spawn(move || start_recording(&app, rect, bounds, scale));
     Ok(())
@@ -266,7 +270,13 @@ fn start_recording(app: &AppHandle, rect: Rect, bounds: Rect, scale: f64) {
     let lang = i18n::lang();
     let dir = cs.out_dir();
     let started = if ready {
-        capture::start(&crate::ffmpeg::exe_path(), rect, &cs, &dir, &capture::file_stem())
+        capture::start(
+            &crate::ffmpeg::exe_path(),
+            rect,
+            &cs,
+            &dir,
+            &capture::file_stem(),
+        )
     } else {
         Err(crate::ffmpeg::FfError::new("cap.no_ffmpeg"))
     };
@@ -368,7 +378,11 @@ fn refresh_tray(app: &AppHandle) {
     if let Some(tray) = app.tray_by_id(crate::TRAY_ID) {
         let on = state(app).capture.is_recording();
         let tip = if on {
-            format!("{} - {}", crate::app_info::APP_NAME, t(lang, "cap.recording"))
+            format!(
+                "{} - {}",
+                crate::app_info::APP_NAME,
+                t(lang, "cap.recording")
+            )
         } else {
             crate::app_info::APP_NAME.to_string()
         };
@@ -461,6 +475,14 @@ fn saved(app: &AppHandle, path: PathBuf, target: Format, dir: &std::path::Path, 
     opts.output.template = "{name}".into();
     st.queue
         .enqueue(app, target, vec![path], &opts, s.ffmpeg_ready);
+}
+
+/// Settings > Advanced: opens the recordings folder (created if it is not there yet).
+#[tauri::command]
+pub fn capture_open_dir(app: AppHandle) -> Result<(), String> {
+    let dir = state(&app).settings.lock().unwrap().capture.out_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    crate::open_folder(dir.to_string_lossy().into_owned())
 }
 
 /// Stop button, tray item, shortcut.

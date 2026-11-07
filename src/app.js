@@ -21,6 +21,7 @@ function normalize(x) {
   x.panel = { corner: 'top_right', seconds: 7, windows_toast: false, ...x.panel };
   x.menu = { icons: true, sort: 'default', presets_enabled: true, merge: true, pdf_tools: true, folder: true, folder_recursive: false, sendto: false, ...x.menu };
   x.updates = { check_on_start: false, ...x.updates };
+  x.capture = { dir: null, fps: 15, cursor: true, max_minutes: 10, format: 'mp4', hotkey: false, ...x.capture };
   x.history_enabled ??= true;
   x.enabled_targets ||= [];
   x.menu_sources ||= [];
@@ -483,6 +484,7 @@ function render() {
   paintWebp();
   $('hist-sw').checked = s.history_enabled;
   $('upd-sw').checked = s.updates.check_on_start;
+  paintCapture();
   $('pr-off').hidden = s.menu.presets_enabled;
   const sorts = $$('input[name=sort]');
   sorts.forEach((r, i) => {
@@ -499,6 +501,36 @@ function render() {
   }
   $('lang').value = s.language;
   paintChips();
+}
+
+/* ---------- screen recording ---------- */
+function paintCapture() {
+  const c = s.capture;
+  const fill = (id, items, cur) => {
+    const el = $(id);
+    el.replaceChildren(...items.map(([v, label]) => new Option(label, v)));
+    el.value = String(cur);
+  };
+  const mins = [1, 2, 5, 10, 15, 30];
+  if (!mins.includes(c.max_minutes)) mins.push(c.max_minutes);
+  fill('cap-fmt', [['mp4', 'MP4'], ['gif', 'GIF'], ['webm', 'WEBM']], c.format);
+  fill('cap-fps', [10, 15, 30].map((n) => [n, n + ' fps']), c.fps);
+  fill('cap-max', mins.map((n) => [n, t('cap.min', { n })]), c.max_minutes);
+  $('cap-cursor').checked = c.cursor;
+  $('cap-key').checked = c.hotkey;
+  $('cap-path').textContent = c.dir || t('cap.dir_def');
+  $('cap-reset').hidden = !c.dir;
+}
+
+async function pickCaptureFolder() {
+  const d = T && T.dialog;
+  if (!d) return showError(t('err.no_dialog'));
+  try {
+    const p = await d.open({ directory: true, multiple: false });
+    if (p) setIn('capture', 'dir', String(p));
+  } catch (e) {
+    showError(t('err.pick', { err: e }));
+  }
 }
 
 // lossy WebP is encoded by ffmpeg; until it is ready (or with lossless on) the slider has nothing to say
@@ -730,6 +762,14 @@ function bind() {
   $('webp-ll').onchange = (e) => setIn('quality', 'webp_lossless', e.target.checked);
   $('hist-sw').onchange = (e) => change({ history_enabled: e.target.checked });
   $('upd-sw').onchange = (e) => setIn('updates', 'check_on_start', e.target.checked);
+  $('cap-fmt').onchange = (e) => setIn('capture', 'format', e.target.value);
+  $('cap-fps').onchange = (e) => setIn('capture', 'fps', +e.target.value);
+  $('cap-max').onchange = (e) => setIn('capture', 'max_minutes', +e.target.value);
+  $('cap-cursor').onchange = (e) => setIn('capture', 'cursor', e.target.checked);
+  $('cap-key').onchange = (e) => setIn('capture', 'hotkey', e.target.checked);
+  $('cap-pick').onclick = pickCaptureFolder;
+  $('cap-reset').onclick = () => setIn('capture', 'dir', null);
+  $('cap-open').onclick = () => invoke('capture_open_dir').catch((e) => showError(e));
   $$('input[name=sort]').forEach((r) => (r.onchange = () => setIn('menu', 'sort', r.value)));
   $('ff-notice-ok').onclick = async () => {
     $('ff-notice').hidden = true;

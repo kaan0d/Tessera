@@ -589,6 +589,61 @@
       </div>
     </div>
     <div class="group">
+      <h2 class="group-title" data-i18n="cap.title"></h2>
+      <div class="card">
+        <div class="row top-align">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-film"/></svg></span>
+          <div class="grow">
+            <span class="label" data-i18n="cap.dir"></span>
+            <p id="cap-path" class="path"></p>
+            <div class="actions">
+              <button type="button" id="cap-pick" class="btn sm" data-i18n="out.pick"></button>
+              <button type="button" id="cap-open" class="btn ghost sm" data-i18n="p.open"></button>
+              <button type="button" id="cap-reset" class="btn ghost sm" data-i18n="cap.dir_def"></button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg></span>
+          <div class="grow"><label for="cap-fmt" class="label" data-i18n="cap.format"></label></div>
+          <span class="select">
+            <select id="cap-fmt"></select>
+            <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
+          </span>
+        </div>
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-gauge"/></svg></span>
+          <div class="grow"><label for="cap-fps" class="label" data-i18n="cap.fps"></label></div>
+          <span class="select">
+            <select id="cap-fps"></select>
+            <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
+          </span>
+        </div>
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg></span>
+          <div class="grow"><label for="cap-max" class="label" data-i18n="cap.max"></label></div>
+          <span class="select">
+            <select id="cap-max"></select>
+            <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg>
+          </span>
+        </div>
+        <div class="row">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-pointer"/></svg></span>
+          <div class="grow"><label for="cap-cursor" class="label" data-i18n="cap.cursor"></label></div>
+          <input type="checkbox" id="cap-cursor" class="switch" role="switch">
+        </div>
+        <div class="row top-align">
+          <span class="tile"><svg class="ic" aria-hidden="true"><use href="#i-power"/></svg></span>
+          <div class="grow">
+            <label for="cap-key" class="label" data-i18n="cap.hotkey"></label>
+            <p class="desc" id="d-cap-key" data-i18n="cap.hotkey_desc"></p>
+          </div>
+          <input type="checkbox" id="cap-key" class="switch" role="switch" aria-describedby="d-cap-key">
+        </div>
+        <p class="foot" data-i18n="cap.foot"></p>
+      </div>
+    </div>
+    <div class="group">
       <h2 class="group-title" data-i18n="lo.title"></h2>
       <div class="card">
         <div id="lo" class="row top-align" data-state="checking">
