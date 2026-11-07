@@ -478,6 +478,8 @@ I18N['ko'] = {
   "dr.pdf_compress_sub": "그림은 작게, 페이지와 텍스트는 그대로",
   "dr.pdf_compress_strong": "더 압축",
   "dr.pdf_compress_strong_sub": "훨씬 작아지지만 그림이 흐려집니다",
+  "dr.pdf_ocr": "검색 가능하게 만들기 (OCR)",
+  "dr.pdf_ocr_sub": "스캔한 페이지를 읽어 텍스트를 검색하고 복사할 수 있습니다",
   "dr.pdf_rotate": "모든 페이지 회전",
   "dr.pdf_right": "오른쪽",
   "dr.pdf_left": "왼쪽",

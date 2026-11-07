@@ -478,6 +478,8 @@ I18N['ja'] = {
   "dr.pdf_compress_sub": "画像を小さく、ページとテキストはそのまま",
   "dr.pdf_compress_strong": "高圧縮",
   "dr.pdf_compress_strong_sub": "大幅に小さく、画像はぼやけます",
+  "dr.pdf_ocr": "検索可能にする (OCR)",
+  "dr.pdf_ocr_sub": "スキャンしたページを読み取り、文字を検索・コピーできます",
   "dr.pdf_rotate": "すべてのページを回転",
   "dr.pdf_right": "右",
   "dr.pdf_left": "左",

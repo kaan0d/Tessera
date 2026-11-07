@@ -24,7 +24,7 @@ Usage:
           [--dry-run --json --quiet]
                       images, PDFs and documents into one PDF, or audio files into one (audio is FLAC
                       unless --to); the result is merged.pdf or merged.flac and never replaces a file
-  {p} pdf <split|extract|delete|rotate|compress> <files...> [--pages 1-3,5] [--angle 90|180|270]
+  {p} pdf <split|extract|delete|rotate|compress|ocr> <files...> [--pages 1-3,5] [--angle 90|180|270] [--ocr-lang tr]
           [--strong --out <dir> --conflict <mode> --json --quiet]
                       split into pages, keep or delete pages, turn pages clockwise, shrink pictures
   {p} list-presets
@@ -54,6 +54,7 @@ Convert options:
   --gif-fps <5-30>    frames per second of a GIF
   --gif-width <px>    width of a GIF (120-1280)
   --video-mbps <n>    video quality in Mbit/s (1-30)
+  --ocr-lang <tag>    language of text recognition for TXT output (en, tr, ...)
 
 Presets come from `list-presets` and use your saved settings.
 Video, MP3 and OGG need the ffmpeg the app installed; it is never downloaded here.
@@ -200,6 +201,7 @@ fn convert_cmd(a: ConvertArgs) -> i32 {
         max_bytes: a.max_bytes,
         trim_start: a.start,
         trim_end: a.end,
+        ocr_lang: a.ocr_lang.clone(),
         audio_kbps: a.audio_kbps,
         mono: a.mono,
         no_audio: a.no_audio,
@@ -332,6 +334,11 @@ fn ignored_flags(a: &ConvertArgs) -> Vec<String> {
         (a.gif_fps.is_some() || a.gif_width.is_some()) && t != Format::Gif,
         "gif-fps and --gif-width",
         "only GIF output uses them",
+    );
+    add(
+        a.ocr_lang.is_some() && t != Format::Txt,
+        "ocr-lang",
+        "only TXT output reads text from pictures",
     );
     add(
         a.video_mbps.is_some() && !video,

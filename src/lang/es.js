@@ -482,6 +482,8 @@ I18N['es'] = {
   "dr.pdf_compress_sub": "Imágenes más pequeñas, mismas páginas y texto",
   "dr.pdf_compress_strong": "Comprimir más",
   "dr.pdf_compress_strong_sub": "Mucho más pequeño; las imágenes pierden nitidez",
+  "dr.pdf_ocr": "Hacer buscable (OCR)",
+  "dr.pdf_ocr_sub": "Lee páginas escaneadas; el texto se puede buscar y copiar",
   "dr.pdf_rotate": "Girar todas las páginas",
   "dr.pdf_right": "Derecha",
   "dr.pdf_left": "Izquierda",

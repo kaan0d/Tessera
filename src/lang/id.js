@@ -478,6 +478,8 @@ I18N['id'] = {
   "dr.pdf_compress_sub": "Gambar lebih kecil, halaman dan teks tetap sama",
   "dr.pdf_compress_strong": "Kompres lebih kuat",
   "dr.pdf_compress_strong_sub": "Jauh lebih kecil; gambar menjadi kurang tajam",
+  "dr.pdf_ocr": "Buat dapat dicari (OCR)",
+  "dr.pdf_ocr_sub": "Membaca halaman hasil pindai; teks bisa dicari dan disalin",
   "dr.pdf_rotate": "Putar semua halaman",
   "dr.pdf_right": "Kanan",
   "dr.pdf_left": "Kiri",

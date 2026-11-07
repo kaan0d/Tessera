@@ -478,6 +478,8 @@ I18N['zh-CN'] = {
   "dr.pdf_compress_sub": "图片更小，页面和文本不变",
   "dr.pdf_compress_strong": "深度压缩",
   "dr.pdf_compress_strong_sub": "体积小得多；图片会变模糊",
+  "dr.pdf_ocr": "转为可搜索 (OCR)",
+  "dr.pdf_ocr_sub": "识别扫描页面；文字可搜索和复制",
   "dr.pdf_rotate": "旋转所有页面",
   "dr.pdf_right": "向右",
   "dr.pdf_left": "向左",

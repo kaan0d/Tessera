@@ -94,6 +94,8 @@ pub struct ConvertArgs {
     pub gif_fps: Option<u8>,
     pub gif_width: Option<u16>,
     pub video_mbps: Option<u8>,
+    /// `--ocr-lang`: BCP-47 language for text recognition (TXT output).
+    pub ocr_lang: Option<String>,
     pub recursive: bool,
     pub dry_run: bool,
     pub json: bool,
@@ -330,7 +332,7 @@ fn parse_merge(args: &[String]) -> Command {
     }
 }
 
-const PDF_USAGE: &str = "pdf needs a tool and files: pdf split|extract|delete|rotate|compress <files...> [--pages 1-3,5] [--angle 90|180|270] [--strong]";
+const PDF_USAGE: &str = "pdf needs a tool and files: pdf split|extract|delete|rotate|compress|ocr <files...> [--pages 1-3,5] [--angle 90|180|270] [--strong] [--ocr-lang tr]";
 
 fn parse_pdf(args: &[String]) -> Command {
     let Some(name) = args.first() else {
@@ -338,6 +340,7 @@ fn parse_pdf(args: &[String]) -> Command {
     };
     let (mut files, mut flags) = (vec![], RunFlags::default());
     let (mut pages, mut angle, mut strong) = (String::new(), None, false);
+    let mut ocr_lang = String::new();
     let mut it = args[1..].iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -350,6 +353,10 @@ fn parse_pdf(args: &[String]) -> Command {
                 None => return usage("--angle must be 90, 180 or 270"),
             },
             "--strong" => strong = true,
+            "--ocr-lang" => match it.next() {
+                Some(l) if crate::convert::ocr::valid_lang(l) => ocr_lang = l.clone(),
+                _ => return usage("--ocr-lang must be a language tag such as en or tr"),
+            },
             "--json" => flags.json = true,
             "--quiet" => flags.quiet = true,
             "--out" => match it.next() {
@@ -363,7 +370,7 @@ fn parse_pdf(args: &[String]) -> Command {
             },
             f if f.starts_with("--") => {
                 return usage(&format!(
-                    "unknown option {f} (allowed: --pages, --angle, --strong, --out, --conflict, --json, --quiet)"
+                    "unknown option {f} (allowed: --pages, --angle, --strong, --ocr-lang, --out, --conflict, --json, --quiet)"
                 ));
             }
             _ => files.push(PathBuf::from(a)),
@@ -372,7 +379,8 @@ fn parse_pdf(args: &[String]) -> Command {
     let pages = pages.trim().to_string();
     // a flag the tool does not use is a mistake worth saying
     let stray = match name.as_str() {
-        "split" | "compress" if !pages.is_empty() => Some("--pages"),
+        "split" | "compress" | "ocr" if !pages.is_empty() => Some("--pages"),
+        n if n != "ocr" && !ocr_lang.is_empty() => Some("--ocr-lang"),
         n if n != "rotate" && angle.is_some() => Some("--angle"),
         n if n != "compress" && strong => Some("--strong"),
         _ => None,
@@ -387,6 +395,7 @@ fn parse_pdf(args: &[String]) -> Command {
         "extract" | "delete" => format!("{name}:{pages}"),
         "rotate" => format!("rotate:{}:{pages}", angle.unwrap_or(90)),
         "compress" if strong => "compress:strong".into(),
+        "ocr" if !ocr_lang.is_empty() => format!("ocr:{ocr_lang}"),
         n => n.to_string(),
     };
     match PdfTool::parse(&spec) {
@@ -453,7 +462,7 @@ fn parse_convert(args: &[String]) -> Command {
     }
 }
 
-const VALUE_FLAGS: [&str; 14] = [
+const VALUE_FLAGS: [&str; 15] = [
     "to",
     "jobs",
     "max-edge",
@@ -466,6 +475,7 @@ const VALUE_FLAGS: [&str; 14] = [
     "gif-fps",
     "gif-width",
     "video-mbps",
+    "ocr-lang",
     "out",
     "conflict",
 ];
@@ -477,6 +487,7 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
     let (mut mono, mut no_audio, mut gif_fps, mut gif_width) = (false, false, None, None);
     let (mut video_mbps, mut recursive, mut dry_run, mut json, mut quiet) =
         (None, false, false, false, false);
+    let mut ocr_lang = None;
     let mut conflict = Conflict::AutoRename;
     let mut jobs = 1u8;
     let mut it = args.iter();
@@ -536,6 +547,13 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
             "gif-fps" => gif_fps = Some(num(5, 30)? as u8),
             "gif-width" => gif_width = Some(num(120, 1280)? as u16),
             "video-mbps" => video_mbps = Some(num(1, 30)? as u8),
+            "ocr-lang" => {
+                ocr_lang = Some(
+                    Some(v.clone())
+                        .filter(|l| crate::convert::ocr::valid_lang(l))
+                        .ok_or("--ocr-lang must be a language tag such as en or tr")?,
+                )
+            }
             "jobs" => jobs = num(1, 16)? as u8,
             "out" => out = Some(PathBuf::from(&v)),
             "conflict" => {
@@ -575,6 +593,7 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
         gif_fps,
         gif_width,
         video_mbps,
+        ocr_lang,
         recursive,
         dry_run,
         json,
@@ -1029,6 +1048,21 @@ mod cut_flag_tests {
         assert_eq!((c.start, c.end), (Some(90.0), Some(95.0)));
         assert_eq!((c.mono, c.no_audio, c.audio_kbps), (true, true, Some(96)));
         assert_eq!((c.gif_fps, c.gif_width), (Some(15), Some(640)));
+    }
+
+    #[test]
+    fn ocr_lang_flag() {
+        let conv = |v: &[&str]| match parse_convert(&a(v)) {
+            Command::Convert(c) => c,
+            other => panic!("{other:?}"),
+        };
+        let c = conv(&["scan.png", "--to", "txt", "--ocr-lang", "tr"]);
+        assert_eq!((c.target, c.ocr_lang.as_deref()), (Format::Txt, Some("tr")));
+        assert_eq!(conv(&["scan.png", "--to", "txt"]).ocr_lang, None);
+        for bad in ["", "../x", "t r"] {
+            let v = ["scan.png", "--to", "txt", "--ocr-lang", bad];
+            assert!(matches!(parse_convert(&a(&v)), Command::Usage(_)), "{bad}");
+        }
     }
 
     #[test]
