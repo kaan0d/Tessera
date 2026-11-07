@@ -343,6 +343,7 @@ pub const MSGS: &[(&str, &str)] = &[
         "Così verrebbero rimosse tutte le pagine. Tienine almeno una.",
     ),
     ("ce.empty_file", "Il file è vuoto"),
+    ("ce.ocr_no_text", "Nessun testo riconosciuto"),
     (
         "ce.ocr_no_language",
         "Nessuna lingua OCR installata. Aggiungine una in Impostazioni di Windows > Ora e lingua, con riconoscimento del testo.",

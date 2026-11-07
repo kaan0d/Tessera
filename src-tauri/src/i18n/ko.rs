@@ -280,6 +280,7 @@ pub const MSGS: &[(&str, &str)] = &[
         "모든 페이지가 삭제됩니다. 한 페이지 이상 남겨 두세요.",
     ),
     ("ce.empty_file", "파일이 비어 있습니다"),
+    ("ce.ocr_no_text", "인식된 텍스트가 없습니다"),
     (
         "ce.ocr_no_language",
         "설치된 OCR 언어가 없습니다. Windows 설정 > 시간 및 언어에서 텍스트 인식이 포함된 언어를 추가하세요.",

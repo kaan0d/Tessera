@@ -656,12 +656,12 @@ mod tests {
         let mut s = ready(true);
         assert_eq!(
             exts(verbs("png", &s)),
-            ["jpg", "webp", "bmp", "gif", "tiff", "ico", "avif", "pdf"]
+            ["jpg", "webp", "bmp", "gif", "tiff", "ico", "avif", "pdf", "txt"]
         );
         s.menu.sort = MenuSort::Alphabetical;
         assert_eq!(
             exts(verbs("png", &s)),
-            ["avif", "bmp", "gif", "ico", "jpg", "pdf", "tiff", "webp"]
+            ["avif", "bmp", "gif", "ico", "jpg", "pdf", "tiff", "txt", "webp"]
         );
         s.enabled_targets = vec!["jpg".into(), "wav".into()];
         assert_eq!(verbs("png", &s), [Format::Jpg]);
@@ -730,20 +730,20 @@ mod tests {
         install_at(&root, exe, &ready(false)).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         let names = verb_names(&png);
-        // 8 formats, 6 presets, merge, custom
-        assert_eq!(names.len(), 16);
-        assert_eq!(names[8], "08_preset_web");
-        assert_eq!(names[14], "14_merge_pdf");
-        assert_eq!(names[15], "15_custom");
+        // 9 formats (incl. OCR text), 6 presets, merge, custom
+        assert_eq!(names.len(), 17);
+        assert_eq!(names[9], "09_preset_web");
+        assert_eq!(names[15], "15_merge_pdf");
+        assert_eq!(names[16], "16_custom");
         let flags = |n: &str| {
             png.open_subkey(format!(r"shell\{n}"))
                 .unwrap()
                 .get_value::<u32, _>("CommandFlags")
                 .ok()
         };
-        assert_eq!(flags("08_preset_web"), Some(0x20));
-        assert_eq!(flags("14_merge_pdf"), Some(0x20));
-        assert_eq!(flags("09_preset_whatsapp"), None);
+        assert_eq!(flags("09_preset_web"), Some(0x20));
+        assert_eq!(flags("15_merge_pdf"), Some(0x20));
+        assert_eq!(flags("10_preset_whatsapp"), None);
         assert_eq!(flags("00_jpg"), None);
         let cmd = |n: &str| {
             png.open_subkey(format!(r"shell\{n}\command"))
@@ -751,9 +751,9 @@ mod tests {
                 .get_value::<String, _>("")
                 .unwrap()
         };
-        assert_eq!(cmd("10_preset_email"), r#""C:\x.exe" --preset email "%1""#);
-        assert_eq!(cmd("14_merge_pdf"), r#""C:\x.exe" --merge pdf "%1""#);
-        assert_eq!(cmd("15_custom"), r#""C:\x.exe" --custom "%1""#);
+        assert_eq!(cmd("11_preset_email"), r#""C:\x.exe" --preset email "%1""#);
+        assert_eq!(cmd("15_merge_pdf"), r#""C:\x.exe" --merge pdf "%1""#);
+        assert_eq!(cmd("16_custom"), r#""C:\x.exe" --custom "%1""#);
         // ffmpeg-less menu hides video presets; mp4 has no verbs at all
         assert!(hkcu.open_subkey(menu_key(&root, "mp4")).is_err());
 
@@ -763,7 +763,7 @@ mod tests {
         st.menu.merge = false;
         install_at(&root, exe, &st).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
-        assert_eq!(verb_names(&png).len(), 9); // 8 formats + custom
+        assert_eq!(verb_names(&png).len(), 10); // 9 formats + custom
         st.menu.presets_enabled = true;
         st.hidden_presets = vec![
             "web".into(),
@@ -777,8 +777,8 @@ mod tests {
         install_at(&root, exe, &st).unwrap();
         let png = hkcu.open_subkey(menu_key(&root, "png")).unwrap();
         let names = verb_names(&png);
-        assert_eq!(names[8], "08_preset_whatsapp");
-        assert_eq!(names.len(), 8 + 4 + 1);
+        assert_eq!(names[9], "09_preset_whatsapp");
+        assert_eq!(names.len(), 9 + 4 + 1);
         // heic: no format verbs ... presets and no merge verb
         let heic = hkcu.open_subkey(menu_key(&root, "heic")).unwrap();
         assert!(verb_names(&heic).iter().all(|n| !n.contains("merge")));

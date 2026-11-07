@@ -607,6 +607,7 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Bu tüm sayfaları siler. En az bir sayfa bırakın.",
     ),
     ("ce.empty_file", "The file is empty", "Dosya boş"),
+    ("ce.ocr_no_text", "No text recognized", "Metin tanınmadı"),
     (
         "ce.ocr_no_language",
         "No OCR language is installed. Add one with text recognition in Windows Settings > Time & language.",

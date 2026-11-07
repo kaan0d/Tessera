@@ -220,7 +220,7 @@ mod tests {
         assert_eq!(
             exts(&c),
             [
-                "png", "jpg", "webp", "bmp", "gif", "tiff", "ico", "avif", "pdf"
+                "png", "jpg", "webp", "bmp", "gif", "tiff", "ico", "avif", "pdf", "txt"
             ]
         );
         assert!(c.targets.iter().all(|t| t.allowed && !t.needs_ffmpeg));

@@ -310,6 +310,7 @@ pub const MSGS: &[(&str, &str)] = &[
         "Itu akan menghapus semua halaman. Sisakan setidaknya satu.",
     ),
     ("ce.empty_file", "File kosong"),
+    ("ce.ocr_no_text", "Tidak ada teks yang dikenali"),
     (
         "ce.ocr_no_language",
         "Tidak ada bahasa OCR yang terpasang. Tambahkan di Pengaturan Windows > Waktu & bahasa, dengan pengenalan teks.",

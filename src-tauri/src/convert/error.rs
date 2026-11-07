@@ -55,6 +55,8 @@ pub enum ConvertError {
     Recycle(String),
     /// No OCR recognizer pack for the wanted language is installed in Windows.
     OcrNoLanguage,
+    /// The picture has no text the engine could read.
+    OcrNoText,
     /// Windows OCR failed (the engine's own message is the detail).
     OcrFailed(String),
 }
@@ -103,6 +105,7 @@ impl ConvertError {
             E::EmptyFile => plain("ce.empty_file"),
             E::OfficeTimeout => plain("ce.office_timeout"),
             E::OcrNoLanguage => plain("ce.ocr_no_language"),
+            E::OcrNoText => plain("ce.ocr_no_text"),
             E::OcrFailed(d) => with("ce.ocr_failed", d),
             E::NoRecycleBin => plain("ce.no_recycle"),
             E::Exists => plain("ce.exists"),
@@ -201,6 +204,7 @@ mod tests {
             ConvertError::FfmpegWait("x".into()),
             ConvertError::Recycle("x".into()),
             ConvertError::OcrNoLanguage,
+            ConvertError::OcrNoText,
             ConvertError::OcrFailed("x".into()),
         ];
         for e in &all {

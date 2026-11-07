@@ -340,6 +340,7 @@ pub const MSGS: &[(&str, &str)] = &[
         "Así se eliminarían todas las páginas. Deja al menos una.",
     ),
     ("ce.empty_file", "El archivo está vacío"),
+    ("ce.ocr_no_text", "No se reconoció texto"),
     (
         "ce.ocr_no_language",
         "No hay ningún idioma de OCR instalado. Añada uno en Configuración de Windows > Hora e idioma, con reconocimiento de texto.",

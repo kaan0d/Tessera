@@ -385,6 +385,7 @@ pub const MSGS: &[(&str, &str)] = &[
         "Damit würden alle Seiten entfernt. Behalten Sie mindestens eine.",
     ),
     ("ce.empty_file", "Die Datei ist leer"),
+    ("ce.ocr_no_text", "Kein Text erkannt"),
     (
         "ce.ocr_no_language",
         "Keine OCR-Sprache ist installiert. Fügen Sie in den Windows-Einstellungen unter Zeit und Sprache eine Sprache mit Texterkennung hinzu.",

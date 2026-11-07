@@ -11,7 +11,10 @@ use windows::Storage::Streams::DataWriter;
 use windows::Win32::System::WinRT::{RO_INIT_MULTITHREADED, RoInitialize};
 use windows::core::HSTRING;
 
-use super::ConvertError;
+use std::io::Write;
+use std::path::Path;
+
+use super::{ConvertError, Format, Options};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Word {
@@ -145,6 +148,28 @@ pub fn recognize(img: &DynamicImage, lang: Option<&str>) -> Result<OcrPage, Conv
     Ok(OcrPage { lines, scale })
 }
 
+/// Picture file -> UTF-8 text (CRLF lines). No recognized text is `OcrNoText`.
+pub fn write_text(
+    src: &Path,
+    from: Format,
+    opts: &Options,
+    w: &mut impl Write,
+) -> Result<(), ConvertError> {
+    // size rules are for the output picture, not for what the engine reads
+    let load_opts = Options {
+        resize: None,
+        ..opts.clone()
+    };
+    let img = super::image::load(src, from, &load_opts)?;
+    opts.check_cancel()?;
+    let text = recognize(&img, opts.ocr_lang.as_deref())?.text();
+    if text.trim().is_empty() {
+        return Err(ConvertError::OcrNoText);
+    }
+    w.write_all(text.as_bytes())?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,5 +203,29 @@ mod tests {
         let img = DynamicImage::new_rgb8(12_000, 40);
         let page = recognize(&img, None).unwrap();
         assert!(page.scale < 1.0 && page.scale > 0.0);
+    }
+
+    #[test]
+    fn reads_rendered_text_into_a_txt_file() {
+        if installed_languages().is_empty() {
+            return;
+        }
+        let dir = std::env::temp_dir().join(format!("tessera-ocr-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let svg = dir.join("t.svg");
+        std::fs::write(
+            &svg,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="900" height="260">
+<rect width="900" height="260" fill="white"/>
+<text x="30" y="100" font-family="Arial" font-size="64" fill="black">Hello Tessera</text>
+<text x="30" y="200" font-family="Arial" font-size="64" fill="black">Invoice 2026</text></svg>"#,
+        )
+        .unwrap();
+        let mut out = vec![];
+        write_text(&svg, Format::Svg, &Options::default(), &mut out).unwrap();
+        let text = String::from_utf8(out).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(text.contains("Hello") && text.contains("2026"), "{text:?}");
+        assert!(text.contains("\r\n"));
     }
 }
