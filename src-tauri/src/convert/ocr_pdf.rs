@@ -188,7 +188,7 @@ fn page_box(page: &Dictionary) -> Option<PageBox> {
         y,
         w,
         h,
-        turn: if turn % 90 == 0 { turn } else { 0 },
+        turn: if turn.is_multiple_of(90) { turn } else { 0 },
     })
 }
 
@@ -197,7 +197,7 @@ fn page_box(page: &Dictionary) -> Option<PageBox> {
 /// displayed, turn applied).
 fn layer_ops(ocr: &OcrPage, pic: (u32, u32), pb: PageBox, codes: &mut Codes) -> Vec<Operation> {
     // displayed page size in points
-    let (dw, dh) = if pb.turn % 180 == 0 { (pb.w, pb.h) } else { (pb.h, pb.w) };
+    let (dw, dh) = if pb.turn.is_multiple_of(180) { (pb.w, pb.h) } else { (pb.h, pb.w) };
     let scale = ocr.scale.max(f32::EPSILON);
     let (kx, ky) = (dw / pic.0 as f32 / scale, dh / pic.1 as f32 / scale);
     let mut ops = vec![
@@ -398,7 +398,7 @@ mod tests {
         // 500 x 250 pt unrotated page shown turned: 0.5 pt per px in every case
         let words = |turn| {
             let pb = PageBox { x: 0.0, y: 0.0, w: 500.0, h: 250.0, turn };
-            let (pw, ph) = if turn % 180 == 0 { (1000, 500) } else { (500, 1000) };
+            let (pw, ph) = if turn.is_multiple_of(180) { (1000, 500) } else { (500, 1000) };
             tm(&layer_ops(&one_word_page(), (pw, ph), pb, &mut Codes::default()))
         };
         let m90 = words(90);
