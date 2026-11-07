@@ -102,7 +102,7 @@ Everything is per user. Files: the install folder only, data included. Registry,
 - Office documents convert up to three at a time; the first one after a start takes about 10 seconds, later ones about 2. A PDF turned into DOCX keeps the text but often not the layout.
 - PDF tools that keep or delete pages drop bookmarks and form fields; Compress only touches RGB and gray pictures.
 - A one-page PDF or one-slide deck turned into pictures gives one file; more pages go into a folder named after the file.
-- OCR needs a text recognition language in Windows (Settings > Time & language). Searchable PDF keeps Latin and Turkish letters exact, turned pages are skipped, and handwriting is not read.
+- OCR needs a text recognition language in Windows (Settings > Time & language). Handwriting is not read, and a page that already has text is left as it is.
 - Lossy WebP (made by ffmpeg) leaves out the colour profile; JPEG and PNG keep it.
 
 ## Built with
