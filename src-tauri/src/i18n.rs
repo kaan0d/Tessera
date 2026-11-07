@@ -651,6 +651,27 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ),
     ("ce.cancelled", "Cancelled", "İptal edildi"),
     (
+        "ce.in_step",
+        "Step {n} of {of}: {detail}",
+        "Adım {n}/{of}: {detail}",
+    ),
+    ("preset.scan_share", "Scan and share", "Tara ve paylaş"),
+    (
+        "preset.too_many_steps",
+        "A chain can have at most {max} steps",
+        "Bir zincirde en fazla {max} adım olabilir",
+    ),
+    (
+        "preset.bad_step",
+        "A step of the chain is not valid",
+        "Zincirdeki bir adım geçerli değil",
+    ),
+    (
+        "preset.chain_kind",
+        "These steps do not work in this order for every file type of the preset",
+        "Bu adımlar, hazır ayarın tüm dosya türleri için bu sırayla çalışmıyor",
+    ),
+    (
         "ce.encode",
         "Conversion failed: {detail}. Try another target format.",
         "Dönüştürme başarısız: {detail}. Başka bir hedef biçim deneyin.",

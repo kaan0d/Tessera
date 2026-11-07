@@ -7,10 +7,19 @@ function fmtBytes(b) {
   return b >= 1e6 ? t('unit.mb', { n: num(b / 1e6) }) : t('unit.kb', { n: num(b / 1e3, 0) });
 }
 
+/** Name of one step of a chain: a format or a PDF tool. */
+function stepLabel(st) {
+  if (!st.tool) return st.target.toUpperCase();
+  const k = st.tool.tool === 'compress' && st.tool.strong ? 'dr.pdf_compress_strong' : { ocr: 'dr.pdf_ocr', compress: 'dr.pdf_compress', rotate: 'dr.pdf_rotate' }[st.tool.tool];
+  return k ? t(k) : st.tool.tool;
+}
+
 function presetSummary(p) {
-  const o = p.options || {};
-  const parts = [p.target === 'same' ? t('pr.s_same') : p.target.toUpperCase()];
-  if (p.video_target && p.kinds.includes('video'))
+  const chain = p.steps && p.steps.length > 0;
+  // in a chain the options belong to the first step
+  const o = (chain ? p.steps[0].options : p.options) || {};
+  const parts = [chain ? p.steps.map(stepLabel).join(' \u203A ') : p.target === 'same' ? t('pr.s_same') : p.target.toUpperCase()];
+  if (!chain && p.video_target && p.kinds.includes('video'))
     parts.push(t('pr.s_video', { fmt: p.video_target === 'same' ? t('pr.s_same_l') : p.video_target.toUpperCase() }));
   const r = o.resize;
   if (r && r.max_edge != null) parts.push(t('pr.s_edge', { n: r.max_edge }));

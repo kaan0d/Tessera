@@ -173,6 +173,7 @@ impl Default for Settings {
                 "ico".into(),
                 "instagram".into(),
                 "podcast".into(),
+                "scan_share".into(),
             ],
             history_enabled: true,
             updates: Updates::default(),
@@ -532,7 +533,8 @@ mod tests {
         assert!(s.menu.presets_enabled && s.menu.merge && s.history_enabled);
         assert!(!s.updates.check_on_start && !s.watch.enabled && s.watch.rules.is_empty());
         assert!(
-            s.presets.is_empty() && s.hidden_presets == ["webp", "ico", "instagram", "podcast"]
+            s.presets.is_empty()
+                && s.hidden_presets == ["webp", "ico", "instagram", "podcast", "scan_share"]
         );
     }
 

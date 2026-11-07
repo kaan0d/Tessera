@@ -338,4 +338,15 @@ pub const MSGS: &[(&str, &str)] = &[
         "notify.preset_skip_one",
         "1 file dilewati: tidak didukung oleh {name}",
     ),
+    ("ce.in_step", "Langkah {n} dari {of}: {detail}"),
+    ("preset.scan_share", "Pindai dan bagikan"),
+    (
+        "preset.too_many_steps",
+        "Satu rantai maksimal {max} langkah",
+    ),
+    ("preset.bad_step", "Ada langkah rantai yang tidak valid"),
+    (
+        "preset.chain_kind",
+        "Langkah-langkah ini tidak cocok berurutan untuk semua jenis file prasetel",
+    ),
 ];

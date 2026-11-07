@@ -202,6 +202,59 @@ async function loadPresets() {
 /* ---------- preset editor ---------- */
 let pdId = '';
 let pdKinds = new Set();
+let pdSteps = []; // chain: a format ("pdf") or a PDF tool ("tool:ocr")
+const MAX_STEPS = 5;
+const STEP_TOOLS = {
+  ocr: { key: 'dr.pdf_ocr', tool: { tool: 'ocr', lang: null } },
+  compress: { key: 'dr.pdf_compress', tool: { tool: 'compress', strong: false } },
+  'compress:strong': { key: 'dr.pdf_compress_strong', tool: { tool: 'compress', strong: true } },
+};
+// the select value of a step coming from the backend (tools the editor does not offer are kept as they are)
+const stepValue = (st) => (st.tool ? 'tool:' + (st.tool.tool === 'compress' && st.tool.strong ? 'compress:strong' : st.tool.tool) : st.target);
+
+function renderSteps() {
+  const exts = [...new Set((catalog ? catalog.targets : []).map((x) => x.ext))];
+  const rows = pdSteps.map((v, i) => {
+    const sel = el('select');
+    sel.setAttribute('aria-label', t('pd.step_n', { n: i + 1 }));
+    const fm = el('optgroup');
+    fm.label = t('pd.target');
+    exts.forEach((x) => fm.append(option(x, x.toUpperCase())));
+    const tl = el('optgroup');
+    tl.label = t('pd.step_tools');
+    Object.entries(STEP_TOOLS).forEach(([k, x]) => tl.append(option('tool:' + k, t(x.key))));
+    sel.append(fm, tl);
+    sel.value = v;
+    sel.onchange = () => ((pdSteps[i] = sel.value), pdPaint());
+    const wrap = el('span', 'select');
+    wrap.append(sel, icon('i-chevron'));
+    const btn = (txt, key, off, fn) => {
+      const b = el('button', 'btn sm ghost', txt);
+      b.type = 'button';
+      b.setAttribute('aria-label', t(key, { n: i + 1 }));
+      b.disabled = off;
+      b.onclick = fn;
+      return b;
+    };
+    const move = (d) => () => {
+      [pdSteps[i], pdSteps[i + d]] = [pdSteps[i + d], pdSteps[i]];
+      renderSteps();
+      pdPaint();
+    };
+    const li = el('li', 'pd-step');
+    li.append(wrap, btn('\u2191', 'pd.step_up', i === 0, move(-1)), btn('\u2193', 'pd.step_down', i === pdSteps.length - 1, move(1)), btn('\u00d7', 'pd.step_del', false, () => (pdSteps.splice(i, 1), renderSteps(), pdPaint())));
+    return li;
+  });
+  $('pd-steps').replaceChildren(...rows);
+  $('pd-step-add').disabled = pdSteps.length >= MAX_STEPS;
+}
+
+$('pd-step-add').onclick = () => {
+  if (pdSteps.length >= MAX_STEPS) return;
+  pdSteps.push(pdSteps.length ? 'tool:' + Object.keys(STEP_TOOLS)[0] : 'pdf');
+  renderSteps();
+  pdPaint();
+};
 
 function buildPdSelects() {
   const tg = $('pd-target'), vt = $('pd-vtarget');
@@ -237,7 +290,10 @@ function openPreset(p, dup) {
   buildPdSelects();
   pdId = p && !dup ? p.id : '';
   $('pd-title').textContent = t(!p ? 'pd.new_title' : dup ? 'pd.dup_title' : 'pd.edit_title');
-  const o = (p && p.options) || {};
+  pdSteps = p && p.steps ? p.steps.map(stepValue) : [];
+  renderSteps();
+  // in a chain the options are the first step's
+  const o = (p && (p.steps && p.steps.length ? p.steps[0].options : p.options)) || {};
   $('pd-name').value = !p ? '' : dup ? t('pr.copy_name', { name: p.name }) : p.custom_name || p.name;
   pdKinds = new Set(p ? p.kinds : ['image']);
   $('pd-target').value = p ? p.target : 'jpg';
@@ -272,19 +328,27 @@ function pdCollect() {
     : mode === 'percent' ? { percent: n('pd-pct') }
     : mode === 'exact' ? { exact: { w: n('pd-w'), h: n('pd-h'), fit: $('pd-fit').value } } : null;
   const kinds = KIND_ORDER.filter((k) => pdKinds.has(k));
+  const options = {
+    resize,
+    strip_metadata: $('pd-strip').checked,
+    max_bytes: $('pd-max-on').checked ? Math.round(+$('pd-max').value * +$('pd-unit').value) : null,
+    jpeg_quality: $('pd-q-on').checked ? +$('pd-q').value : null,
+    video_mbps: $('pd-v-on').checked ? +$('pd-v').value : null,
+  };
+  // the options go to the first step
+  const steps = pdSteps.map((v, i) => ({
+    target: v.startsWith('tool:') ? 'pdf' : v,
+    tool: v.startsWith('tool:') ? STEP_TOOLS[v.slice(5)].tool : null,
+    options: i === 0 ? options : {},
+  }));
   return {
     id: pdId,
     custom_name: $('pd-name').value.trim(),
     kinds,
-    target: $('pd-target').value,
-    video_target: kinds.includes('video') && $('pd-vtarget').value ? $('pd-vtarget').value : null,
-    options: {
-      resize,
-      strip_metadata: $('pd-strip').checked,
-      max_bytes: $('pd-max-on').checked ? Math.round(+$('pd-max').value * +$('pd-unit').value) : null,
-      jpeg_quality: $('pd-q-on').checked ? +$('pd-q').value : null,
-      video_mbps: $('pd-v-on').checked ? +$('pd-v').value : null,
-    },
+    target: steps.length ? steps[steps.length - 1].target : $('pd-target').value,
+    video_target: !steps.length && kinds.includes('video') && $('pd-vtarget').value ? $('pd-vtarget').value : null,
+    options: steps.length ? {} : options,
+    steps,
   };
 }
 
@@ -293,13 +357,15 @@ function pdErrors(p) {
   const e = {};
   if (!p.custom_name || [...p.custom_name].length > 40) e.name = t('pd.e_name');
   if (!p.kinds.length) e.kinds = t('pd.e_kinds');
-  const r = p.options.resize;
+  const first = p.steps.length ? p.steps[0].options : p.options;
+  const r = first.resize;
   const bad = (v, max) => !(v >= 1 && v <= max);
   if (r && ((r.max_edge != null && bad(r.max_edge, 16384)) || (r.percent != null && bad(r.percent, 400)) || (r.exact && (bad(r.exact.w, 16384) || bad(r.exact.h, 16384)))))
     e.resize = t(r.percent != null ? 'pd.e_pct' : 'pd.e_px');
-  const o = p.options;
+  const o = first;
+  if (p.steps.length > MAX_STEPS) e.steps = t('pd.e_steps', { max: MAX_STEPS });
   if (o.max_bytes != null && !(o.max_bytes >= 1)) e.opt = t('pd.e_max');
-  else if ((p.target === 'same' || p.video_target === 'same') && !r && !o.strip_metadata && o.max_bytes == null) e.opt = t('pd.e_same');
+  else if (!p.steps.length && (p.target === 'same' || p.video_target === 'same') && !r && !o.strip_metadata && o.max_bytes == null) e.opt = t('pd.e_same');
   return e;
 }
 
@@ -310,7 +376,9 @@ function pdPaint(showErrors) {
   $('pd-rs-pct').hidden = mode !== 'percent';
   $('pd-rs-exact').hidden = mode !== 'exact';
   $$('#pd-kinds .chip').forEach((c) => c.setAttribute('aria-pressed', pdKinds.has(c.dataset.kind)));
-  $('pd-vt-wrap').hidden = !pdKinds.has('video');
+  $('pd-vt-wrap').hidden = !pdKinds.has('video') || pdSteps.length > 0;
+  $('pd-target-row').hidden = pdSteps.length > 0;
+  $('pd-opt-first').hidden = pdSteps.length === 0;
   // only targets every chosen kind can reach (video files follow their own target when set)
   const vtSet = pdKinds.has('video') && $('pd-vtarget').value;
   const need = [...pdKinds].filter((k) => !(k === 'video' && vtSet));
@@ -331,6 +399,7 @@ function pdPaint(showErrors) {
   msg('pd-name-msg', e.name);
   $('pd-name').setAttribute('aria-invalid', !!e.name);
   msg('pd-kinds-msg', e.kinds);
+  msg('pd-steps-msg', e.steps);
   msg('pd-rs-msg', e.resize);
   msg('pd-opt-msg', e.opt);
   return Object.keys(e).length ? null : p;

@@ -1,5 +1,6 @@
 pub mod app_info;
 pub mod batch;
+pub mod chain;
 pub mod cli;
 pub mod convert;
 pub mod dropped;
@@ -398,6 +399,7 @@ struct PresetInfo {
     target: String,
     video_target: Option<String>,
     options: preset::PresetOptions,
+    steps: Vec<preset::Step>,
     hidden: bool,
 }
 
@@ -413,6 +415,7 @@ fn preset_infos(s: &Settings) -> Vec<PresetInfo> {
             target: p.target,
             video_target: p.video_target,
             options: p.options,
+            steps: p.steps,
             id: p.id,
         })
         .collect()
@@ -584,7 +587,7 @@ fn restart_watch(app: &AppHandle) {
 fn enqueue_watch(app: &AppHandle, rule: &watch::WatchRule, path: PathBuf) {
     let state = app.state::<AppState>();
     let s = state.settings.lock().unwrap().clone();
-    let Some((target, opts)) = watch::plan_job(rule, &path, &s) else {
+    let Some((target, opts, steps)) = watch::plan_job(rule, &path, &s) else {
         // the rule matched the file but its action cannot make anything of it: say so in Settings
         let name = path
             .file_name()
@@ -607,6 +610,7 @@ fn enqueue_watch(app: &AppHandle, rule: &watch::WatchRule, path: PathBuf) {
         opts,
         merge: None,
         pdf: None,
+        steps,
     };
     state
         .queue
@@ -893,6 +897,7 @@ fn start_pdf(app: &AppHandle, tool: PdfTool, files: Vec<PathBuf>) {
             opts: s.to_options(),
             merge: None,
             pdf: Some(tool.clone()),
+            steps: vec![],
         })
         .collect();
     let label = t(s.language, tool.label_key());
@@ -925,13 +930,20 @@ fn run_preset(app: &AppHandle, p: preset::Preset, files: Vec<PathBuf>) {
     let (mut specs, mut skipped) = (vec![], 0);
     for path in files {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        match p.resolve(ext, &opts) {
+        let (target, steps) = if p.steps.is_empty() {
+            (p.resolve(ext, &opts), vec![])
+        } else {
+            let steps = p.plan_chain(ext, &s).unwrap_or_default();
+            (steps.last().map(|st| st.target), steps)
+        };
+        match target {
             Some(target) => specs.push(Spec {
                 path,
                 target,
                 opts: opts.clone(),
                 merge: None,
                 pdf: None,
+                steps,
             }),
             None => skipped += 1,
         }
@@ -1226,8 +1238,13 @@ fn start_folder(app: &AppHandle, action: folder::Action, dir: PathBuf) {
                     return;
                 };
                 let (opts, ready) = (p.options_for(&s), s.ffmpeg_ready);
+                let chain = !p.steps.is_empty();
+                let s = s.clone();
                 Box::new(move |path| {
                     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    if chain {
+                        return p.menu_target(ext, &s).is_some();
+                    }
                     Format::from_ext(ext).is_some_and(|f| {
                         f.is_image()
                             && p.resolve(ext, &opts)
@@ -1330,6 +1347,7 @@ fn run_merge(app: &AppHandle, kind: MergeKind, files: Vec<PathBuf>) {
         opts: s.to_options(),
         merge: Some((kind, files)),
         pdf: None,
+        steps: vec![],
     };
     state
         .queue

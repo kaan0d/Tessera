@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::convert::pdf_tools::PdfTool;
+
 use crate::convert::{Format, Options, Resize, allows, uses_ffmpeg, uses_office};
 use crate::i18n::{Lang, fmt, t};
 use crate::settings::Settings;
@@ -52,6 +54,31 @@ pub struct Preset {
     /// Overrides `target` for video sources.
     pub video_target: Option<String>,
     pub options: PresetOptions,
+    /// A chain: each step works on the result of the one before. Empty = the single step
+    /// above (`target`/`options`). With steps, `target` only mirrors the last one.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub steps: Vec<Step>,
+}
+
+/// Most steps a chain may have.
+pub const MAX_STEPS: usize = 5;
+
+/// One step of a chain: a conversion to `target`, or a PDF tool (then `target` is "pdf").
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Step {
+    pub target: String,
+    pub tool: Option<PdfTool>,
+    pub options: PresetOptions,
+}
+
+/// A step resolved for one source file.
+#[derive(Debug, Clone)]
+pub struct StepPlan {
+    pub from: Format,
+    pub target: Format,
+    pub pdf: Option<PdfTool>,
+    pub opts: Options,
 }
 
 fn builtin(
@@ -69,6 +96,15 @@ fn builtin(
         target: target.into(),
         video_target: video_target.map(String::from),
         options,
+        steps: vec![],
+    }
+}
+
+fn step(target: &str, tool: Option<PdfTool>) -> Step {
+    Step {
+        target: target.into(),
+        tool,
+        options: PresetOptions::default(),
     }
 }
 
@@ -170,6 +206,15 @@ pub fn builtins() -> Vec<Preset> {
                 ..o()
             },
         ),
+        // scan -> searchable PDF -> smaller PDF (a PDF source skips the first step)
+        Preset {
+            steps: vec![
+                step("pdf", None),
+                step("pdf", Some(PdfTool::Ocr { lang: None })),
+                step("pdf", Some(PdfTool::Compress { strong: false })),
+            ],
+            ..builtin("scan_share", &["image", "document"], "pdf", None, o())
+        },
     ]
 }
 
@@ -215,8 +260,14 @@ impl Preset {
 
     /// Settings options with this preset's overrides on top.
     pub fn options_for(&self, s: &Settings) -> Options {
+        self.options.to_options(s)
+    }
+}
+
+impl PresetOptions {
+    pub fn to_options(&self, s: &Settings) -> Options {
         let mut o = s.to_options();
-        let p = &self.options;
+        let p = self;
         o.resize = p.resize;
         o.strip_metadata = p.strip_metadata;
         o.max_bytes = p.max_bytes;
@@ -243,6 +294,43 @@ impl Preset {
         o.clamped()
     }
 
+    /// Clamps every value into its range; the error is an i18n key.
+    fn clamp(&mut self) -> Result<(), &'static str> {
+        let o = self;
+        o.resize = o.resize.map(Resize::clamped);
+        o.max_bytes = o.max_bytes.map(|n| n.max(1));
+        o.jpeg_quality = o.jpeg_quality.map(|q| q.clamp(1, 100));
+        o.video_mbps = o.video_mbps.map(|q| q.clamp(1, 30));
+        o.audio_kbps = o.audio_kbps.map(|k| k.clamp(8, 512));
+        o.gif_fps = o.gif_fps.map(|f| f.clamp(5, 30));
+        o.gif_width = o.gif_width.map(|w| w.clamp(120, 1280));
+        // NaN, negative and absurd cut points are dropped; an end before the start is refused
+        let ok = |t: f32| t.is_finite() && (0.0..=360_000.0).contains(&t);
+        o.trim_start = o.trim_start.filter(|&t| ok(t));
+        o.trim_end = o.trim_end.filter(|&t| ok(t));
+        if matches!((o.trim_start, o.trim_end), (s, Some(e)) if e <= s.unwrap_or(0.0)) {
+            return Err("preset.bad_trim");
+        }
+        Ok(())
+    }
+
+    /// Some option changes the file itself (so "same format" still does something).
+    fn transforms(&self) -> bool {
+        let o = self;
+        o.resize.is_some()
+            || o.strip_metadata
+            || o.max_bytes.is_some()
+            || o.no_audio
+            || o.audio_kbps.is_some()
+            || o.mono
+            || o.trim_start.is_some_and(|t| t > 0.0)
+            || o.trim_end.is_some()
+            || o.jpeg_quality.is_some()
+            || o.video_mbps.is_some()
+    }
+}
+
+impl Preset {
     pub fn applies_to_kind(&self, from: Format) -> bool {
         self.kinds.iter().any(|k| k == from.kind())
     }
@@ -263,11 +351,110 @@ impl Preset {
 
     /// Like `resolve`, also hidden when the job needs ffmpeg or LibreOffice and it is missing.
     pub fn menu_target(&self, ext: &str, s: &Settings) -> Option<Format> {
+        if !self.steps.is_empty() {
+            let plan = self.plan_chain(ext, s)?;
+            let ready = plan.iter().all(|p| {
+                let ff = uses_ffmpeg(p.from, p.target) || p.opts.ffmpeg_only(p.from);
+                let office = p.pdf.is_none() && uses_office(p.from, p.target);
+                (s.ffmpeg_ready || !ff) && (!office || crate::office::ready())
+            });
+            return ready.then(|| plan.last().map(|p| p.target)).flatten();
+        }
         let target = self.resolve(ext, &self.options_for(s))?;
         let from = Format::from_ext(ext)?;
         let ffmpeg_ok = s.ffmpeg_ready || !uses_ffmpeg(from, target);
         let office_ok = !uses_office(from, target) || crate::office::ready();
         (ffmpeg_ok && office_ok).then_some(target)
+    }
+
+    /// The steps of a chain for a source extension, or None when the chain does not apply to it
+    /// (wrong kind, a step the previous result cannot take). A plain conversion to the format
+    /// the file already has (a PDF "made" a PDF) is left out; the result may be empty.
+    pub fn plan_chain(&self, ext: &str, s: &Settings) -> Option<Vec<StepPlan>> {
+        self.plan_from(Format::from_ext(ext)?, s)
+    }
+
+    fn plan_from(&self, mut cur: Format, s: &Settings) -> Option<Vec<StepPlan>> {
+        if !self.applies_to_kind(cur) {
+            return None;
+        }
+        let mut plan = vec![];
+        for st in &self.steps {
+            let opts = st.options.to_options(s);
+            let (target, pdf) = match &st.tool {
+                Some(tool) => {
+                    if cur != Format::Pdf || !tool.valid() || *tool == PdfTool::Split {
+                        return None;
+                    }
+                    (Format::Pdf, Some(tool.clone()))
+                }
+                None => {
+                    let t = parse_target(&st.target, cur)?;
+                    if t == cur && cur == Format::Pdf {
+                        continue;
+                    }
+                    // pages of a PDF as pictures would be a folder, not a file to pass on
+                    if cur == Format::Pdf && t.is_image() {
+                        return None;
+                    }
+                    if !allows(cur.ext(), cur, t, &opts) {
+                        return None;
+                    }
+                    (t, None)
+                }
+            };
+            plan.push(StepPlan {
+                from: cur,
+                target,
+                pdf,
+                opts,
+            });
+            cur = target;
+        }
+        Some(plan)
+    }
+
+    /// `validate` for a chain: every step must be known and each kind the preset takes must
+    /// get through all of them.
+    fn validate_steps(&mut self, lang: Lang) -> Result<(), String> {
+        let bad = |k| Err(t(lang, k).to_string());
+        if self.steps.len() > MAX_STEPS {
+            return Err(fmt(
+                lang,
+                "preset.too_many_steps",
+                &[("max", &MAX_STEPS.to_string())],
+            ));
+        }
+        for st in &mut self.steps {
+            st.target = st.target.trim().to_lowercase();
+            match &st.tool {
+                Some(tool) if !tool.valid() || *tool == PdfTool::Split => {
+                    return bad("preset.bad_step");
+                }
+                Some(_) => st.target = "pdf".into(),
+                None if parse_target(&st.target, Format::Png).is_none() => {
+                    return bad("preset.bad_target");
+                }
+                None => {}
+            }
+            st.options.clamp().or_else(bad)?;
+        }
+        let s = Settings::default();
+        let fits = |k: &String| {
+            Format::ALL
+                .iter()
+                .any(|f| f.kind() == k && self.plan_from(*f, &s).is_some_and(|p| !p.is_empty()))
+        };
+        if !self.kinds.iter().all(fits) {
+            return bad("preset.chain_kind");
+        }
+        self.target = self
+            .steps
+            .last()
+            .map(|st| st.target.clone())
+            .unwrap_or_default();
+        self.video_target = None;
+        Ok(())
     }
 
     /// Checks and normalizes a user preset in place. The error is shown to the user.
@@ -304,36 +491,16 @@ impl Preset {
         if self.kinds.is_empty() {
             return bad("preset.bad_kinds");
         }
+        if !self.steps.is_empty() {
+            return self.validate_steps(lang);
+        }
         self.target = self.target.trim().to_lowercase();
         let known = |s: &str| s == "same" || parse_target(s, Format::Png).is_some();
         if !known(&self.target) || self.video_target.as_deref().is_some_and(|v| !known(v)) {
             return bad("preset.bad_target");
         }
-        let o = &mut self.options;
-        o.resize = o.resize.map(Resize::clamped);
-        o.max_bytes = o.max_bytes.map(|n| n.max(1));
-        o.jpeg_quality = o.jpeg_quality.map(|q| q.clamp(1, 100));
-        o.video_mbps = o.video_mbps.map(|q| q.clamp(1, 30));
-        o.audio_kbps = o.audio_kbps.map(|k| k.clamp(8, 512));
-        o.gif_fps = o.gif_fps.map(|f| f.clamp(5, 30));
-        o.gif_width = o.gif_width.map(|w| w.clamp(120, 1280));
-        // NaN, negative and absurd cut points are dropped; an end before the start is refused
-        let ok = |t: f32| t.is_finite() && (0.0..=360_000.0).contains(&t);
-        o.trim_start = o.trim_start.filter(|&t| ok(t));
-        o.trim_end = o.trim_end.filter(|&t| ok(t));
-        if matches!((o.trim_start, o.trim_end), (s, Some(e)) if e <= s.unwrap_or(0.0)) {
-            return bad("preset.bad_trim");
-        }
-        let transforms = o.resize.is_some()
-            || o.strip_metadata
-            || o.max_bytes.is_some()
-            || o.no_audio
-            || o.audio_kbps.is_some()
-            || o.mono
-            || o.trim_start.is_some_and(|t| t > 0.0)
-            || o.trim_end.is_some()
-            || o.jpeg_quality.is_some()
-            || o.video_mbps.is_some();
+        self.options.clamp().or_else(bad)?;
+        let transforms = self.options.transforms();
         let keeps = self.target == "same" || self.video_target.as_deref() == Some("same");
         if keeps && !transforms {
             return bad("preset.same_needs_option");
@@ -388,22 +555,40 @@ mod tests {
                 "pdf",
                 "webp",
                 "ico",
-                "instagram"
+                "instagram",
+                "scan_share"
             ]
         );
         // a JPEG stays JPEG for web (same format with transforms); pdf source gets none
-        assert_eq!(ids("jpg", &s).len(), 9);
-        assert!(ids("pdf", &s).is_empty());
+        assert_eq!(ids("jpg", &s).len(), 10);
+        // only the chain takes a PDF (it makes it searchable and smaller)
+        assert_eq!(ids("pdf", &s), ["scan_share"]);
         assert_eq!(ids("mp4", &s), ["email", "discord", "strip"]);
         assert_eq!(ids("mp3", &s), ["podcast"]);
         // source-only image formats cannot keep their format, but can become JPG/PDF
         assert_eq!(
             ids("heic", &s),
-            ["web", "whatsapp", "pdf", "webp", "ico", "instagram"]
+            [
+                "web",
+                "whatsapp",
+                "pdf",
+                "webp",
+                "ico",
+                "instagram",
+                "scan_share"
+            ]
         );
         assert_eq!(
             ids("svg", &s),
-            ["web", "whatsapp", "pdf", "webp", "ico", "instagram"]
+            [
+                "web",
+                "whatsapp",
+                "pdf",
+                "webp",
+                "ico",
+                "instagram",
+                "scan_share"
+            ]
         );
     }
 
@@ -521,5 +706,127 @@ mod tests {
         let w = &builtins()[0];
         assert_eq!(w.name(Lang::En), "Shrink for web");
         assert_ne!(w.name(Lang::Tr), w.name(Lang::En));
+    }
+
+    fn chain(kinds: &[&str], steps: Vec<Step>) -> Preset {
+        Preset {
+            id: "ch".into(),
+            custom_name: Some("Chain".into()),
+            kinds: kinds.iter().map(|k| k.to_string()).collect(),
+            steps,
+            ..Preset::default()
+        }
+    }
+
+    #[test]
+    fn old_files_load_without_steps_and_stay_that_way() {
+        let old = r#"{"id":"a","custom_name":"A","kinds":["image"],"target":"png",
+            "options":{"strip_metadata":true}}"#;
+        let p: Preset = serde_json::from_str(old).unwrap();
+        assert!(p.steps.is_empty() && p.options.strip_metadata);
+        // a single-step preset is saved exactly as before: no "steps" key
+        assert!(!serde_json::to_string(&p).unwrap().contains("steps"));
+        let s: Settings = serde_json::from_str(&format!(r#"{{"presets":[{old}]}}"#)).unwrap();
+        assert_eq!(s.normalized().presets.len(), 1);
+    }
+
+    #[test]
+    fn a_chain_survives_a_json_round_trip() {
+        let mut p = chain(
+            &["image"],
+            vec![
+                step("pdf", None),
+                step(
+                    "pdf",
+                    Some(PdfTool::Ocr {
+                        lang: Some("tr".into()),
+                    }),
+                ),
+            ],
+        );
+        p.validate(Lang::En).unwrap();
+        let back: Preset = serde_json::from_str(&serde_json::to_string(&p).unwrap()).unwrap();
+        assert_eq!(back, p);
+        assert_eq!(back.target, "pdf");
+    }
+
+    #[test]
+    fn chain_validation() {
+        let ok = chain(
+            &["image"],
+            vec![
+                step("jpg", None),
+                step("pdf", None),
+                step("pdf", Some(PdfTool::Compress { strong: true })),
+            ],
+        );
+        let mut p = ok.clone();
+        p.validate(Lang::En).unwrap();
+        // too many steps
+        let mut p = ok.clone();
+        p.steps = (0..6).map(|_| step("png", None)).collect();
+        assert!(p.validate(Lang::En).unwrap_err().contains('5'));
+        // a PDF tool cannot start from a picture
+        let mut p = chain(
+            &["image"],
+            vec![step("pdf", Some(PdfTool::Compress { strong: false }))],
+        );
+        assert!(p.validate(Lang::En).is_err());
+        // nothing converts a PDF back into a JPG file in one go (a folder of pages)
+        let mut p = chain(&["image"], vec![step("pdf", None), step("jpg", None)]);
+        assert!(p.validate(Lang::En).is_err());
+        // splitting makes many files, no chain step
+        let mut p = chain(&["document"], vec![step("pdf", Some(PdfTool::Split))]);
+        assert!(p.validate(Lang::En).is_err());
+        // unknown target, bad tool arguments
+        let mut p = chain(&["image"], vec![step("exe", None)]);
+        assert!(p.validate(Lang::En).is_err());
+        let bad_pages = PdfTool::Extract { pages: "x".into() };
+        let mut p = chain(
+            &["image"],
+            vec![step("pdf", None), step("pdf", Some(bad_pages))],
+        );
+        assert!(p.validate(Lang::En).is_err());
+    }
+
+    #[test]
+    fn scan_share_plans_per_source() {
+        let s = Settings::default();
+        let p = find(&s, "scan_share").unwrap();
+        let shape = |ext: &str| -> Vec<String> {
+            p.plan_chain(ext, &s)
+                .unwrap()
+                .iter()
+                .map(|st| match &st.pdf {
+                    Some(t) => t.arg(),
+                    None => st.target.ext().into(),
+                })
+                .collect()
+        };
+        assert_eq!(shape("png"), ["pdf", "ocr", "compress"]);
+        // a PDF is already a PDF: the conversion step drops out
+        assert_eq!(shape("pdf"), ["ocr", "compress"]);
+        assert!(p.plan_chain("mp3", &s).is_none());
+        assert_eq!(p.menu_target("png", &s), Some(Format::Pdf));
+        assert_eq!(p.menu_target("pdf", &s), Some(Format::Pdf));
+        assert_eq!(p.menu_target("mp4", &s), None);
+        assert!(is_builtin("scan_share"));
+    }
+
+    #[test]
+    fn a_chain_step_that_needs_ffmpeg_hides_the_preset_until_it_is_ready() {
+        let mut s = Settings::default();
+        let mut p = chain(&["image"], vec![step("jpg", None), step("pdf", None)]);
+        p.validate(Lang::En).unwrap();
+        assert!(p.menu_target("png", &s).is_some());
+        let mut g = chain(&["image"], vec![step("gif", None)]);
+        g.steps = vec![Step {
+            target: "mp4".into(),
+            ..Step::default()
+        }];
+        // a GIF can become a video: that step needs ffmpeg
+        assert_eq!(g.menu_target("gif", &s), None);
+        s.ffmpeg_ready = true;
+        assert_eq!(g.menu_target("gif", &s), Some(Format::Mp4));
     }
 }

@@ -370,7 +370,10 @@ pub const MSGS: &[(&str, &str)] = &[
         "ce.ocr_no_language",
         "Nenhum idioma de OCR instalado. Adicione um em Configurações do Windows > Hora e idioma, com reconhecimento de texto.",
     ),
-    ("ce.ocr_failed", "Falha no reconhecimento de texto: {detail}"),
+    (
+        "ce.ocr_failed",
+        "Falha no reconhecimento de texto: {detail}",
+    ),
     (
         "ce.office_timeout",
         "O LibreOffice não terminou em 5 minutos. O documento provavelmente é grande demais.",
@@ -391,5 +394,16 @@ pub const MSGS: &[(&str, &str)] = &[
     (
         "notify.preset_skip_one",
         "1 arquivo ignorado: sem suporte em {name}",
+    ),
+    ("ce.in_step", "Etapa {n} de {of}: {detail}"),
+    ("preset.scan_share", "Digitalizar e compartilhar"),
+    (
+        "preset.too_many_steps",
+        "Uma cadeia pode ter no máximo {max} etapas",
+    ),
+    ("preset.bad_step", "Uma etapa da cadeia não é válida"),
+    (
+        "preset.chain_kind",
+        "Essas etapas não funcionam nessa ordem para todos os tipos de arquivo da predefinição",
     ),
 ];
