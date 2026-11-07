@@ -148,26 +148,78 @@ pub fn recognize(img: &DynamicImage, lang: Option<&str>) -> Result<OcrPage, Conv
     Ok(OcrPage { lines, scale })
 }
 
-/// Picture file -> UTF-8 text (CRLF lines). No recognized text is `OcrNoText`.
+/// Pages with fewer readable characters than this are read by OCR instead of from the PDF.
+const MIN_EMBEDDED: usize = 10;
+/// A PDF with more pages than this is refused (OCR time and memory).
+const MAX_PAGES: usize = 500;
+
+/// Picture or PDF file -> UTF-8 text (CRLF lines, pages separated by a blank line). A PDF page
+/// with a text layer is read from it; a scanned page goes through OCR. No text at all is
+/// `OcrNoText`.
 pub fn write_text(
     src: &Path,
     from: Format,
     opts: &Options,
+    progress: &mut impl FnMut(f32),
     w: &mut impl Write,
 ) -> Result<(), ConvertError> {
-    // size rules are for the output picture, not for what the engine reads
-    let load_opts = Options {
-        resize: None,
-        ..opts.clone()
+    let lang = opts.ocr_lang.as_deref();
+    let text = if from == Format::Pdf {
+        pdf_text(src, lang, opts, progress)?
+    } else {
+        // size rules are for the output picture, not for what the engine reads
+        let load_opts = Options {
+            resize: None,
+            ..opts.clone()
+        };
+        let img = super::image::load(src, from, &load_opts)?;
+        opts.check_cancel()?;
+        recognize(&img, lang)?.text()
     };
-    let img = super::image::load(src, from, &load_opts)?;
-    opts.check_cancel()?;
-    let text = recognize(&img, opts.ocr_lang.as_deref())?.text();
     if text.trim().is_empty() {
         return Err(ConvertError::OcrNoText);
     }
     w.write_all(text.as_bytes())?;
+    progress(1.0);
     Ok(())
+}
+
+fn pdf_text(
+    src: &Path,
+    lang: Option<&str>,
+    opts: &Options,
+    progress: &mut impl FnMut(f32),
+) -> Result<String, ConvertError> {
+    let doc = super::pdf_edit::load(src)?;
+    let numbers: Vec<u32> = doc.get_pages().keys().copied().collect();
+    if numbers.len() > MAX_PAGES {
+        return Err(ConvertError::TooLarge);
+    }
+    let mut pages = vec![];
+    for (i, &n) in numbers.iter().enumerate() {
+        opts.check_cancel()?;
+        let embedded = super::pdf_edit::guarded(|| {
+            Ok(doc
+                .extract_text_with_limit(&[n], 8 * 1024 * 1024)
+                .unwrap_or_default())
+        })?;
+        let readable = embedded.chars().filter(|c| c.is_alphanumeric()).count();
+        let text = if readable >= MIN_EMBEDDED {
+            crlf(embedded.trim())
+        } else {
+            let img = super::pdf::render_page(src, n, None)?;
+            opts.check_cancel()?;
+            recognize(&img, lang)?.text()
+        };
+        pages.push(text);
+        progress((i + 1) as f32 / numbers.len() as f32 * 0.99);
+    }
+    Ok(pages.join("\r\n\r\n"))
+}
+
+/// Line breaks as CRLF, whatever the source used.
+fn crlf(s: &str) -> String {
+    s.replace("\r\n", "\n").replace('\n', "\r\n")
 }
 
 #[cfg(test)]
@@ -222,10 +274,78 @@ mod tests {
         )
         .unwrap();
         let mut out = vec![];
-        write_text(&svg, Format::Svg, &Options::default(), &mut out).unwrap();
+        write_text(&svg, Format::Svg, &Options::default(), &mut |_| {}, &mut out).unwrap();
         let text = String::from_utf8(out).unwrap();
         let _ = std::fs::remove_dir_all(&dir);
         assert!(text.contains("Hello") && text.contains("2026"), "{text:?}");
         assert!(text.contains("\r\n"));
+    }
+
+    fn temp_dir(tag: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("tessera-ocr-{tag}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    const WORDS_SVG: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="900" height="260">
+<rect width="900" height="260" fill="white"/>
+<text x="30" y="100" font-family="Arial" font-size="64" fill="black">Scanned page</text>
+<text x="30" y="200" font-family="Arial" font-size="64" fill="black">Invoice 2026</text></svg>"#;
+
+    #[test]
+    fn scanned_pdf_goes_through_ocr() {
+        if installed_languages().is_empty() {
+            return;
+        }
+        let dir = temp_dir("scan");
+        let svg = dir.join("t.svg");
+        std::fs::write(&svg, WORDS_SVG).unwrap();
+        let img = super::super::svg::render(&svg, None).unwrap();
+        let mut pdf = vec![];
+        super::super::pdf::write(&super::super::pdf::Payload::Pixels(&img), &mut pdf).unwrap();
+        let file = dir.join("scan.pdf");
+        std::fs::write(&file, pdf).unwrap();
+        let mut out = vec![];
+        write_text(&file, Format::Pdf, &Options::default(), &mut |_| {}, &mut out).unwrap();
+        let text = String::from_utf8(out).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(text.contains("Scanned") && text.contains("2026"), "{text:?}");
+    }
+
+    #[test]
+    fn pdf_with_text_layer_is_read_without_ocr() {
+        use pdf_writer::{Content, Finish, Name, Pdf, Rect, Ref, Str};
+        let (catalog, tree, page, font, content) =
+            (Ref::new(1), Ref::new(2), Ref::new(3), Ref::new(4), Ref::new(5));
+        let mut pdf = Pdf::new();
+        pdf.catalog(catalog).pages(tree);
+        pdf.pages(tree).kids([page]).count(1);
+        let mut p = pdf.page(page);
+        p.media_box(Rect::new(0.0, 0.0, 300.0, 200.0))
+            .parent(tree)
+            .contents(content);
+        p.resources().fonts().pair(Name(b"F1"), font);
+        p.finish();
+        pdf.type1_font(font).base_font(Name(b"Helvetica"));
+        let mut c = Content::new();
+        c.begin_text()
+            .set_font(Name(b"F1"), 18.0)
+            .next_line(20.0, 100.0)
+            .show(Str(b"Embedded text layer 12345"))
+            .end_text();
+        pdf.stream(content, &c.finish());
+        let dir = temp_dir("layer");
+        let file = dir.join("t.pdf");
+        std::fs::write(&file, pdf.finish()).unwrap();
+        let mut out = vec![];
+        // `lang` is bogus on purpose: the OCR engine must not be needed
+        let opts = Options {
+            ocr_lang: Some("xx".into()),
+            ..Options::default()
+        };
+        write_text(&file, Format::Pdf, &opts, &mut |_| {}, &mut out).unwrap();
+        let text = String::from_utf8(out).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(text.contains("Embedded text layer 12345"), "{text:?}");
     }
 }

@@ -124,8 +124,8 @@ const SHEETS: [Format; 4] = [Format::Xlsx, Format::Xls, Format::Ods, Format::Csv
 const SLIDES: [Format; 3] = [Format::Pptx, Format::Ppt, Format::Odp];
 /// Slides can also become pictures, one per slide (through a PDF).
 const FROM_SLIDES: [Format; 3] = [Format::Pdf, Format::Png, Format::Jpg];
-/// Editable text recovered from a PDF (LibreOffice's PDF import; layout often breaks).
-const FROM_PDF_TEXT: [Format; 2] = [Format::Docx, Format::Odt];
+/// Text recovered from a PDF: DOCX/ODT through LibreOffice's PDF import (layout often breaks), TXT from the text layer or OCR.
+const FROM_PDF: [Format; 3] = [Format::Docx, Format::Odt, Format::Txt];
 /// Targets for a video source: other containers, GIF, and audio extraction.
 const FROM_VIDEO: [Format; 6] = [
     Format::Gif,
@@ -546,7 +546,8 @@ pub fn uses_office(src: Format, target: Format) -> bool {
 
 /// Text read off a picture by the OCR engine (TXT is otherwise an office format).
 pub fn uses_ocr(src: Format, target: Format) -> bool {
-    target == Format::Txt && src.is_image() && !matches!(src, Format::Heic | Format::Avif)
+    target == Format::Txt
+        && (src == Format::Pdf || (src.is_image() && !matches!(src, Format::Heic | Format::Avif)))
 }
 
 /// Targets offered for a source extension (empty if the extension is unknown).
@@ -566,7 +567,7 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
     } else if src.is_image() {
         (&IMAGES, &pic)
     } else if src == Format::Pdf {
-        (&IMAGES, &FROM_PDF_TEXT)
+        (&IMAGES, &FROM_PDF)
     } else if TEXT.contains(&src) {
         (&TEXT, &pdf)
     } else if SHEETS.contains(&src) {
@@ -640,7 +641,7 @@ pub fn convert(
     }
     output::write_atomic(&dest, |w| {
         if uses_ocr(from, target) {
-            ocr::write_text(&src, from, opts, w)
+            ocr::write_text(&src, from, opts, &mut progress, w)
         } else if from.is_image() || from == Format::Pdf {
             let photo = matches!(from, Format::Jpg | Format::Raw);
             image::convert(&src, from, target, photo, opts, w)
