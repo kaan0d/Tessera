@@ -35,7 +35,7 @@ Prefer a window? Drop files on it and choose there. Prefer scripts? There is a f
 - **Convert:** PNG, JPG, WEBP, GIF, BMP, TIFF, ICO, AVIF, PDF; WAV, FLAC, MP3, OGG, AAC; MP4, MKV, AVI, WEBM, MOV. It also reads SVG, HEIC, RAW (embedded preview) and PDF pages, and turns animated GIFs into MP4 or WebM.
 - **Office documents:** DOCX, DOC, ODT, RTF, TXT; XLSX, XLS, ODS, CSV; PPTX, PPT, ODP. Each converts to the others of its kind and to PDF, slides become one PNG or JPG each, and a PDF can come back as DOCX or ODT.
 - **PDF tools:** split into pages, keep or delete pages (`1-3, 5`), rotate, compress the pictures inside. A multi-page PDF turned into images gives one picture per page.
-- **Text from scans (OCR):** a picture or scanned PDF becomes a TXT file, and a scanned PDF becomes searchable with an invisible text layer over the unchanged page. It uses the text recognition built into Windows, offline, for the languages Windows has installed.
+- **Text from scans (OCR):** a picture or scanned PDF becomes a TXT file, and a scanned PDF becomes searchable with an invisible text layer over the unchanged page. It uses the text recognition built into Windows, offline, for the languages Windows has installed; other languages use Tesseract, downloaded on request under Settings > OCR (about 18 MB, then 1 to 5 MB per language).
 - **Shrink to a size:** "under 10 MB" or "under 2 MB" for images, video, audio and PDF. A file that already fits is copied as is when its format stays the same.
 - **Presets:** web, WhatsApp, email, Discord (all under 10 MB where it matters), strip location data, PDF, WebP, icon, Instagram, podcast. Save your own from any custom settings.
 - **Edit on the way:** resize, strip metadata, fix orientation, cut audio and video, audio bitrate, mono, GIF fps and width.
@@ -87,9 +87,9 @@ tessera-cli formats png
 
 ## Privacy
 
-Files never leave your computer. Tessera downloads two things, both pinned and SHA-256 checked: an LGPL ffmpeg build (about 170 MB) during setup, and LibreOffice for office documents only when you press its Download button (`tessera.exe --install-office` from a script). Untick ffmpeg in setup, or choose Later in the app, and nothing is fetched until you press Download. LibreOffice runs with its own profile, macros, remote links and embedded objects switched off, and gets no shortcut or file association. The update check is off until you turn it on; "Update now" then downloads the new installer from the release, checks its SHA-256 and replaces the app, keeping your settings.
+Files never leave your computer. Tessera downloads three things, all pinned and SHA-256 checked: an LGPL ffmpeg build (about 170 MB) during setup, and, only when you press their Download buttons, LibreOffice for office documents (`tessera.exe --install-office` from a script) and the Tesseract OCR engine with its language files (`tessera.exe --install-ocr tur eng`, remove with `--remove-ocr`). Untick ffmpeg in setup, or choose Later in the app, and nothing is fetched until you press Download. LibreOffice runs with its own profile, macros, remote links and embedded objects switched off, and gets no shortcut or file association. The update check is off until you turn it on; "Update now" then downloads the new installer from the release, checks its SHA-256 and replaces the app, keeping your settings.
 
-On disk, in the `data` folder inside the install folder: `ffmpeg`, `libreoffice` and `office-profile` when downloaded, `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
+On disk, in the `data` folder inside the install folder: `ffmpeg`, `libreoffice`, `office-profile` and `tesseract` when downloaded, `settings.json`, `history.json` (your last 200 jobs with their file paths, switch it off under History) and `tessera.log` (failed jobs with file names, 512 KB at most).
 
 Everything is per user. Files: the install folder only, data included. Registry, all under `HKCU`: the Explorer menu keys, the uninstall entry, and optionally `Run` (Start with Windows) and the user `Path`. Uninstalling removes all of it; settings and history go too if you tick that box. Converted files are never touched.
 
@@ -102,7 +102,7 @@ Everything is per user. Files: the install folder only, data included. Registry,
 - Office documents convert up to three at a time; the first one after a start takes about 10 seconds, later ones about 2. A PDF turned into DOCX keeps the text but often not the layout.
 - PDF tools that keep or delete pages drop bookmarks and form fields; Compress only touches RGB and gray pictures.
 - A one-page PDF or one-slide deck turned into pictures gives one file; more pages go into a folder named after the file.
-- OCR needs a text recognition language in Windows (Settings > Time & language). Handwriting is not read, and a page that already has text is left as it is.
+- OCR needs a text recognition language in Windows (Settings > Time & language) or a downloaded Tesseract language (Settings > OCR). Handwriting is not read, and a page that already has text is left as it is.
 - Lossy WebP (made by ffmpeg) leaves out the colour profile; JPEG and PNG keep it.
 
 ## Built with
@@ -148,9 +148,11 @@ src-tauri/src/
   cli.rs  headless.rs    command-line parsing and the `tessera-cli` commands
   install.rs             the self-installer and uninstaller
   office.rs              document support: LibreOffice download and lookup (runner in convert/office.rs)
+  tesseract.rs           OCR engine download, language files and runner (after Windows OCR in convert/ocr.rs)
   settings.rs  preset.rs history.rs  update.rs  log.rs  ffmpeg.rs
   i18n.rs  i18n/         backend strings: en and tr in i18n.rs, one table per other language
 src-tauri/menu-icons/    one .ico per menu verb (embedded in the exe)
+tools/libjbig-stub/      MIT stand-in for the GPL JBIG DLL in the Tesseract bundle
 ```
 
 **Things worth knowing**
