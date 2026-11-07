@@ -319,6 +319,39 @@ pub fn frame_window(r: Rect) -> (Rect, Rect) {
     (outer, hole)
 }
 
+/// Asks Windows for real pixels instead of scaled ones. A console command has no window system
+/// that did this; call it before `screens`.
+pub fn make_dpi_aware() {
+    // SAFETY: a plain process-wide switch with no arguments.
+    unsafe {
+        let _ = windows::Win32::UI::WindowsAndMessaging::SetProcessDPIAware();
+    }
+}
+
+/// (main screen, whole virtual desktop) in desktop pixels.
+pub fn screens() -> (Rect, Rect) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetSystemMetrics, SM_CXSCREEN, SM_CXVIRTUALSCREEN, SM_CYSCREEN, SM_CYVIRTUALSCREEN,
+        SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
+    };
+    // SAFETY: GetSystemMetrics only reads.
+    let m = |i| unsafe { GetSystemMetrics(i) };
+    (
+        Rect {
+            x: 0,
+            y: 0,
+            w: m(SM_CXSCREEN).max(0) as u32,
+            h: m(SM_CYSCREEN).max(0) as u32,
+        },
+        Rect {
+            x: m(SM_XVIRTUALSCREEN),
+            y: m(SM_YVIRTUALSCREEN),
+            w: m(SM_CXVIRTUALSCREEN).max(0) as u32,
+            h: m(SM_CYVIRTUALSCREEN).max(0) as u32,
+        },
+    )
+}
+
 fn error(key: &'static str, detail: impl std::fmt::Display) -> FfError {
     FfError::with(key, detail)
 }

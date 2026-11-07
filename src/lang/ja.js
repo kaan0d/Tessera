@@ -505,7 +505,24 @@ I18N['ja'] = {
   "dr.skipped.other": "{n} 個のファイルは変換できないため、スキップされます。",
   "dr.none": "これらのファイルはどれも変換できません。",
   "dr.starting": "開始しています…",
-  "dr.err_options": "ファイルを読み取れませんでした: {err}"
+  "dr.err_options": "ファイルを読み取れませんでした: {err}",
+  "cap.hint": "ドラッグして範囲を選択します。右クリックで画面全体。Esc でキャンセル。",
+  "cap.confirm": "Enter キーで録画を開始します。選び直すには、もう一度ドラッグします。Esc でキャンセル。",
+  "cap.rec": "録画中",
+  "cap.stop": "停止",
+  "cap.cancel": "破棄",
+  "cap.title": "画面録画",
+  "cap.desc": "タスクトレイのアイコンから画面の一部を録画します。音声なし。録画は MP4 で保存され、GIF と WEBM はそこから作られます。",
+  "cap.dir": "録画の保存先",
+  "cap.dir_def": "ビデオ\\Tessera（既定）",
+  "cap.fps": "フレームレート（毎秒）",
+  "cap.cursor": "マウスポインターを表示",
+  "cap.max": "最長録画時間",
+  "cap.min": "{n} 分",
+  "cap.format": "保存形式",
+  "cap.hotkey": "ショートカット Ctrl+Alt+R",
+  "cap.hotkey_desc": "範囲選択を開始し、録画中は停止します。既定ではオフです。このキーを別のプログラムがすでに使っている場合があります。",
+  "cap.foot": "録画は 2 GB または時間の上限で止まります。録画中は赤い枠とバーが画面に表示され、オフにはできません。"
 };
 SETUP['ja'] = {
   "install_title": "Tessera のインストール",

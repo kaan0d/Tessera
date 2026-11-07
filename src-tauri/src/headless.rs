@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
-use crate::cli::{Command, ConvertArgs};
+use crate::cli::{CaptureArgs, Command, ConvertArgs};
 use crate::convert::{
     Format, Options, OutDir, convert, needs_ffmpeg, supported_targets, uses_ffmpeg, uses_office,
 };
@@ -27,6 +27,9 @@ Usage:
   {p} pdf <split|extract|delete|rotate|compress|ocr> <files...> [--pages 1-3,5] [--angle 90|180|270] [--ocr-lang tr]
           [--strong --out <dir> --conflict <mode> --json --quiet]
                       split into pages, keep or delete pages, turn pages clockwise, shrink pictures
+  {p} capture [--region x,y,w,h] [--secs N] [--to gif|mp4|webm]
+                      record the screen (no sound) into the recordings folder; without --region the
+                      main screen, without --secs until Enter; x,y,w,h are desktop pixels
   {p} list-presets
   {p} formats <ext>
   {p} --version | --help
@@ -134,11 +137,91 @@ pub fn run(cmd: Command) -> i32 {
         Command::Preset { id, files, flags } => preset_cmd(&id, &files, flags),
         Command::MergeFiles { kind, files, flags } => merge_cmd(kind, &files, flags),
         Command::PdfFiles { tool, files, flags } => pdf_cmd(&tool, &files, flags),
+        Command::Capture(a) => capture_cmd(a),
     }
 }
 
 fn version_line() -> String {
     format!("{} {}", app_info::APP_NAME, env!("CARGO_PKG_VERSION"))
+}
+
+/// `capture`: records with the saved recording settings, then converts for GIF and WEBM.
+fn capture_cmd(a: CaptureArgs) -> i32 {
+    use crate::capture;
+    use std::time::{Duration, Instant};
+    let ff = ffmpeg::exe_path();
+    if !ffmpeg::is_working(&ff) {
+        err("error: ffmpeg is not installed (open Tessera once, or run --install-ffmpeg)");
+        return EXIT_FAILED;
+    }
+    let s = settings::load_from(&settings::settings_path());
+    let cs = s.capture.clone().normalized();
+    capture::make_dpi_aware();
+    let (primary, desktop) = capture::screens();
+    let region = a.region.unwrap_or(primary);
+    let Some(rect) = capture::fit_rect(region, desktop) else {
+        err(&format!(
+            "error: the region is outside the screen or smaller than {0}x{0} pixels (screen: {1},{2},{3},{4})",
+            capture::MIN_SIDE,
+            desktop.x,
+            desktop.y,
+            desktop.w,
+            desktop.h
+        ));
+        return EXIT_USAGE;
+    };
+    let target = a.to.unwrap_or_else(|| cs.target());
+    let dir = cs.out_dir();
+    let mut rec = match capture::start(&ffmpeg::exe_path(), rect, &cs, &dir, &capture::file_stem())
+    {
+        Ok(r) => r,
+        Err(e) => {
+            err(&format!("error: {e}"));
+            return EXIT_FAILED;
+        }
+    };
+    let limit = Duration::from_secs(a.secs.unwrap_or(u64::MAX).min(cs.max_secs()));
+    if a.secs.is_none() {
+        out(&format!(
+            "recording {}x{} at {},{}; press Enter to stop (at most {} min)",
+            rect.w, rect.h, rect.x, rect.y, cs.max_minutes
+        ));
+    }
+    let enter = std::sync::Arc::new(AtomicBool::new(false));
+    if a.secs.is_none() {
+        let enter = enter.clone();
+        std::thread::spawn(move || {
+            let _ = std::io::stdin().read_line(&mut String::new());
+            enter.store(true, std::sync::atomic::Ordering::Relaxed);
+        });
+    }
+    let t0 = Instant::now();
+    while t0.elapsed() < limit
+        && !enter.load(std::sync::atomic::Ordering::Relaxed)
+        && !rec.has_ended()
+    {
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    let mp4 = match rec.stop() {
+        Ok(p) => p,
+        Err(e) => {
+            err(&format!("error: {e}"));
+            return EXIT_FAILED;
+        }
+    };
+    out(&format!("saved {}", mp4.display()));
+    if target == Format::Mp4 {
+        return EXIT_OK;
+    }
+    let mut opts = s.to_options();
+    opts.output.dir = OutDir::Fixed(dir);
+    opts.output.conflict = crate::convert::Conflict::AutoRename;
+    opts.output.template = "{name}".into();
+    let style = Style {
+        jobs: 1,
+        ..Style::default()
+    };
+    run_files(&[mp4], style, |_| Ok((target, opts.clone())))
 }
 
 fn list_presets() -> i32 {

@@ -505,7 +505,24 @@ I18N['zh-CN'] = {
   "dr.skipped.other": "{n} 个文件无法转换，将被跳过。",
   "dr.none": "这些文件都无法转换。",
   "dr.starting": "正在启动…",
-  "dr.err_options": "无法读取文件：{err}"
+  "dr.err_options": "无法读取文件：{err}",
+  "cap.hint": "拖动选择区域。右键选择整个屏幕。按 Esc 取消。",
+  "cap.confirm": "按 Enter 开始录制，或重新拖动选择。按 Esc 取消。",
+  "cap.rec": "正在录制",
+  "cap.stop": "停止",
+  "cap.cancel": "放弃",
+  "cap.title": "屏幕录制",
+  "cap.desc": "从托盘图标录制屏幕的一个区域。不含声音。录制内容保存为 MP4，GIF 和 WEBM 由它转换而来。",
+  "cap.dir": "录制文件保存位置",
+  "cap.dir_def": "视频\\Tessera（默认）",
+  "cap.fps": "每秒帧数",
+  "cap.cursor": "显示鼠标指针",
+  "cap.max": "最长录制时间",
+  "cap.min": "{n} 分钟",
+  "cap.format": "保存格式",
+  "cap.hotkey": "快捷键 Ctrl+Alt+R",
+  "cap.hotkey_desc": "打开区域选择，并停止正在进行的录制。默认关闭；这组按键可能已被其他程序占用。",
+  "cap.foot": "录制达到 2 GB 或时间上限时会自动停止。录制期间屏幕上始终显示红色边框和控制条，无法关闭。"
 };
 SETUP['zh-CN'] = {
   "install_title": "安装 Tessera",

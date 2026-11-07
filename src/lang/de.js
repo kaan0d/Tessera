@@ -516,7 +516,24 @@ I18N['de'] = {
   "dr.skipped.other": "{n} Dateien können nicht konvertiert werden und werden übersprungen.",
   "dr.none": "Keine dieser Dateien kann konvertiert werden.",
   "dr.starting": "Wird gestartet…",
-  "dr.err_options": "Die Dateien konnten nicht gelesen werden: {err}"
+  "dr.err_options": "Die Dateien konnten nicht gelesen werden: {err}",
+  "cap.hint": "Ziehen Sie, um einen Bereich zu wählen. Rechtsklick für den ganzen Bildschirm. Esc bricht ab.",
+  "cap.confirm": "Drücken Sie die Eingabetaste, um die Aufnahme zu starten, oder ziehen Sie neu. Esc bricht ab.",
+  "cap.rec": "Aufnahme",
+  "cap.stop": "Beenden",
+  "cap.cancel": "Verwerfen",
+  "cap.title": "Bildschirmaufnahme",
+  "cap.desc": "Nehmen Sie über das Tray-Symbol einen Bildschirmbereich auf. Ohne Ton. Aufnahmen werden als MP4 gespeichert; GIF und WEBM entstehen daraus.",
+  "cap.dir": "Aufnahmen speichern in",
+  "cap.dir_def": "Videos\\Tessera (Standard)",
+  "cap.fps": "Bilder pro Sekunde",
+  "cap.cursor": "Mauszeiger anzeigen",
+  "cap.max": "Längste Aufnahme",
+  "cap.min": "{n} Min.",
+  "cap.format": "Speichern als",
+  "cap.hotkey": "Tastenkürzel Strg+Alt+R",
+  "cap.hotkey_desc": "Startet die Bereichsauswahl und beendet eine laufende Aufnahme. Standardmäßig aus; ein anderes Programm kann diese Tasten bereits belegen.",
+  "cap.foot": "Eine Aufnahme endet bei 2 GB oder am Zeitlimit. Während der Aufnahme bleiben ein roter Rahmen und eine Leiste sichtbar; sie lassen sich nicht ausschalten."
 };
 SETUP['de'] = {
   "install_title": "Tessera installieren",

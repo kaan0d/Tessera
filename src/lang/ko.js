@@ -505,7 +505,24 @@ I18N['ko'] = {
   "dr.skipped.other": "파일 {n}개는 변환할 수 없어 건너뜁니다.",
   "dr.none": "변환할 수 있는 파일이 없습니다.",
   "dr.starting": "시작하는 중…",
-  "dr.err_options": "파일을 읽을 수 없습니다: {err}"
+  "dr.err_options": "파일을 읽을 수 없습니다: {err}",
+  "cap.hint": "드래그하여 영역을 선택하세요. 오른쪽 클릭은 전체 화면입니다. Esc로 취소합니다.",
+  "cap.confirm": "Enter를 눌러 녹화를 시작하거나 다시 드래그하세요. Esc로 취소합니다.",
+  "cap.rec": "녹화 중",
+  "cap.stop": "중지",
+  "cap.cancel": "삭제",
+  "cap.title": "화면 녹화",
+  "cap.desc": "트레이 아이콘에서 화면의 한 영역을 녹화합니다. 소리는 없습니다. 녹화는 MP4로 저장되며 GIF와 WEBM은 이를 변환해 만듭니다.",
+  "cap.dir": "녹화 저장 위치",
+  "cap.dir_def": "동영상\\Tessera(기본값)",
+  "cap.fps": "초당 프레임 수",
+  "cap.cursor": "마우스 포인터 표시",
+  "cap.max": "최대 녹화 시간",
+  "cap.min": "{n}분",
+  "cap.format": "저장 형식",
+  "cap.hotkey": "단축키 Ctrl+Alt+R",
+  "cap.hotkey_desc": "영역 선택을 시작하고, 녹화 중이면 중지합니다. 기본적으로 꺼져 있으며, 다른 프로그램이 이 키를 이미 사용 중일 수 있습니다.",
+  "cap.foot": "녹화는 2GB 또는 시간 제한에서 멈춥니다. 녹화 중에는 빨간 테두리와 막대가 화면에 표시되며 끌 수 없습니다."
 };
 SETUP['ko'] = {
   "install_title": "Tessera 설치",
