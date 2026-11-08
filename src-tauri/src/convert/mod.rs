@@ -20,8 +20,6 @@ pub static SHRUNK_TO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU6
 mod error;
 pub mod ffmpeg;
 mod image;
-pub mod ocr;
-mod ocr_pdf;
 pub mod office;
 pub mod output;
 pub mod pdf;
@@ -125,8 +123,8 @@ const SHEETS: [Format; 4] = [Format::Xlsx, Format::Xls, Format::Ods, Format::Csv
 const SLIDES: [Format; 3] = [Format::Pptx, Format::Ppt, Format::Odp];
 /// Slides can also become pictures, one per slide (through a PDF).
 const FROM_SLIDES: [Format; 3] = [Format::Pdf, Format::Png, Format::Jpg];
-/// Text recovered from a PDF: DOCX/ODT through LibreOffice's PDF import (layout often breaks), TXT from the text layer or OCR.
-const FROM_PDF: [Format; 3] = [Format::Docx, Format::Odt, Format::Txt];
+/// Editable text recovered from a PDF (LibreOffice's PDF import; layout often breaks).
+const FROM_PDF_TEXT: [Format; 2] = [Format::Docx, Format::Odt];
 /// Targets for a video source: other containers, GIF, and audio extraction.
 const FROM_VIDEO: [Format; 6] = [
     Format::Gif,
@@ -376,8 +374,6 @@ pub struct Options {
     /// The job asked for its own image quality or video bitrate: a same-format file is encoded
     /// again instead of being skipped or copied.
     pub recode: bool,
-    /// OCR targets: BCP-47 language of the recognizer (`None` = the user's Windows languages).
-    pub ocr_lang: Option<String>,
 }
 
 impl Default for Options {
@@ -398,7 +394,6 @@ impl Default for Options {
             cancel: None,
             ffmpeg: None,
             recode: false,
-            ocr_lang: None,
         }
     }
 }
@@ -469,7 +464,6 @@ impl Options {
             trim_start: self.trim_start.map(|t| t.clamp(0.0, MAX_TRIM)),
             trim_end: self.trim_end.map(|t| t.clamp(0.0, MAX_TRIM)),
             page: self.page.max(1),
-            ocr_lang: self.ocr_lang.clone().filter(|t| ocr::valid_lang(t)),
             ..self.clone()
         }
     }
@@ -542,13 +536,7 @@ pub fn uses_ffmpeg(src: Format, target: Format) -> bool {
 
 /// True when LibreOffice does the conversion: an office source, or a PDF read back as text.
 pub fn uses_office(src: Format, target: Format) -> bool {
-    !uses_ocr(src, target) && (src.is_office() || target.is_office())
-}
-
-/// Text read off a picture by the OCR engine (TXT is otherwise an office format).
-pub fn uses_ocr(src: Format, target: Format) -> bool {
-    target == Format::Txt
-        && (src == Format::Pdf || (src.is_image() && !matches!(src, Format::Heic | Format::Avif)))
+    src.is_office() || target.is_office()
 }
 
 /// Targets offered for a source extension (empty if the extension is unknown).
@@ -558,17 +546,14 @@ pub fn supported_targets(ext: &str) -> Vec<Format> {
         return vec![];
     };
     let pdf = [Format::Pdf];
-    let pic = [Format::Pdf, Format::Txt];
     // an animated GIF can become a video as well
-    let gif = [Format::Pdf, Format::Txt, Format::Mp4, Format::Webm];
+    let gif = [Format::Pdf, Format::Mp4, Format::Webm];
     let (family, extra): (&[Format], &[Format]) = if src == Format::Gif {
         (&IMAGES, &gif)
-    } else if matches!(src, Format::Heic | Format::Avif) {
-        (&IMAGES, &pdf)
     } else if src.is_image() {
-        (&IMAGES, &pic)
+        (&IMAGES, &pdf)
     } else if src == Format::Pdf {
-        (&IMAGES, &FROM_PDF)
+        (&IMAGES, &FROM_PDF_TEXT)
     } else if TEXT.contains(&src) {
         (&TEXT, &pdf)
     } else if SHEETS.contains(&src) {
@@ -641,9 +626,7 @@ pub fn convert(
         return Ok(done);
     }
     output::write_atomic(&dest, |w| {
-        if uses_ocr(from, target) {
-            ocr::write_text(&src, from, opts, &mut progress, w)
-        } else if from.is_image() || from == Format::Pdf {
+        if from.is_image() || from == Format::Pdf {
             let photo = matches!(from, Format::Jpg | Format::Raw);
             image::convert(&src, from, target, photo, opts, w)
         } else {
@@ -726,8 +709,7 @@ mod tests {
     fn format_matrix() {
         let t = supported_targets("JPEG");
         assert!(!t.contains(&Format::Jpg));
-        assert!(t.contains(&Format::Png) && t.contains(&Format::Ico) && t.len() == 9);
-        assert!(t.contains(&Format::Txt)); // OCR
+        assert!(t.contains(&Format::Png) && t.contains(&Format::Ico) && t.len() == 8);
         assert!(t.contains(&Format::Avif) && t.contains(&Format::Pdf));
         assert!(supported_targets("tif").contains(&Format::Webp));
         let a = supported_targets("mp3");

@@ -190,7 +190,6 @@ const PDF_CARDS = [
   [{ tool: 'split' }, 'i-doc', 'dr.pdf_split', 'dr.pdf_split_sub'],
   [{ tool: 'compress', strong: false }, 'i-download', 'dr.pdf_compress', 'dr.pdf_compress_sub'],
   [{ tool: 'compress', strong: true }, 'i-download', 'dr.pdf_compress_strong', 'dr.pdf_compress_strong_sub'],
-  [{ tool: 'ocr' }, 'i-doc', 'dr.pdf_ocr', 'dr.pdf_ocr_sub'],
 ];
 const PDF_TURNS = [[90, 'dr.pdf_right'], [270, 'dr.pdf_left'], [180, 'dr.pdf_180']];
 

@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::app_info::APP_NAME;
-use crate::capture::CaptureSettings;
 use crate::convert::output::validate_template;
 use crate::convert::{Conflict, Format, Options, OutDir, OutputParams, Quality};
 use crate::i18n::Lang;
@@ -135,8 +134,6 @@ pub struct Settings {
     pub updates: Updates,
     /// Folder watch rules. Owned by `set_watch`; `set_settings` keeps them.
     pub watch: Watch,
-    /// Screen recording options.
-    pub capture: CaptureSettings,
 }
 
 /// Current settings generation.
@@ -181,7 +178,6 @@ impl Default for Settings {
             history_enabled: true,
             updates: Updates::default(),
             watch: Watch::default(),
-            capture: CaptureSettings::default(),
         }
     }
 }
@@ -215,7 +211,6 @@ impl Settings {
             .retain_mut(|p| p.validate(lang).is_ok() && seen.insert(p.id.clone()));
         self.presets.truncate(preset::MAX_CUSTOM);
         self.watch.rules.truncate(watch::MAX_RULES);
-        self.capture = std::mem::take(&mut self.capture).normalized();
         let known: Vec<String> = preset::all(&self).into_iter().map(|p| p.id).collect();
         clean_list(&mut self.hidden_presets, |id| known.iter().any(|k| k == id));
         self

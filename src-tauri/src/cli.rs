@@ -17,10 +17,6 @@ pub enum Cli {
     InstallOffice,
     /// Delete the downloaded document support.
     RemoveOffice,
-    /// Download the OCR engine and these languages (Tesseract codes or tags), printing `P <percent>`.
-    InstallOcr(Vec<String>),
-    /// Delete the downloaded OCR engine and its languages.
-    RemoveOcr,
     /// Record that ffmpeg is downloaded later (the installer's "skip").
     DeferFfmpeg,
     /// Silent install (`--install <dir>`), no window. v0.1.x updaters may add `--portable`: ignored.
@@ -73,8 +69,6 @@ pub enum Cli {
         files: Vec<PathBuf>,
     },
     Background,
-    /// Open the area picker of a screen recording (the app, not the console command).
-    Capture,
     /// A headless subcommand (`convert`, `preset`, ...); never starts the app.
     Cmd(Command),
     Normal,
@@ -100,8 +94,6 @@ pub struct ConvertArgs {
     pub gif_fps: Option<u8>,
     pub gif_width: Option<u16>,
     pub video_mbps: Option<u8>,
-    /// `--ocr-lang`: BCP-47 language for text recognition (TXT output).
-    pub ocr_lang: Option<String>,
     pub recursive: bool,
     pub dry_run: bool,
     pub json: bool,
@@ -134,8 +126,6 @@ pub enum Command {
         files: Vec<PathBuf>,
         flags: RunFlags,
     },
-    /// `capture`: record the screen without a window.
-    Capture(CaptureArgs),
     /// Bad command line (exit code 2); the text says what is wrong.
     Usage(String),
 }
@@ -183,8 +173,7 @@ pub fn parse_size(s: &str) -> Option<u64> {
 /// `args` excludes the executable name. Unknown or malformed input falls back to `Normal`.
 /// Relative file paths are resolved against `cwd` (a forwarded launch has another cwd).
 pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
-    const SUBCOMMANDS: [&str; 7] = [
-        "capture",
+    const SUBCOMMANDS: [&str; 6] = [
         "convert",
         "preset",
         "merge",
@@ -206,14 +195,6 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         Some("--install-ffmpeg") => Cli::InstallFfmpeg,
         Some("--install-office") => Cli::InstallOffice,
         Some("--remove-office") => Cli::RemoveOffice,
-        Some("--install-ocr") => Cli::InstallOcr(
-            args[1..]
-                .iter()
-                .take_while(|a| !a.starts_with("--"))
-                .cloned()
-                .collect(),
-        ),
-        Some("--remove-ocr") => Cli::RemoveOcr,
         Some("--defer-ffmpeg") => Cli::DeferFfmpeg,
         Some("--install") => match args.get(1) {
             Some(dir) if !dir.starts_with("--") => Cli::Install {
@@ -228,7 +209,6 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
             keep_data: args.iter().any(|a| a == "--keep-data"),
         },
         Some("--background") => Cli::Background,
-        Some("--capture") => Cli::Capture,
         Some("--convert") => {
             let Some(target) = args.get(1).and_then(|t| Format::from_ext(t)) else {
                 return Cli::Normal;
@@ -291,7 +271,6 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
                 _ => Cli::Normal,
             }
         }
-        Some("capture") => Cli::Cmd(parse_capture(&args[1..])),
         Some("convert") => Cli::Cmd(parse_convert(&args[1..])),
         Some("preset") => Cli::Cmd(parse_preset(&args[1..])),
         Some("merge") => Cli::Cmd(parse_merge(&args[1..])),
@@ -311,7 +290,7 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
         },
         // a typo must not open the window and exit 0
         Some(a) => Cli::Cmd(usage(&format!(
-            "unknown option {a}: the commands are convert, preset, merge, pdf, capture, list-presets and formats"
+            "unknown option {a}: the commands are convert, preset, merge, pdf, list-presets and formats"
         ))),
         _ => Cli::Normal,
     }
@@ -319,48 +298,6 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Cli {
 
 fn usage(msg: &str) -> Command {
     Command::Usage(msg.into())
-}
-
-/// Arguments of `tessera capture`.
-#[derive(Debug, PartialEq)]
-pub struct CaptureArgs {
-    /// Desktop pixels; the primary screen when not given.
-    pub region: Option<crate::capture::Rect>,
-    /// Recording length; without it the recording runs until Enter is pressed.
-    pub secs: Option<u64>,
-    /// mp4, gif or webm; the setting when not given.
-    pub to: Option<Format>,
-}
-
-const CAPTURE_USAGE: &str = "capture [--region x,y,w,h] [--secs N] [--to gif|mp4|webm]";
-
-fn parse_capture(args: &[String]) -> Command {
-    let mut c = CaptureArgs {
-        region: None,
-        secs: None,
-        to: None,
-    };
-    let mut it = args.iter();
-    while let Some(a) = it.next() {
-        match a.as_str() {
-            "--region" => match it.next().and_then(|v| crate::capture::parse_region(v)) {
-                Some(r) => c.region = Some(r),
-                None => return usage("--region must be x,y,w,h in pixels, like 0,0,1280,720"),
-            },
-            "--secs" => match it.next().and_then(|v| v.parse::<u64>().ok()) {
-                Some(n) if n > 0 => c.secs = Some(n),
-                _ => return usage("--secs must be a number of seconds, 1 or more"),
-            },
-            "--to" => match it.next().map(String::as_str) {
-                Some("mp4") => c.to = Some(Format::Mp4),
-                Some("gif") => c.to = Some(Format::Gif),
-                Some("webm") => c.to = Some(Format::Webm),
-                _ => return usage("--to must be mp4, gif or webm"),
-            },
-            other => return usage(&format!("unknown option {other}: {CAPTURE_USAGE}")),
-        }
-    }
-    Command::Capture(c)
 }
 
 /// How a `preset` run reports itself and where it writes (flags may come before or after the files).
@@ -393,7 +330,7 @@ fn parse_merge(args: &[String]) -> Command {
     }
 }
 
-const PDF_USAGE: &str = "pdf needs a tool and files: pdf split|extract|delete|rotate|compress|ocr <files...> [--pages 1-3,5] [--angle 90|180|270] [--strong] [--ocr-lang tr]";
+const PDF_USAGE: &str = "pdf needs a tool and files: pdf split|extract|delete|rotate|compress <files...> [--pages 1-3,5] [--angle 90|180|270] [--strong]";
 
 fn parse_pdf(args: &[String]) -> Command {
     let Some(name) = args.first() else {
@@ -401,7 +338,6 @@ fn parse_pdf(args: &[String]) -> Command {
     };
     let (mut files, mut flags) = (vec![], RunFlags::default());
     let (mut pages, mut angle, mut strong) = (String::new(), None, false);
-    let mut ocr_lang = String::new();
     let mut it = args[1..].iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -414,10 +350,6 @@ fn parse_pdf(args: &[String]) -> Command {
                 None => return usage("--angle must be 90, 180 or 270"),
             },
             "--strong" => strong = true,
-            "--ocr-lang" => match it.next() {
-                Some(l) if crate::convert::ocr::valid_lang(l) => ocr_lang = l.clone(),
-                _ => return usage("--ocr-lang must be a language tag such as en or tr"),
-            },
             "--json" => flags.json = true,
             "--quiet" => flags.quiet = true,
             "--out" => match it.next() {
@@ -431,7 +363,7 @@ fn parse_pdf(args: &[String]) -> Command {
             },
             f if f.starts_with("--") => {
                 return usage(&format!(
-                    "unknown option {f} (allowed: --pages, --angle, --strong, --ocr-lang, --out, --conflict, --json, --quiet)"
+                    "unknown option {f} (allowed: --pages, --angle, --strong, --out, --conflict, --json, --quiet)"
                 ));
             }
             _ => files.push(PathBuf::from(a)),
@@ -440,8 +372,7 @@ fn parse_pdf(args: &[String]) -> Command {
     let pages = pages.trim().to_string();
     // a flag the tool does not use is a mistake worth saying
     let stray = match name.as_str() {
-        "split" | "compress" | "ocr" if !pages.is_empty() => Some("--pages"),
-        n if n != "ocr" && !ocr_lang.is_empty() => Some("--ocr-lang"),
+        "split" | "compress" if !pages.is_empty() => Some("--pages"),
         n if n != "rotate" && angle.is_some() => Some("--angle"),
         n if n != "compress" && strong => Some("--strong"),
         _ => None,
@@ -456,7 +387,6 @@ fn parse_pdf(args: &[String]) -> Command {
         "extract" | "delete" => format!("{name}:{pages}"),
         "rotate" => format!("rotate:{}:{pages}", angle.unwrap_or(90)),
         "compress" if strong => "compress:strong".into(),
-        "ocr" if !ocr_lang.is_empty() => format!("ocr:{ocr_lang}"),
         n => n.to_string(),
     };
     match PdfTool::parse(&spec) {
@@ -523,7 +453,7 @@ fn parse_convert(args: &[String]) -> Command {
     }
 }
 
-const VALUE_FLAGS: [&str; 15] = [
+const VALUE_FLAGS: [&str; 14] = [
     "to",
     "jobs",
     "max-edge",
@@ -536,7 +466,6 @@ const VALUE_FLAGS: [&str; 15] = [
     "gif-fps",
     "gif-width",
     "video-mbps",
-    "ocr-lang",
     "out",
     "conflict",
 ];
@@ -548,7 +477,6 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
     let (mut mono, mut no_audio, mut gif_fps, mut gif_width) = (false, false, None, None);
     let (mut video_mbps, mut recursive, mut dry_run, mut json, mut quiet) =
         (None, false, false, false, false);
-    let mut ocr_lang = None;
     let mut conflict = Conflict::AutoRename;
     let mut jobs = 1u8;
     let mut it = args.iter();
@@ -608,13 +536,6 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
             "gif-fps" => gif_fps = Some(num(5, 30)? as u8),
             "gif-width" => gif_width = Some(num(120, 1280)? as u16),
             "video-mbps" => video_mbps = Some(num(1, 30)? as u8),
-            "ocr-lang" => {
-                ocr_lang = Some(
-                    Some(v.clone())
-                        .filter(|l| crate::convert::ocr::valid_lang(l))
-                        .ok_or("--ocr-lang must be a language tag such as en or tr")?,
-                )
-            }
             "jobs" => jobs = num(1, 16)? as u8,
             "out" => out = Some(PathBuf::from(&v)),
             "conflict" => {
@@ -654,7 +575,6 @@ fn convert_args(args: &[String]) -> Result<ConvertArgs, String> {
         gif_fps,
         gif_width,
         video_mbps,
-        ocr_lang,
         recursive,
         dry_run,
         json,
@@ -692,12 +612,6 @@ mod tests {
         assert_eq!(parse(&a(&["--install-ffmpeg"]), None), Cli::InstallFfmpeg);
         assert_eq!(parse(&a(&["--install-office"]), None), Cli::InstallOffice);
         assert_eq!(parse(&a(&["--remove-office"]), None), Cli::RemoveOffice);
-        assert_eq!(parse(&a(&["--install-ocr"]), None), Cli::InstallOcr(vec![]));
-        assert_eq!(
-            parse(&a(&["--install-ocr", "tur", "en"]), None),
-            Cli::InstallOcr(vec!["tur".into(), "en".into()])
-        );
-        assert_eq!(parse(&a(&["--remove-ocr"]), None), Cli::RemoveOcr);
         assert_eq!(parse(&a(&["--defer-ffmpeg"]), None), Cli::DeferFfmpeg);
         assert_eq!(
             parse(&a(&["--install", r"D:\Apps", "--portable"]), None),
@@ -1118,21 +1032,6 @@ mod cut_flag_tests {
     }
 
     #[test]
-    fn ocr_lang_flag() {
-        let conv = |v: &[&str]| match parse_convert(&a(v)) {
-            Command::Convert(c) => c,
-            other => panic!("{other:?}"),
-        };
-        let c = conv(&["scan.png", "--to", "txt", "--ocr-lang", "tr"]);
-        assert_eq!((c.target, c.ocr_lang.as_deref()), (Format::Txt, Some("tr")));
-        assert_eq!(conv(&["scan.png", "--to", "txt"]).ocr_lang, None);
-        for bad in ["", "../x", "t r"] {
-            let v = ["scan.png", "--to", "txt", "--ocr-lang", bad];
-            assert!(matches!(parse_convert(&a(&v)), Command::Usage(_)), "{bad}");
-        }
-    }
-
-    #[test]
     fn bad_cut_flags_are_usage_errors() {
         let bad = |extra: &[&str]| {
             let mut v = vec!["clip.mp4", "--to", "mp3"];
@@ -1143,52 +1042,5 @@ mod cut_flag_tests {
         assert!(bad(&["--start", "soon"]));
         assert!(bad(&["--audio-bitrate", "4"]));
         assert!(bad(&["--gif-fps", "60"]));
-    }
-
-    #[test]
-    fn capture_flags() {
-        use crate::capture::Rect;
-        assert_eq!(parse(&a(&["--capture"]), None), Cli::Capture);
-        let cap = |v: &[&str]| match parse(&a(v), None) {
-            Cli::Cmd(Command::Capture(c)) => c,
-            other => panic!("{other:?}"),
-        };
-        let c = cap(&["capture"]);
-        assert_eq!((c.region, c.secs, c.to), (None, None, None));
-        let c = cap(&[
-            "capture",
-            "--region",
-            "-1920,0,640,360",
-            "--secs",
-            "5",
-            "--to",
-            "gif",
-        ]);
-        let r = Rect {
-            x: -1920,
-            y: 0,
-            w: 640,
-            h: 360,
-        };
-        assert_eq!(
-            (c.region, c.secs, c.to),
-            (Some(r), Some(5), Some(Format::Gif))
-        );
-        for bad in [
-            &["capture", "--region", "1,2,3"][..],
-            &["capture", "--secs", "0"],
-            &["capture", "--secs", "x"],
-            &["capture", "--to", "avi"],
-            &["capture", "--now"],
-        ] {
-            assert!(
-                matches!(parse(&a(bad), None), Cli::Cmd(Command::Usage(_))),
-                "{bad:?}"
-            );
-        }
-        assert_eq!(
-            parse(&a(&["capture", "--help"]), None),
-            Cli::Cmd(Command::Help)
-        );
     }
 }

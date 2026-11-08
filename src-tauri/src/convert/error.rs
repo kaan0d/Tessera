@@ -55,12 +55,6 @@ pub enum ConvertError {
     FfmpegStart(String),
     FfmpegWait(String),
     Recycle(String),
-    /// No OCR recognizer pack for the wanted language is installed in Windows.
-    OcrNoLanguage,
-    /// The picture has no text the engine could read.
-    OcrNoText,
-    /// Windows OCR failed (the engine's own message is the detail).
-    OcrFailed(String),
 }
 
 impl ConvertError {
@@ -106,9 +100,6 @@ impl ConvertError {
             E::NoPagesLeft => plain("ce.no_pages_left"),
             E::EmptyFile => plain("ce.empty_file"),
             E::OfficeTimeout => plain("ce.office_timeout"),
-            E::OcrNoLanguage => plain("ce.ocr_no_language"),
-            E::OcrNoText => plain("ce.ocr_no_text"),
-            E::OcrFailed(d) => with("ce.ocr_failed", d),
             E::NoRecycleBin => plain("ce.no_recycle"),
             E::Exists => plain("ce.exists"),
             E::InFile(name, e) => format!("{name}: {}", e.message(lang)),
@@ -215,9 +206,6 @@ mod tests {
             ConvertError::FfmpegStart("x".into()),
             ConvertError::FfmpegWait("x".into()),
             ConvertError::Recycle("x".into()),
-            ConvertError::OcrNoLanguage,
-            ConvertError::OcrNoText,
-            ConvertError::OcrFailed("x".into()),
         ];
         for e in &all {
             let (en, tr) = (e.message(Lang::En), e.message(Lang::Tr));

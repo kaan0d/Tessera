@@ -164,7 +164,6 @@ pub const MSGS: &[(&str, &str, &str)] = &[
     ("pdf.rotate_right", "Rotate right", "Sağa döndür"),
     ("pdf.rotate_left", "Rotate left", "Sola döndür"),
     ("pdf.rotate_180", "Turn upside down", "Ters çevir"),
-    ("pdf.ocr", "Make searchable (OCR)", "Aranabilir yap (OCR)"),
     ("pdf.compress", "Compress PDF", "PDF'i sıkıştır"),
     (
         "menu.pdf_more",
@@ -608,17 +607,6 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "Bu tüm sayfaları siler. En az bir sayfa bırakın.",
     ),
     ("ce.empty_file", "The file is empty", "Dosya boş"),
-    ("ce.ocr_no_text", "No text recognized", "Metin tanınmadı"),
-    (
-        "ce.ocr_no_language",
-        "No OCR language is available. Add one in Windows Settings > Time & language, download one in the app under Settings > OCR, or run `tessera --install-ocr`.",
-        "Kullanılabilir OCR dili yok. Windows Ayarlar > Zaman ve dil bölümünden bir dil ekleyin, uygulamada Ayarlar > OCR bölümünden indirin ya da `tessera --install-ocr` çalıştırın.",
-    ),
-    (
-        "ce.ocr_failed",
-        "Text recognition failed: {detail}",
-        "Metin tanıma başarısız: {detail}",
-    ),
     (
         "ce.office_timeout",
         "LibreOffice did not finish in 5 minutes. The document is probably too large.",
@@ -788,32 +776,6 @@ pub const MSGS: &[(&str, &str, &str)] = &[
         "lo.missing",
         "The document support package is incomplete",
         "Belge desteği paketi eksik",
-    ),
-    ("tray.capture", "Record screen", "Ekranı kaydet"),
-    ("tray.capture_stop", "Stop recording", "Kaydı durdur"),
-    ("cap.recording", "Recording", "Kayıt sürüyor"),
-    ("cap.busy", "A screen recording is already in progress", "Bir ekran kaydı zaten sürüyor"),
-    ("cap.no_ffmpeg", "Screen recording needs ffmpeg. Download it in Settings > Advanced.", "Ekran kaydı için ffmpeg gerekir. Ayarlar > Gelişmiş bölümünden indirin."),
-    ("cap.bad_region", "Pick an area of at least 64 x 64 pixels", "En az 64 x 64 piksellik bir alan seçin"),
-    ("cap.low_disk", "Not enough free disk space to record (1 GB needed)", "Kayıt için yeterli boş disk alanı yok (1 GB gerekir)"),
-    ("cap.dir", "Could not create the recordings folder: {detail}", "Kayıt klasörü oluşturulamadı: {detail}"),
-    ("cap.start", "Could not start ffmpeg: {detail}", "ffmpeg başlatılamadı: {detail}"),
-    ("cap.failed", "Recording failed: {detail}", "Kayıt başarısız oldu: {detail}"),
-    ("cap.killed", "The recording did not finish properly and was discarded", "Kayıt düzgün bitmedi ve silindi"),
-    ("cap.saved_title", "Recording saved", "Kayıt kaydedildi"),
-    ("cap.saved_body", "{name}", "{name}"),
-    ("cap.saved_limit", "{name} (stopped at the time or size limit)", "{name} (süre veya boyut sınırında durdu)"),
-    ("cap.saved_disk", "{name} (stopped: the disk is almost full)", "{name} (durdu: disk neredeyse dolu)"),
-    ("cap.hotkey_failed", "The shortcut {key} could not be registered: {err}", "{key} kısayolu kaydedilemedi: {err}"),
-    (
-        "tess.run",
-        "The OCR engine could not be run",
-        "OCR motoru çalıştırılamadı",
-    ),
-    (
-        "tess.missing",
-        "The OCR engine package is incomplete",
-        "OCR motoru paketi eksik",
     ),
 ];
 

@@ -5,8 +5,7 @@
     "main",
     "progress",
     "drop",
-    "setup",
-    "capture-*"
+    "setup"
   ],
   "permissions": [
     "core:event:default",

@@ -206,11 +206,10 @@ pub fn builtins() -> Vec<Preset> {
                 ..o()
             },
         ),
-        // scan -> searchable PDF -> smaller PDF (a PDF source skips the first step)
+        // scan -> PDF -> smaller PDF (a PDF source skips the first step)
         Preset {
             steps: vec![
                 step("pdf", None),
-                step("pdf", Some(PdfTool::Ocr { lang: None })),
                 step("pdf", Some(PdfTool::Compress { strong: false })),
             ],
             ..builtin("scan_share", &["image", "document"], "pdf", None, o())
@@ -736,12 +735,7 @@ mod tests {
             &["image"],
             vec![
                 step("pdf", None),
-                step(
-                    "pdf",
-                    Some(PdfTool::Ocr {
-                        lang: Some("tr".into()),
-                    }),
-                ),
+                step("pdf", Some(PdfTool::Compress { strong: false })),
             ],
         );
         p.validate(Lang::En).unwrap();
@@ -803,9 +797,9 @@ mod tests {
                 })
                 .collect()
         };
-        assert_eq!(shape("png"), ["pdf", "ocr", "compress"]);
+        assert_eq!(shape("png"), ["pdf", "compress"]);
         // a PDF is already a PDF: the conversion step drops out
-        assert_eq!(shape("pdf"), ["ocr", "compress"]);
+        assert_eq!(shape("pdf"), ["compress"]);
         assert!(p.plan_chain("mp3", &s).is_none());
         assert_eq!(p.menu_target("png", &s), Some(Format::Pdf));
         assert_eq!(p.menu_target("pdf", &s), Some(Format::Pdf));

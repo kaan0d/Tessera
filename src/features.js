@@ -202,10 +202,9 @@ async function loadPresets() {
 /* ---------- preset editor ---------- */
 let pdId = '';
 let pdKinds = new Set();
-let pdSteps = []; // chain: a format ("pdf") or a PDF tool ("tool:ocr")
+let pdSteps = []; // chain: a format ("pdf") or a PDF tool ("tool:compress")
 const MAX_STEPS = 5;
 const STEP_TOOLS = {
-  ocr: { key: 'dr.pdf_ocr', tool: { tool: 'ocr', lang: null } },
   compress: { key: 'dr.pdf_compress', tool: { tool: 'compress', strong: false } },
   'compress:strong': { key: 'dr.pdf_compress_strong', tool: { tool: 'compress', strong: true } },
 };

@@ -10,7 +10,7 @@ function fmtBytes(b) {
 /** Name of one step of a chain: a format or a PDF tool. */
 function stepLabel(st) {
   if (!st.tool) return st.target.toUpperCase();
-  const k = st.tool.tool === 'compress' && st.tool.strong ? 'dr.pdf_compress_strong' : { ocr: 'dr.pdf_ocr', compress: 'dr.pdf_compress', rotate: 'dr.pdf_rotate' }[st.tool.tool];
+  const k = st.tool.tool === 'compress' && st.tool.strong ? 'dr.pdf_compress_strong' : { compress: 'dr.pdf_compress', rotate: 'dr.pdf_rotate' }[st.tool.tool];
   return k ? t(k) : st.tool.tool;
 }
 

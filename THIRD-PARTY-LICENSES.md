@@ -42,32 +42,6 @@ instead. When a newer build is pinned in a Tessera update, Settings offers to re
 - Source code: https://www.libreoffice.org/download/source-code/ and https://git.libreoffice.org/core
 - License text: https://www.mozilla.org/en-US/MPL/2.0/ and https://www.libreoffice.org/about-us/licenses/
 
-## Tesseract OCR (downloaded on request, not bundled)
-
-Tesseract is licensed under the Apache License 2.0. Tessera does not contain or link it. Only
-when you press Download under Settings > OCR does it download a trimmed copy of the official
-Windows build (the installer from the Tesseract project, SHA-256
-`bee9e3434bd94fd65387d9be28cd467a41f61b1275383b55b0f59a1331270ae4`), repackaged as
-`tesseract-5.5.3-win64-tessera.zip` on Tessera's own release page (SHA-256
-`2ff4a233891bd35d728a6728de0144d602db3cbc209953321545978a74111770`), checks it and unpacks it
-into `data\tesseract\` inside the install folder. Training tools, documentation and the Java viewer are left out. Tessera
-runs `tesseract.exe` as a separate process, only to read text from pictures.
-
-The zip's `NOTICE.txt` lists every file. Its libraries are under permissive licenses (BSD,
-MIT, zlib, Apache-2.0, curl, libpng, libtiff, IJG) with these exceptions, all separate DLLs used
-unmodified:
-
-- libiconv, libintl (gettext): LGPL-2.1-or-later. libunistring, libidn2: LGPL-3.0-or-later or GPL-2.0-or-later, used under the LGPL. They can be replaced by other builds of the same libraries.
-- libgcc_s and libstdc++: GPL-3.0-or-later with the GCC Runtime Library Exception, which allows programs linked to them under any license.
-- `libjbig-0.dll` is **not** the original: JBIG-KIT is GPL-licensed, so the zip carries a small MIT-licensed stand-in (`tools/libjbig-stub/` in this repository) that exports the same function names and reports an error from each. A JBIG-compressed TIFF is therefore refused; every other format is unaffected.
-
-Language files are `tessdata_fast` from https://github.com/tesseract-ocr/tessdata_fast (Apache-2.0),
-pinned to commit `87416418657359cb625c412a48b6e1d6d41c29bd`, one SHA-256 per file, downloaded one
-language at a time.
-
-- Source code: https://github.com/tesseract-ocr/tesseract and https://github.com/tesseract-ocr/tessdata_fast
-- License text: https://www.apache.org/licenses/LICENSE-2.0 (also `LICENSE-tesseract.txt` in the zip)
-
 ## Rust and its libraries
 
 Tessera is written in Rust and includes the Rust standard library. Rust is dual-licensed under
