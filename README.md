@@ -37,6 +37,7 @@ Prefer a window? Drop files on it and choose there. Prefer scripts? There is a f
 - **PDF tools:** split into pages, keep or delete pages (`1-3, 5`), rotate, compress the pictures inside. A multi-page PDF turned into images gives one picture per page.
 - **Shrink to a size:** "under 10 MB" or "under 2 MB" for images, video, audio and PDF. A file that already fits is copied as is when its format stays the same.
 - **Presets:** web, WhatsApp, email, Discord (all under 10 MB where it matters), strip location data, PDF, WebP, icon, Instagram, podcast. Save your own from any custom settings.
+- **Preset chains:** a preset can run up to 5 steps in a row, such as picture to PDF, then a smaller PDF. One history entry per file; "Scan and share" is built in.
 - **Edit on the way:** resize, strip metadata, fix orientation, cut audio and video, audio bitrate, mono, GIF fps and width.
 - **Batch:** merge images, PDFs and documents into one PDF or audio files into one, convert whole folders, drop many files at once. Several files convert in parallel.
 - **Automate:** watch folders with rules, a Send To entry, and `tessera-cli` for scripts.
@@ -144,6 +145,7 @@ src-tauri/src/
   cli.rs  headless.rs    command-line parsing and the `tessera-cli` commands
   install.rs             the self-installer and uninstaller
   office.rs              document support: LibreOffice download and lookup (runner in convert/office.rs)
+  chain.rs               runs a multi-step preset in a temp folder
   settings.rs  preset.rs history.rs  update.rs  log.rs  ffmpeg.rs
   i18n.rs  i18n/         backend strings: en and tr in i18n.rs, one table per other language
 src-tauri/menu-icons/    one .ico per menu verb (embedded in the exe)
